@@ -1,0 +1,42 @@
+# Byte-compiled / Python artifacts
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Virtual Environments
+.venv/
+venv/
+ENV/
+env/
+
+# Environment Variables
+.env
+.env.local
+
+# IDE & Editor files
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Office lock files
+.~lock.*
+
+# Testing & Coverage
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Logs & Operating System files
+*.log
+.DS_Store
+Thumbs.db
+
+# Build & Distribution
+build/
+dist/
+*.egg-info/
+
+# Large generated benchmark output
+evaluation/benchmark_results_multiseed.json

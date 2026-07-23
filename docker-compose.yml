@@ -1,0 +1,24 @@
+version: '3.8'
+
+services:
+  benchmark:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ga_timetabling_benchmark
+    env_file:
+      - .env.example
+    volumes:
+      - ./evaluation:/app/evaluation
+    command: python main_benchmark.py
+
+  test-ga:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ga_timetabling_test
+    env_file:
+      - .env.example
+    volumes:
+      - ./evaluation:/app/evaluation
+    command: python test_ga.py
