@@ -1,11 +1,20 @@
+"""Baseline Scheduling Algorithms Module.
+
+Provides Random Search Scheduler and Greedy Scheduler baselines for comparison
+with Genetic Algorithm optimization performance.
+"""
+
 import random
-import copy
 from typing import List, Optional, Dict
 from domain import Schedule, Gene, CourseSection, Room, Timeslot, Lecturer
 from constraints import ConstraintEvaluator
+from dataset import get_occupied_periods, is_valid_period_block, DatasetValidator
 
 class RandomSearchScheduler:
+    """Random Search baseline scheduler for random schedule sampling."""
+
     def __init__(self, dataset: dict):
+        DatasetValidator.validate(dataset)
         self.dataset = dataset
         self.sections: List[CourseSection] = dataset["course_sections"]
         self.rooms: List[Room] = dataset["rooms"]
@@ -13,6 +22,7 @@ class RandomSearchScheduler:
         self.evaluator = ConstraintEvaluator(dataset)
 
     def run(self, iterations: int = 1000, evaluation_budget: Optional[int] = None) -> dict:
+        """Execute Random Search sampling loop for specified evaluation budget."""
         best_schedule = None
         best_key = None
         best_score = None
@@ -30,33 +40,37 @@ class RandomSearchScheduler:
                 for sec in self.sections
             ]
             cand = Schedule(genes=genes)
-            score, hard, soft_penalty = self.evaluator.calculate_fitness(cand)
-            _, soft_details = self.evaluator.evaluate_soft(cand)
+            hard, _ = self.evaluator.evaluate_hard(cand)
+            soft_penalty, soft_details = self.evaluator.evaluate_soft(cand)
+            score = float((hard * 1000) + (soft_penalty * 1))
             raw_soft = sum(soft_details.values())
             evaluation_count += 1
 
             candidate_key = (hard, soft_penalty)
+            is_new_best = False
 
             if best_key is None or candidate_key < best_key:
                 best_key = candidate_key
-                best_schedule = copy.deepcopy(cand)
+                best_schedule = Schedule(genes=[Gene(g.section_id, g.room_id, g.timeslot_id) for g in cand.genes])
                 best_score = score
                 best_hard = hard
                 best_raw_soft = raw_soft
                 best_soft_penalty = soft_penalty
+                is_new_best = True
 
-            history.append({
-                "iteration": i,
-                "fitness_evaluations": evaluation_count,
-                "best_score": best_score,
-                "best_hard": best_hard,
-                "best_raw_soft": best_raw_soft,
-                "best_soft_penalty": best_soft_penalty,
-                "hard_violations": best_hard,
-                "soft_violations": best_soft_penalty,
-                "raw_soft_violations": best_raw_soft,
-                "soft_penalty": best_soft_penalty
-            })
+            if is_new_best or (evaluation_count % 100 == 0) or (i == max_evals - 1):
+                history.append({
+                    "iteration": i,
+                    "fitness_evaluations": evaluation_count,
+                    "best_score": best_score,
+                    "best_hard": best_hard,
+                    "best_raw_soft": best_raw_soft,
+                    "best_soft_penalty": best_soft_penalty,
+                    "hard_violations": best_hard,
+                    "soft_violations": best_soft_penalty,
+                    "raw_soft_violations": best_raw_soft,
+                    "soft_penalty": best_soft_penalty
+                })
 
         return {
             "best_schedule": best_schedule,
@@ -69,9 +83,12 @@ class RandomSearchScheduler:
             "history": history
         }
 
-
 class GreedyScheduler:
-    def __init__(self, dataset: dict):
+    """Pure Deterministic Greedy baseline scheduler using heuristic first-fit section assignment."""
+
+    def __init__(self, dataset: dict, seed: int = 0):
+        """Initialize Greedy Scheduler with dataset."""
+        DatasetValidator.validate(dataset)
         self.dataset = dataset
         self.sections: List[CourseSection] = dataset["course_sections"]
         self.rooms: List[Room] = dataset["rooms"]
@@ -80,11 +97,18 @@ class GreedyScheduler:
         self.evaluator = ConstraintEvaluator(dataset)
 
     def run(self) -> dict:
-        """Thuật toán Xếp lịch Tham ăn (Greedy Scheduler)."""
+        """Execute 100% deterministic heuristic Greedy schedule construction."""
         genes = []
         used_lecturer_time = set()
         used_room_time = set()
         used_group_time = set()
+
+        day_period_to_ts_id = {(t.day, t.period): t.id for t in self.timeslots}
+        day_available_periods = {}
+        for t in self.timeslots:
+            if t.day not in day_available_periods:
+                day_available_periods[t.day] = set()
+            day_available_periods[t.day].add(t.period)
 
         for sec in self.sections:
             best_r = None
@@ -95,15 +119,28 @@ class GreedyScheduler:
             avail_ts = getattr(lec, "available_timeslot_ids", None) if lec else None
             req_type = getattr(sec, "required_room_type", "NORMAL")
 
+            duration = getattr(sec, "duration_periods", 1)
+
             for ts in self.timeslots:
-                if avail_ts is not None and ts.id not in avail_ts:
+                if not is_valid_period_block(ts.period, duration, day_available_periods.get(ts.day)):
                     continue
-                if (sec.lecturer_id, ts.id) in used_lecturer_time or (sec.group_id, ts.id) in used_group_time:
+
+                occupied_p = get_occupied_periods(ts.period, duration)
+                if avail_ts is not None and not all(day_period_to_ts_id.get((ts.day, p)) in avail_ts for p in occupied_p):
+                    continue
+
+                if sec.lecturer_id and any((sec.lecturer_id, ts.day, p) in used_lecturer_time for p in occupied_p):
+                    continue
+                if sec.group_id and any((sec.group_id, ts.day, p) in used_group_time for p in occupied_p):
                     continue
 
                 for r in self.rooms:
                     rm_type = getattr(r, "room_type", "NORMAL")
-                    if r.capacity >= sec.student_count and rm_type == req_type and (r.id, ts.id) not in used_room_time:
+                    if (
+                        r.capacity >= sec.student_count
+                        and rm_type == req_type
+                        and not any((r.id, ts.day, p) in used_room_time for p in occupied_p)
+                    ):
                         best_r = r
                         best_ts = ts
                         found_valid = True
@@ -111,27 +148,33 @@ class GreedyScheduler:
                 if found_valid:
                     break
 
-            # Fallback if no conflict-free slot:
             if not found_valid:
-                valid_rooms = [
+                valid_rooms = sorted([
                     r for r in self.rooms
                     if r.capacity >= sec.student_count and getattr(r, "room_type", "NORMAL") == req_type
                 ] or [
                     r for r in self.rooms if r.capacity >= sec.student_count
-                ] or self.rooms
+                ] or self.rooms, key=lambda r: (r.capacity, r.id))
 
-                best_r = random.choice(valid_rooms)
+                best_r = valid_rooms[0]
 
-                valid_ts = [
+                valid_ts = sorted([
                     t for t in self.timeslots
-                    if avail_ts is None or t.id in avail_ts
-                ] or self.timeslots
+                    if is_valid_period_block(t.period, duration, day_available_periods.get(t.day))
+                    and (avail_ts is None or all(day_period_to_ts_id.get((t.day, p)) in avail_ts for p in get_occupied_periods(t.period, duration)))
+                ] or self.timeslots, key=lambda t: t.id)
 
-                best_ts = random.choice(valid_ts)
+                best_ts = valid_ts[0]
 
-            used_lecturer_time.add((sec.lecturer_id, best_ts.id))
-            used_room_time.add((best_r.id, best_ts.id))
-            used_group_time.add((sec.group_id, best_ts.id))
+            occupied_p = get_occupied_periods(best_ts.period, duration)
+            if sec.lecturer_id:
+                for p in occupied_p:
+                    used_lecturer_time.add((sec.lecturer_id, best_ts.day, p))
+            for p in occupied_p:
+                used_room_time.add((best_r.id, best_ts.day, p))
+            if sec.group_id:
+                for p in occupied_p:
+                    used_group_time.add((sec.group_id, best_ts.day, p))
             genes.append(Gene(section_id=sec.section_id, room_id=best_r.id, timeslot_id=best_ts.id))
 
         schedule = Schedule(genes=genes)

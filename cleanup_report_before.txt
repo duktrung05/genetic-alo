@@ -1,0 +1,70 @@
+=== REPOSITORY CLEANUP REPORT - BEFORE ===
+Timestamp: 2026-07-31
+Repository Path: /home/trung.nguyen12/Downloads/GA
+Total Repository Size (with .venv): 301.67 MB
+Total Repository Size (without .venv): 6.39 MB
+.venv Size: 295.28 MB
+Outputs Directory Size: 4.99 MB
+Data Directory Size: 69.07 KB
+
+--- 60 LARGEST FILES / DIRECTORIES BEFORE CLEANUP ---
+.venv                                                        | 295.28 MB  | DIR
+.venv/lib                                                    | 156.85 MB  | DIR
+.venv/lib64                                                  | 156.85 MB  | DIR
+.venv/lib/python3.14                                         | 156.85 MB  | DIR
+.venv/lib/python3.14/site-packages                           | 156.85 MB  | DIR
+.venv/bin                                                    | 138.43 MB  | DIR
+.venv/bin/𝜋thon                                              | 34.60 MB   | FILE
+.venv/bin/python                                             | 34.60 MB   | FILE
+.venv/bin/python3.14                                         | 34.60 MB   | FILE
+.venv/bin/python3                                            | 34.60 MB   | FILE
+.venv/lib/python3.14/site-packages/matplotlib                | 31.08 MB   | DIR
+.venv/lib/python3.14/site-packages/numpy                     | 29.59 MB   | DIR
+.venv/lib/python3.14/site-packages/numpy.libs                | 26.96 MB   | DIR
+.venv/lib/python3.14/site-packages/numpy.libs/libscipy_openblas64_-017048f4.so | 23.96 MB   | FILE
+.venv/lib/python3.14/site-packages/fontTools                 | 19.87 MB   | DIR
+.venv/lib/python3.14/site-packages/numpy/_core               | 17.87 MB   | DIR
+.venv/lib/python3.14/site-packages/pillow.libs               | 13.42 MB   | DIR
+.venv/lib/python3.14/site-packages/numpy/_core/_multiarray_umath.cpython-314-x86_64-linux-gnu.so | 10.18 MB   | FILE
+.venv/lib/python3.14/site-packages/pip                       | 9.54 MB    | DIR
+.venv/lib/python3.14/site-packages/matplotlib/mpl-data       | 9.20 MB    | DIR
+.venv/lib/python3.14/site-packages/matplotlib/mpl-data/fonts | 8.47 MB    | DIR
+.venv/lib/python3.14/site-packages/matplotlib/mpl-data/fonts/ttf | 7.17 MB    | DIR
+.venv/lib/python3.14/site-packages/pip/_vendor               | 7.06 MB    | DIR
+.venv/lib/python3.14/site-packages/fontTools/misc            | 6.56 MB    | DIR
+.venv/lib/python3.14/site-packages/PIL                       | 5.86 MB    | DIR
+.venv/lib/python3.14/site-packages/kiwisolver                | 5.48 MB    | DIR
+.venv/lib/python3.14/site-packages/kiwisolver/_cext.cpython-314-x86_64-linux-gnu.so | 5.47 MB    | FILE
+outputs                                                      | 4.99 MB    | DIR
+.venv/lib/python3.14/site-packages/pillow.libs/libavif-8a7f9d56.so.16.4.2 | 4.96 MB    | FILE
+outputs/benchmarks                                           | 4.62 MB    | DIR
+.venv/lib/python3.14/site-packages/pygments                  | 4.57 MB    | DIR
+.venv/lib/python3.14/site-packages/fontTools/misc/bezierTools.cpython-314-x86_64-linux-gnu.so | 4.44 MB    | FILE
+.venv/lib/python3.14/site-packages/matplotlib/__pycache__    | 4.08 MB    | DIR
+.venv/lib/python3.14/site-packages/pygments/lexers           | 3.94 MB    | DIR
+.venv/lib/python3.14/site-packages/matplotlib/ft2font.cpython-314-x86_64-linux-gnu.so | 3.54 MB    | FILE
+.venv/lib/python3.14/site-packages/numpy/_core/tests         | 3.47 MB    | DIR
+.venv/lib/python3.14/site-packages/numpy/random              | 3.36 MB    | DIR
+.venv/lib/python3.14/site-packages/PIL/_imaging.cpython-314-x86_64-linux-gnu.so | 3.24 MB    | FILE
+.venv/lib/python3.14/site-packages/_pytest                   | 3.10 MB    | DIR
+.venv/lib/python3.14/site-packages/fontTools/varLib          | 2.85 MB    | DIR
+.venv/lib/python3.14/site-packages/numpy.libs/libgfortran-83c28eba-b4027c22.so.5.0.0 | 2.73 MB    | FILE
+.venv/lib/python3.14/site-packages/numpy/lib                 | 2.63 MB    | DIR
+.venv/lib/python3.14/site-packages/matplotlib/backends       | 2.51 MB    | DIR
+.venv/lib/python3.14/site-packages/pip/_internal             | 2.48 MB    | DIR
+.venv/lib/python3.14/site-packages/fontTools/feaLib          | 2.26 MB    | DIR
+outputs/benchmarks/benchmark_20260731_154501                 | 2.21 MB    | DIR
+.venv/lib/python3.14/site-packages/pip/_vendor/rich          | 2.01 MB    | DIR
+.venv/lib/python3.14/site-packages/matplotlib/tests          | 1.97 MB    | DIR
+.venv/lib/python3.14/site-packages/fontTools/qu2cu           | 1.94 MB    | DIR
+.venv/lib/python3.14/site-packages/openpyxl                  | 1.88 MB    | DIR
+.venv/lib/python3.14/site-packages/fontTools/misc/bezierTools.c | 1.75 MB    | FILE
+outputs/benchmarks/benchmark_results_multiseed.json          | 1.74 MB    | FILE
+.venv/lib/python3.14/site-packages/pillow.libs/libzstd-44be1190.so.1.5.7 | 1.72 MB    | FILE
+.venv/lib/python3.14/site-packages/fontTools/pens            | 1.69 MB    | DIR
+.venv/lib/python3.14/site-packages/fontTools/cu2qu           | 1.67 MB    | DIR
+.venv/lib/python3.14/site-packages/fontTools/varLib/iup.cpython-314-x86_64-linux-gnu.so | 1.53 MB    | FILE
+outputs/benchmarks/benchmark_20260731_154501/raw_runs.json   | 1.50 MB    | FILE
+.venv/lib/python3.14/site-packages/numpy/_core/_simd.cpython-314-x86_64-linux-gnu.so | 1.44 MB    | FILE
+.venv/lib/python3.14/site-packages/pillow.libs/libfreetype-9fc94c80.so.6.20.6 | 1.40 MB    | FILE
+.venv/lib/python3.14/site-packages/numpy/ma                  | 1.32 MB    | DIR

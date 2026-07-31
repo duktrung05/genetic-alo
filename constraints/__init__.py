@@ -1,6 +1,6 @@
 from .hard_constraints import HardConstraintChecker
 from .soft_constraints import SoftConstraintChecker, SoftConstraintConfig
-from .repair_engine import ScheduleRepairEngine, RepairResult
+from .repair_engine import ScheduleRepairEngine, RepairResult, RepairStats
 from .evaluator import ConstraintEvaluator
 
 __all__ = [
@@ -9,5 +9,7 @@ __all__ = [
     "SoftConstraintConfig",
     "ScheduleRepairEngine",
     "RepairResult",
+    "RepairStats",
     "ConstraintEvaluator"
 ]
+

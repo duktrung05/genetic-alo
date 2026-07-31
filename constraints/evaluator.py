@@ -3,6 +3,7 @@ from domain import Schedule, CourseSection, Room, Timeslot, Lecturer
 from .hard_constraints import HardConstraintChecker
 from .soft_constraints import SoftConstraintChecker, SoftConstraintConfig
 
+
 class ConstraintEvaluator:
     def __init__(self, dataset: dict, soft_config: Optional[SoftConstraintConfig] = None):
         self.section_map: Dict[str, CourseSection] = {c.section_id: c for c in dataset["course_sections"]}
@@ -42,5 +43,5 @@ class ConstraintEvaluator:
     def calculate_fitness(self, schedule: Schedule, hard_weight: int = 1000, soft_weight: int = 1) -> Tuple[float, int, int]:
         h_cnt, _ = self.evaluate_hard(schedule)
         soft_penalty, _ = self.evaluate_soft(schedule)
-        score = (h_cnt * hard_weight) + (soft_penalty * soft_weight)
-        return float(score), h_cnt, soft_penalty
+        weighted_score = (h_cnt * hard_weight) + (soft_penalty * soft_weight)
+        return float(weighted_score), h_cnt, soft_penalty

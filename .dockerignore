@@ -1,0 +1,27 @@
+# Python bytecode and cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+
+# Environments
+.venv/
+venv/
+env/
+
+# Version control
+.git/
+.gitignore
+
+# IDE & OS files
+.vscode/
+.idea/
+.DS_Store
+
+# Output artifacts
+outputs/*
+!outputs/examples/
+evaluation/*.png
+evaluation/benchmark_results_multiseed.json
+evaluation/exports/

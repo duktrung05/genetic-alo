@@ -1,22 +1,74 @@
-import copy
+"""Schedule Repair Engine Module.
+
+Independent Constraint Satisfaction Transformer responsible for repairing hard constraint
+violations in candidate Schedule chromosomes using Priority-based Constraint Satisfaction.
+"""
+
+import time
 import random
 from dataclasses import dataclass, field
-from typing import Dict, List, Set, Tuple
-from domain import Schedule, CourseSection, Room, Timeslot, Lecturer
+from typing import Dict, List, Set, Tuple, Optional, Any
+from collections import defaultdict
+from domain import Schedule, Gene, CourseSection, Room, Timeslot, Lecturer
+from dataset import get_occupied_periods, is_valid_period_block
 from .hard_constraints import HardConstraintChecker
 
 @dataclass
 class RepairResult:
+    """Encapsulates repair execution result, success flag, and remaining violations."""
     schedule: Schedule
     success: bool
     remaining_hard_violations: int
     failed_section_ids: List[str] = field(default_factory=list)
 
-class ScheduleRepairEngine:
-    """Module độc lập chịu trách nhiệm Sua chữa các vi phạm cứng (Constraint Satisfaction Repair)."""
+@dataclass
+class RepairStats:
+    """Tracks execution statistics for ScheduleRepairEngine."""
+    repair_calls: int = 0
+    repair_attempts: int = 0
+    repair_successes: int = 0
+    repair_failures: int = 0
+    sections_repaired: int = 0
+    sections_failed: int = 0
+    candidate_checks: int = 0
+    repair_runtime_seconds: float = 0.0
 
-    def __init__(self, dataset: dict):
+    def reset(self):
+        self.repair_calls = 0
+        self.repair_attempts = 0
+        self.repair_successes = 0
+        self.repair_failures = 0
+        self.sections_repaired = 0
+        self.sections_failed = 0
+        self.candidate_checks = 0
+        self.repair_runtime_seconds = 0.0
+
+    def to_dict(self) -> dict:
+        return {
+            "repair_calls": self.repair_calls,
+            "repair_attempts": self.repair_attempts,
+            "repair_successes": self.repair_successes,
+            "repair_failures": self.repair_failures,
+            "sections_repaired": self.sections_repaired,
+            "sections_failed": self.sections_failed,
+            "candidate_checks": self.candidate_checks,
+            "repair_runtime_seconds": round(self.repair_runtime_seconds, 4),
+        }
+
+class ScheduleRepairEngine:
+    """Constraint Satisfaction Repair Transformer for repairing hard violations."""
+
+    def __init__(self, dataset: dict, evaluator: Optional[Any] = None):
+        """Initialize Repair Engine with pre-cached room and timeslot lookup maps."""
         self.dataset = dataset
+        if evaluator is not None:
+            self.evaluator = evaluator
+        else:
+            from .evaluator import ConstraintEvaluator
+            self.evaluator = ConstraintEvaluator(dataset)
+
+        self.stats = RepairStats()
+
         self.section_map: Dict[str, CourseSection] = {c.section_id: c for c in dataset["course_sections"]}
         self.room_map: Dict[str, Room] = {r.id: r for r in dataset["rooms"]}
         self.timeslot_map: Dict[int, Timeslot] = {t.id: t for t in dataset["timeslots"]}
@@ -27,6 +79,44 @@ class ScheduleRepairEngine:
         lecturer_ids = set(self.lecturer_map.keys()) if "lecturers" in dataset else None
         group_ids = {g.id for g in dataset.get("student_groups", [])} if "student_groups" in dataset else None
 
+        self.day_period_to_ts_id: Dict[Tuple[str, int], int] = {
+            (ts.day, ts.period): ts.id for ts in self.timeslots
+        }
+        self.day_available_periods: Dict[str, Set[int]] = defaultdict(set)
+        for ts in self.timeslots:
+            self.day_available_periods[ts.day].add(ts.period)
+
+        # Pre-cache valid rooms per section
+        self._valid_rooms_cache: Dict[str, List[Room]] = {}
+        for sec in self.section_map.values():
+            req_type = getattr(sec, "required_room_type", "NORMAL")
+            self._valid_rooms_cache[sec.section_id] = sorted([
+                r for r in self.rooms
+                if r.capacity >= sec.student_count and getattr(r, "room_type", "NORMAL") == req_type
+            ], key=lambda r: (r.capacity, r.id))
+
+        # Pre-cache valid start timeslots per duration
+        self._valid_ts_by_duration: Dict[int, List[Timeslot]] = {}
+        unique_durations = {getattr(s, "duration_periods", 1) for s in self.section_map.values()}
+        for dur in unique_durations:
+            self._valid_ts_by_duration[dur] = [
+                t for t in self.timeslots
+                if is_valid_period_block(t.period, dur, self.day_available_periods.get(t.day))
+            ]
+
+        # Pre-calculate candidate count per section for tightness priority key
+        self._section_cand_count: Dict[str, int] = {}
+        for sec in self.section_map.values():
+            dur = getattr(sec, "duration_periods", 1)
+            valid_rms = self._valid_rooms_cache.get(sec.section_id, [])
+            lec = self.lecturer_map.get(sec.lecturer_id)
+            avail_ts = getattr(lec, "available_timeslot_ids", None) if lec else None
+            valid_ts_list = [
+                t for t in self._valid_ts_by_duration.get(dur, [])
+                if avail_ts is None or all(self.day_period_to_ts_id.get((t.day, p)) in avail_ts for p in get_occupied_periods(t.period, dur))
+            ]
+            self._section_cand_count[sec.section_id] = len(valid_rms) * len(valid_ts_list)
+
         self.hard_checker = HardConstraintChecker(
             self.section_map,
             self.room_map,
@@ -36,122 +126,206 @@ class ScheduleRepairEngine:
             lecturer_map=self.lecturer_map
         )
 
-    def repair(self, schedule: Schedule) -> RepairResult:
-        repaired = copy.deepcopy(schedule)
-        failed_sections: Set[str] = set()
+    def _get_section_priority_key(self, sec: CourseSection) -> Tuple[int, int, int, int, int, str]:
+        cand_count = self._section_cand_count.get(sec.section_id, 9999)
+        is_lab = 0 if getattr(sec, "required_room_type", "NORMAL") == "LAB" else 1
+        duration = -getattr(sec, "duration_periods", 1)
+        lec = self.lecturer_map.get(sec.lecturer_id)
+        restricted_lec = 0 if (lec and getattr(lec, "available_timeslot_ids", None) is not None) else 1
+        st_count = -sec.student_count
+        return (cand_count, is_lab, duration, restricted_lec, st_count, sec.section_id)
 
-        if not isinstance(repaired, Schedule) or not isinstance(getattr(repaired, "genes", None), list):
+    def repair(self, schedule: Schedule, max_attempts: int = 15) -> RepairResult:
+        start_time = time.time()
+        self.stats.repair_calls += 1
+
+        if not isinstance(schedule, Schedule) or not isinstance(getattr(schedule, "genes", None), list):
+            self.stats.repair_failures += 1
+            self.stats.repair_runtime_seconds += (time.time() - start_time)
             return RepairResult(
-                schedule=repaired,
+                schedule=schedule,
                 success=False,
                 remaining_hard_violations=len(self.section_map),
                 failed_section_ids=sorted(list(self.section_map.keys()))
             )
 
-        # 1. Sua vi phạm sức chứa phòng & loại phòng (Room Type)
-        for gene in repaired.genes:
-            if gene.section_id not in self.section_map:
-                failed_sections.add(str(gene.section_id))
-                continue
+        input_hard, _ = self.hard_checker.evaluate(schedule)
+        input_soft, _ = self.evaluator.evaluate_soft(schedule)
 
-            section = self.section_map[gene.section_id]
-            req_type = getattr(section, "required_room_type", "NORMAL")
+        best_schedule = schedule
+        best_hard = input_hard
+        best_soft = input_soft
+        best_failed_sections: List[str] = []
+        best_repaired_count = 0
 
-            room_ok = False
-            if gene.room_id in self.room_map:
-                room = self.room_map[gene.room_id]
-                if room.capacity >= section.student_count and getattr(room, "room_type", "NORMAL") == req_type:
-                    room_ok = True
+        input_gene_map = {g.section_id: (g.timeslot_id, g.room_id) for g in schedule.genes}
 
-            if not room_ok:
-                valid_rooms = [
-                    r for r in self.rooms
-                    if r.capacity >= section.student_count and getattr(r, "room_type", "NORMAL") == req_type
-                ]
-                if valid_rooms:
-                    gene.room_id = random.choice(valid_rooms).id
+        for attempt in range(max_attempts):
+            self.stats.repair_attempts += 1
+            failed_sections: Set[str] = set()
+
+            ordered_sections = list(self.section_map.values())
+            if attempt > 0:
+                ordered_sections.sort(
+                    key=lambda sec: (self._get_section_priority_key(sec), random.random())
+                )
+            else:
+                ordered_sections.sort(
+                    key=lambda sec: self._get_section_priority_key(sec)
+                )
+
+            used_lecturer_time: Set[Tuple[str, str, int]] = set()
+            used_room_time: Set[Tuple[str, str, int]] = set()
+            used_group_time: Set[Tuple[str, str, int]] = set()
+
+            repaired_genes_dict: Dict[str, Gene] = {}
+
+            for section in ordered_sections:
+                sec_id = section.section_id
+                req_type = getattr(section, "required_room_type", "NORMAL")
+                duration = getattr(section, "duration_periods", 1)
+                lec = self.lecturer_map.get(section.lecturer_id)
+                avail_ts = getattr(lec, "available_timeslot_ids", None) if lec else None
+
+                current_gene = input_gene_map.get(sec_id)
+                chosen_ts, chosen_room = None, None
+
+                # Check if current assignment is 100% valid & conflict-free
+                if current_gene:
+                    ts_id, rm_id = current_gene
+                    ts = self.timeslot_map.get(ts_id)
+                    room = self.room_map.get(rm_id)
+                    if ts and room and room.capacity >= section.student_count and getattr(room, "room_type", "NORMAL") == req_type:
+                        if is_valid_period_block(ts.period, duration, self.day_available_periods.get(ts.day)):
+                            occupied = get_occupied_periods(ts.period, duration)
+                            avail_valid = (avail_ts is None or all(self.day_period_to_ts_id.get((ts.day, p)) in avail_ts for p in occupied))
+                            lec_conflict = section.lecturer_id and any((section.lecturer_id, ts.day, p) in used_lecturer_time for p in occupied)
+                            rm_conflict = any((room.id, ts.day, p) in used_room_time for p in occupied)
+                            grp_conflict = section.group_id and any((section.group_id, ts.day, p) in used_group_time for p in occupied)
+
+                            if avail_valid and not lec_conflict and not rm_conflict and not grp_conflict:
+                                chosen_ts = ts
+                                chosen_room = room
+
+                # 3-Tier Candidate Search Hierarchy
+                if chosen_ts is None:
+                    candidate_rooms = self._valid_rooms_cache.get(sec_id, [])
+                    valid_ts_list = self._valid_ts_by_duration.get(duration, [])
+
+                    curr_ts = self.timeslot_map.get(current_gene[0]) if current_gene else None
+                    curr_rm = self.room_map.get(current_gene[1]) if current_gene else None
+
+                    # Tier 1: Keep timeslot, change room
+                    if curr_ts and is_valid_period_block(curr_ts.period, duration, self.day_available_periods.get(curr_ts.day)):
+                        occ = get_occupied_periods(curr_ts.period, duration)
+                        if avail_ts is None or all(self.day_period_to_ts_id.get((curr_ts.day, p)) in avail_ts for p in occ):
+                            if not (section.lecturer_id and any((section.lecturer_id, curr_ts.day, p) in used_lecturer_time for p in occ)) and \
+                               not (section.group_id and any((section.group_id, curr_ts.day, p) in used_group_time for p in occ)):
+                                for r in candidate_rooms:
+                                    self.stats.candidate_checks += 1
+                                    if not any((r.id, curr_ts.day, p) in used_room_time for p in occ):
+                                        chosen_ts = curr_ts
+                                        chosen_room = r
+                                        break
+
+                    # Tier 2: Change timeslot, keep current room
+                    if chosen_ts is None and curr_rm and curr_rm.capacity >= section.student_count and getattr(curr_rm, "room_type", "NORMAL") == req_type:
+                        for ts in valid_ts_list:
+                            self.stats.candidate_checks += 1
+                            occ = get_occupied_periods(ts.period, duration)
+                            if avail_ts is not None and not all(self.day_period_to_ts_id.get((ts.day, p)) in avail_ts for p in occ):
+                                continue
+                            if section.lecturer_id and any((section.lecturer_id, ts.day, p) in used_lecturer_time for p in occ):
+                                continue
+                            if section.group_id and any((section.group_id, ts.day, p) in used_group_time for p in occ):
+                                continue
+                            if not any((curr_rm.id, ts.day, p) in used_room_time for p in occ):
+                                chosen_ts = ts
+                                chosen_room = curr_rm
+                                break
+
+                    # Tier 3: Change both timeslot and room
+                    if chosen_ts is None:
+                        shuffled_ts = list(valid_ts_list)
+                        if attempt > 0:
+                            random.shuffle(shuffled_ts)
+                        for ts in shuffled_ts:
+                            occ = get_occupied_periods(ts.period, duration)
+                            if avail_ts is not None and not all(self.day_period_to_ts_id.get((ts.day, p)) in avail_ts for p in occ):
+                                continue
+                            if section.lecturer_id and any((section.lecturer_id, ts.day, p) in used_lecturer_time for p in occ):
+                                continue
+                            if section.group_id and any((section.group_id, ts.day, p) in used_group_time for p in occ):
+                                continue
+
+                            shuffled_rooms = list(candidate_rooms)
+                            if attempt > 0:
+                                random.shuffle(shuffled_rooms)
+                            for r in shuffled_rooms:
+                                self.stats.candidate_checks += 1
+                                if not any((r.id, ts.day, p) in used_room_time for p in occ):
+                                    chosen_ts = ts
+                                    chosen_room = r
+                                    break
+                            if chosen_ts is not None:
+                                break
+
+                if chosen_ts is not None and chosen_room is not None:
+                    repaired_genes_dict[sec_id] = Gene(sec_id, chosen_room.id, chosen_ts.id)
+                    cand_occupied = get_occupied_periods(chosen_ts.period, duration)
+                    if section.lecturer_id:
+                        for p in cand_occupied:
+                            used_lecturer_time.add((section.lecturer_id, chosen_ts.day, p))
+                    for p in cand_occupied:
+                        used_room_time.add((chosen_room.id, chosen_ts.day, p))
+                    if section.group_id:
+                        for p in cand_occupied:
+                            used_group_time.add((section.group_id, chosen_ts.day, p))
                 else:
-                    failed_sections.add(gene.section_id)
+                    failed_sections.add(sec_id)
+                    if current_gene:
+                        repaired_genes_dict[sec_id] = Gene(sec_id, current_gene[1], current_gene[0])
 
-        # 2. Sua vi phạm trùng khung giờ, giảng viên bận (Availability), trùng phòng/lớp
-        used_lecturer_time = set()
-        used_room_time = set()
-        used_group_time = set()
+            # Reconstruct candidate schedule
+            final_genes = [
+                repaired_genes_dict.get(sec.section_id, Gene(sec.section_id, input_gene_map[sec.section_id][1], input_gene_map[sec.section_id][0]))
+                for sec in self.dataset["course_sections"]
+            ]
+            cand_schedule = Schedule(genes=final_genes)
 
-        for gene in repaired.genes:
-            if gene.section_id not in self.section_map:
-                failed_sections.add(str(gene.section_id))
-                continue
+            cand_hard, _ = self.hard_checker.evaluate(cand_schedule)
+            cand_soft, _ = self.evaluator.evaluate_soft(cand_schedule)
 
-            section = self.section_map[gene.section_id]
-            req_type = getattr(section, "required_room_type", "NORMAL")
-            lec = self.lecturer_map.get(section.lecturer_id)
-            avail_ts = getattr(lec, "available_timeslot_ids", None) if lec else None
+            # Update best_schedule on attempt 0 or when strictly better than best schedule found so far
+            if attempt == 0 or (cand_hard, cand_soft) < (best_hard, best_soft):
+                best_schedule = cand_schedule
+                best_hard = cand_hard
+                best_soft = cand_soft
+                best_failed_sections = sorted(list(failed_sections))
+                # Count sections that ACTUALLY changed from input
+                best_repaired_count = sum(
+                    1 for g in final_genes
+                    if (g.timeslot_id, g.room_id) != input_gene_map.get(g.section_id)
+                )
 
-            lec_key = (section.lecturer_id, gene.timeslot_id)
-            room_key = (gene.room_id, gene.timeslot_id)
-            grp_key = (section.group_id, gene.timeslot_id)
 
-            current_room = self.room_map.get(gene.room_id)
-            room_valid = (
-                current_room is not None and
-                current_room.capacity >= section.student_count and
-                getattr(current_room, "room_type", "NORMAL") == req_type
-            )
-            avail_valid = (avail_ts is None or gene.timeslot_id in avail_ts)
+            if best_hard == 0:
+                break
 
-            has_conflict = (
-                lec_key in used_lecturer_time or
-                room_key in used_room_time or
-                grp_key in used_group_time or
-                not room_valid or
-                not avail_valid
-            )
+        # A call is successful ONLY IF output schedule is strictly better than input schedule
+        is_success = (best_hard, best_soft) < (input_hard, input_soft)
+        if is_success:
+            self.stats.repair_successes += 1
+            self.stats.sections_repaired += best_repaired_count
+        else:
+            self.stats.repair_failures += 1
 
-            if has_conflict:
-                shuffled_ts = list(self.timeslots)
-                random.shuffle(shuffled_ts)
-                repaired_slot = False
-
-                for candidate_ts in shuffled_ts:
-                    if avail_ts is not None and candidate_ts.id not in avail_ts:
-                        continue
-
-                    cand_lec_key = (section.lecturer_id, candidate_ts.id)
-                    cand_grp_key = (section.group_id, candidate_ts.id)
-
-                    if cand_lec_key not in used_lecturer_time and cand_grp_key not in used_group_time:
-                        valid_r = [
-                            r for r in self.rooms
-                            if r.capacity >= section.student_count and
-                               getattr(r, "room_type", "NORMAL") == req_type and
-                               (r.id, candidate_ts.id) not in used_room_time
-                        ]
-                        if valid_r:
-                            chosen_room = random.choice(valid_r)
-                            gene.timeslot_id = candidate_ts.id
-                            gene.room_id = chosen_room.id
-                            repaired_slot = True
-                            break
-
-                if not repaired_slot:
-                    failed_sections.add(gene.section_id)
-
-                lec_key = (section.lecturer_id, gene.timeslot_id)
-                room_key = (gene.room_id, gene.timeslot_id)
-                grp_key = (section.group_id, gene.timeslot_id)
-
-            used_lecturer_time.add(lec_key)
-            used_room_time.add(room_key)
-            used_group_time.add(grp_key)
-
-        remaining_hard, _ = self.hard_checker.evaluate(repaired)
-        failed_list = sorted(list(failed_sections))
-        success = (remaining_hard == 0 and len(failed_list) == 0)
+        self.stats.sections_failed += len(best_failed_sections)
+        self.stats.repair_runtime_seconds += (time.time() - start_time)
 
         return RepairResult(
-            schedule=repaired,
-            success=success,
-            remaining_hard_violations=remaining_hard,
-            failed_section_ids=failed_list
+            schedule=best_schedule,
+            success=(best_hard == 0),
+            remaining_hard_violations=best_hard,
+            failed_section_ids=best_failed_sections
         )

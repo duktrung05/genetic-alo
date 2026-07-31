@@ -1,4 +1,6 @@
-# Dependecies for Genetic Algorithm Course Scheduling System (GA Timetabling)
+# Dependencies for Genetic Algorithm Course Scheduling System (GA Timetabling)
+numpy>=1.20.0
 matplotlib>=3.5.0
-python-dotenv>=1.0.0
+openpyxl>=3.0.0
 pytest>=7.0.0
+python-dotenv>=1.0.0

@@ -1,42 +1,41 @@
-# Byte-compiled / Python artifacts
+# Python
 __pycache__/
 *.py[cod]
-*$py.class
-*.so
-
-# Virtual Environments
-.venv/
-venv/
-ENV/
-env/
-
-# Environment Variables
-.env
-.env.local
-
-# IDE & Editor files
-.idea/
-.vscode/
-*.swp
-*.swo
-
-# Office lock files
-.~lock.*
-
-# Testing & Coverage
 .pytest_cache/
+.mypy_cache/
+.ruff_cache/
 .coverage
 htmlcov/
 
-# Logs & Operating System files
-*.log
+# Virtual environments
+.venv/
+venv/
+env/
+
+# IDE
+.vscode/
+.idea/
+
+# OS files
 .DS_Store
 Thumbs.db
 
-# Build & Distribution
-build/
-dist/
-*.egg-info/
+# Excel temporary files
+~$*.xlsx
+.~lock.*
 
-# Large generated benchmark output
-evaluation/benchmark_results_multiseed.json
+# Benchmark outputs - Only track official benchmark
+outputs/benchmarks/*
+!outputs/benchmarks/official_excel_k18_2023_30seeds/
+
+# Timetables & temporary exports
+outputs/timetables/*_INFEASIBLE.xlsx
+outputs/timetables/*.tmp
+outputs/charts/
+
+# Archives
+*.zip
+*.tar
+*.tar.gz
+*.7z
+*.rar

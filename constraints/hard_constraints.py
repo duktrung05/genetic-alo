@@ -1,8 +1,10 @@
 from typing import Dict, Tuple, Set, Optional
 from collections import defaultdict
 from domain import Schedule, CourseSection, Room, Timeslot, Lecturer
+from dataset import get_occupied_periods
 
 class HardConstraintChecker:
+    """Evaluates mandatory hard constraint violations for a candidate schedule."""
     def __init__(
         self,
         section_map: Dict[str, CourseSection],
@@ -18,6 +20,9 @@ class HardConstraintChecker:
         self.lecturer_ids = lecturer_ids
         self.group_ids = group_ids
         self.lecturer_map = lecturer_map
+        self.day_period_to_ts_id: Dict[Tuple[str, int], int] = {
+            (ts.day, ts.period): ts.id for ts in timeslot_map.values()
+        }
 
     def evaluate(self, schedule: Schedule) -> Tuple[int, Dict[str, int]]:
         details = {
@@ -91,19 +96,34 @@ class HardConstraintChecker:
                     if req_type != rm_type:
                         details["room_type_mismatch"] += 1
 
-                if ts is not None and section.lecturer_id:
-                    lec = self.lecturer_map.get(section.lecturer_id) if self.lecturer_map else None
-                    if lec is not None and getattr(lec, "available_timeslot_ids", None) is not None:
-                        if ts_id not in lec.available_timeslot_ids:
-                            details["lecturer_unavailable"] += 1
-
                 if ts is not None:
+                    duration = getattr(section, "duration_periods", 1)
+                    occupied_p = get_occupied_periods(ts.period, duration)
+
+                    for p in occupied_p:
+                        target_ts_id = self.day_period_to_ts_id.get((ts.day, p))
+                        if target_ts_id is None:
+                            details["invalid_timeslot_ids"] += 1
+
                     if section.lecturer_id:
-                        lecturer_time[(section.lecturer_id, ts_id)].append(sec_id)
+                        lec = self.lecturer_map.get(section.lecturer_id) if self.lecturer_map else None
+                        if lec is not None and getattr(lec, "available_timeslot_ids", None) is not None:
+                            for p in occupied_p:
+                                target_ts_id = self.day_period_to_ts_id.get((ts.day, p))
+                                if target_ts_id is None or target_ts_id not in lec.available_timeslot_ids:
+                                    details["lecturer_unavailable"] += 1
+
+                    if section.lecturer_id:
+                        for p in occupied_p:
+                            lecturer_time[(section.lecturer_id, ts.day, p)].append(sec_id)
+
                     if room_id in self.room_map:
-                        room_time[(room_id, ts_id)].append(sec_id)
+                        for p in occupied_p:
+                            room_time[(room_id, ts.day, p)].append(sec_id)
+
                     if section.group_id:
-                        group_time[(section.group_id, ts_id)].append(sec_id)
+                        for p in occupied_p:
+                            group_time[(section.group_id, ts.day, p)].append(sec_id)
 
         missing_count = len(expected_sections - set(seen_section_counts.keys()))
         details["missing_sections"] = missing_count

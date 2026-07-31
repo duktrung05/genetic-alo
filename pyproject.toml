@@ -25,9 +25,14 @@ dev = [
 [tool.pytest.ini_options]
 minversion = "7.0"
 addopts = "-ra -q"
+pythonpath = ["."]
 testpaths = [
     "tests",
-    ".",
 ]
-python_files = ["test_*.py", "*_test.py"]
+python_files = ["test_*.py"]
+markers = [
+    "unit: Quick unit tests for isolated classes, models, and utility functions",
+    "integration: Integration tests combining multiple components or engine runs",
+    "slow: Benchmarks or multi-seed tests that take longer to run",
+]
 

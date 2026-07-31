@@ -1,69 +1,97 @@
 import os
-from typing import Dict, List, Any, Optional
+from typing import Dict, List, Any, Optional, Union
 import matplotlib.pyplot as plt
+import numpy as np
 
 class ConvergenceVisualizer:
     @staticmethod
-    def _validate_and_extract(history: List[Dict[str, Any]], field: str) -> tuple[list, list]:
-        if not isinstance(history, list) or not history:
-            raise ValueError("History list cannot be empty or invalid.")
+    def _extract_field_val(record: dict, field: str) -> float:
+        val = record.get(field)
+        if val is None:
+            if field == "best_hard":
+                val = record.get("hard_violations")
+            elif field == "best_soft_penalty":
+                if record.get("best_soft") is not None:
+                    val = record.get("best_soft")
+                elif record.get("soft_penalty") is not None:
+                    val = record.get("soft_penalty")
+                elif record.get("soft_violations") is not None:
+                    val = record.get("soft_violations")
+        if val is None:
+            raise ValueError(f"History record missing required metric field '{field}'.")
+        return float(val)
 
-        x_vals = []
-        y_vals = []
+    @classmethod
+    def _extract_series(cls, history_input: Any, field: str) -> tuple[list, list, Optional[list], Optional[list]]:
+        """Extract (x_vals, median_y, q25_y, q75_y) from single history or multi-seed histories."""
+        if not isinstance(history_input, list) or not history_input:
+            raise ValueError("History input cannot be empty or invalid.")
 
-        for record in history:
-            if not isinstance(record, dict):
-                raise ValueError("History record must be a dictionary.")
+        is_multi_seed = False
+        first_elem = history_input[0]
+        if isinstance(first_elem, list):
+            is_multi_seed = True
+            seed_histories = history_input
+        elif isinstance(first_elem, dict) and "history" in first_elem:
+            is_multi_seed = True
+            seed_histories = [r["history"] for r in history_input if isinstance(r, dict) and "history" in r]
 
-            if "fitness_evaluations" not in record:
-                raise ValueError("History record missing required field 'fitness_evaluations'.")
+        if is_multi_seed:
+            min_len = min(len(h) for h in seed_histories if isinstance(h, list) and h)
+            x_vals = []
+            median_y = []
+            q25_y = []
+            q75_y = []
 
-            val = record.get(field)
-            if val is None:
-                # Fallback field names for backward compatibility across GA and Random Search
-                if field == "best_hard":
-                    val = record.get("hard_violations")
-                elif field == "best_soft_penalty":
-                    if record.get("best_soft") is not None:
-                        val = record.get("best_soft")
-                    elif record.get("soft_penalty") is not None:
-                        val = record.get("soft_penalty")
-                    elif record.get("soft_violations") is not None:
-                        val = record.get("soft_violations")
+            for i in range(min_len):
+                evals = [h[i]["fitness_evaluations"] for h in seed_histories]
+                x_vals.append(float(np.median(evals)))
 
-            if val is None:
-                raise ValueError(f"History record missing required metric field '{field}'.")
+                vals = [cls._extract_field_val(h[i], field) for h in seed_histories]
+                median_y.append(float(np.median(vals)))
+                q25_y.append(float(np.percentile(vals, 25)))
+                q75_y.append(float(np.percentile(vals, 75)))
 
-            x_vals.append(record["fitness_evaluations"])
-            y_vals.append(val)
+            return x_vals, median_y, q25_y, q75_y
+        else:
+            x_vals = []
+            y_vals = []
+            for record in history_input:
+                if "fitness_evaluations" not in record:
+                    raise ValueError("History record missing required field 'fitness_evaluations'.")
+                x_vals.append(record["fitness_evaluations"])
+                y_vals.append(cls._extract_field_val(record, field))
 
-        # Check monotonic non-decreasing
-        for i in range(len(x_vals) - 1):
-            if x_vals[i+1] < x_vals[i]:
-                raise ValueError(f"fitness_evaluations must be non-decreasing, got {x_vals[i]} followed by {x_vals[i+1]}")
+            for i in range(len(x_vals) - 1):
+                if x_vals[i+1] < x_vals[i]:
+                    raise ValueError(f"fitness_evaluations must be non-decreasing, got {x_vals[i]} followed by {x_vals[i+1]}")
 
-        return x_vals, y_vals
+            return x_vals, y_vals, None, None
 
     @staticmethod
-    def _prepare_plot_data(x_vals: list, y_vals: list, evaluation_budget: Optional[int]) -> tuple[list, list]:
-        # Copy to prevent mutating original history
+    def _prepare_plot_data(x_vals: list, y_vals: list, q25_vals: Optional[list], q75_vals: Optional[list], evaluation_budget: Optional[int]):
         x_plot = list(x_vals)
         y_plot = list(y_vals)
+        q25_plot = list(q25_vals) if q25_vals is not None else None
+        q75_plot = list(q75_vals) if q75_vals is not None else None
 
         if evaluation_budget is not None and x_plot and x_plot[-1] < evaluation_budget:
             x_plot.append(evaluation_budget)
             y_plot.append(y_plot[-1])
+            if q25_plot is not None and q75_plot is not None:
+                q25_plot.append(q25_plot[-1])
+                q75_plot.append(q75_plot[-1])
 
-        return x_plot, y_plot
+        return x_plot, y_plot, q25_plot, q75_plot
 
     @classmethod
     def plot_convergence(
         cls,
-        ga_without_repair_history: list,
-        hybrid_ga_history: list,
-        random_history: list,
-        hard_output_path: str = "evaluation/convergence_hard.png",
-        soft_output_path: str = "evaluation/convergence_soft.png",
+        ga_without_repair_history: Union[list, List[list]],
+        hybrid_ga_history: Union[list, List[list]],
+        random_history: Union[list, List[list]],
+        hard_output_path: str = "outputs/charts/convergence_hard.png",
+        soft_output_path: str = "outputs/charts/convergence_soft.png",
         evaluation_budget: Optional[int] = 6000
     ):
         histories = {
@@ -72,18 +100,28 @@ class ConvergenceVisualizer:
             "Random Search": random_history
         }
 
+        colors = {
+            "GA without Repair": "#4C72B0",
+            "Hybrid GA + Repair": "#55A868",
+            "Random Search": "#C44E52",
+        }
+
         # 1. Plot Hard Violations Chart
         os.makedirs(os.path.dirname(hard_output_path), exist_ok=True)
         plt.figure(figsize=(10, 6))
 
         for method_name, history in histories.items():
-            x_vals, y_vals = cls._validate_and_extract(history, "best_hard")
-            x_plot, y_plot = cls._prepare_plot_data(x_vals, y_vals, evaluation_budget)
-            plt.step(x_plot, y_plot, where="post", label=method_name, linewidth=2)
+            x_vals, y_vals, q25, q75 = cls._extract_series(history, "best_hard")
+            x_plot, y_plot, q25_p, q75_p = cls._prepare_plot_data(x_vals, y_vals, q25, q75, evaluation_budget)
 
-        plt.title("Hard Constraint Violations Convergence", fontsize=13, fontweight="bold", pad=15)
+            c = colors.get(method_name, None)
+            plt.step(x_plot, y_plot, where="post", label=method_name, linewidth=2, color=c)
+            if q25_p is not None and q75_p is not None:
+                plt.fill_between(x_plot, q25_p, q75_p, step="post", alpha=0.18, color=c)
+
+        plt.title("Aggregated Hard Constraint Violations Convergence (30-Seed Median & IQR)", fontsize=13, fontweight="bold", pad=15)
         plt.xlabel("Number of Fitness Evaluations", fontsize=12)
-        plt.ylabel("Best Hard Violations", fontsize=12)
+        plt.ylabel("Median Best Hard Violations", fontsize=12)
         plt.grid(True, linestyle=":", alpha=0.6)
         plt.legend(fontsize=11)
         plt.tight_layout()
@@ -96,13 +134,17 @@ class ConvergenceVisualizer:
         plt.figure(figsize=(10, 6))
 
         for method_name, history in histories.items():
-            x_vals, y_vals = cls._validate_and_extract(history, "best_soft_penalty")
-            x_plot, y_plot = cls._prepare_plot_data(x_vals, y_vals, evaluation_budget)
-            plt.step(x_plot, y_plot, where="post", label=method_name, linewidth=2)
+            x_vals, y_vals, q25, q75 = cls._extract_series(history, "best_soft_penalty")
+            x_plot, y_plot, q25_p, q75_p = cls._prepare_plot_data(x_vals, y_vals, q25, q75, evaluation_budget)
 
-        plt.title("Soft Penalty Convergence (Secondary to Hard Feasibility)", fontsize=13, fontweight="bold", pad=15)
+            c = colors.get(method_name, None)
+            plt.step(x_plot, y_plot, where="post", label=method_name, linewidth=2, color=c)
+            if q25_p is not None and q75_p is not None:
+                plt.fill_between(x_plot, q25_p, q75_p, step="post", alpha=0.18, color=c)
+
+        plt.title("Aggregated Soft Penalty Convergence (30-Seed Median & IQR)", fontsize=13, fontweight="bold", pad=15)
         plt.xlabel("Number of Fitness Evaluations", fontsize=12)
-        plt.ylabel("Best Soft Penalty", fontsize=12)
+        plt.ylabel("Median Best Soft Penalty", fontsize=12)
         plt.grid(True, linestyle=":", alpha=0.6)
         plt.legend(fontsize=11)
         plt.tight_layout()
@@ -116,12 +158,15 @@ class ConvergenceVisualizer:
             os.makedirs(os.path.dirname(compat_path), exist_ok=True)
             plt.figure(figsize=(10, 6))
             for method_name, history in histories.items():
-                x_vals, y_vals = cls._validate_and_extract(history, "best_hard")
-                x_plot, y_plot = cls._prepare_plot_data(x_vals, y_vals, evaluation_budget)
-                plt.step(x_plot, y_plot, where="post", label=method_name, linewidth=2)
-            plt.title("Hard Constraint Violations Convergence", fontsize=13, fontweight="bold", pad=15)
+                x_vals, y_vals, q25, q75 = cls._extract_series(history, "best_hard")
+                x_plot, y_plot, q25_p, q75_p = cls._prepare_plot_data(x_vals, y_vals, q25, q75, evaluation_budget)
+                c = colors.get(method_name, None)
+                plt.step(x_plot, y_plot, where="post", label=method_name, linewidth=2, color=c)
+                if q25_p is not None and q75_p is not None:
+                    plt.fill_between(x_plot, q25_p, q75_p, step="post", alpha=0.18, color=c)
+            plt.title("Aggregated Hard Constraint Violations Convergence (30-Seed Median & IQR)", fontsize=13, fontweight="bold", pad=15)
             plt.xlabel("Number of Fitness Evaluations", fontsize=12)
-            plt.ylabel("Best Hard Violations", fontsize=12)
+            plt.ylabel("Median Best Hard Violations", fontsize=12)
             plt.grid(True, linestyle=":", alpha=0.6)
             plt.legend(fontsize=11)
             plt.tight_layout()

@@ -9,8 +9,8 @@ services:
     env_file:
       - .env.example
     volumes:
-      - ./evaluation:/app/evaluation
-    command: python main_benchmark.py
+      - ./outputs:/app/outputs
+    command: python main_benchmark.py --mode report
 
   test-ga:
     build:
@@ -20,5 +20,5 @@ services:
     env_file:
       - .env.example
     volumes:
-      - ./evaluation:/app/evaluation
-    command: python test_ga.py
+      - ./outputs:/app/outputs
+    command: python scripts/run_ga_demo.py
