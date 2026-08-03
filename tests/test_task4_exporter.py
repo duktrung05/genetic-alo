@@ -127,16 +127,20 @@ def test_schedule_by_room_sorted(sample_dataset, feasible_schedule, tmp_path):
         assert curr_rm >= prev_rm
         prev_rm = curr_rm
 
-# 10. Feasible schedule có VIOLATIONS sheet hợp lệ (10 cột, "No hard violations detected")
+# 10. Feasible schedule có VIOLATIONS sheet hợp lệ (13 cột, "No hard violations detected")
 def test_violations_sheet_feasible(sample_dataset, feasible_schedule, tmp_path):
     out_file = str(tmp_path / "test_viol_feasible.xlsx")
     export_schedule_to_excel(feasible_schedule, sample_dataset, out_file)
     wb = openpyxl.load_workbook(out_file)
     ws = wb["VIOLATIONS"]
     headers = [cell.value for cell in ws[1]]
-    expected_headers = ["violation_type", "severity", "section_ids", "lecturer_id", "student_group_ids", "room_id", "day", "periods", "description", "penalty"]
+    expected_headers = [
+        "violation_type", "severity", "constraint_name", "section_ids", "lecturer_id",
+        "student_group_ids", "room_id", "day", "periods", "raw_count", "weight",
+        "weighted_penalty", "description"
+    ]
     assert headers == expected_headers
-    desc_cell = ws.cell(row=2, column=9).value
+    desc_cell = ws.cell(row=2, column=13).value
     assert "No hard violations detected" in str(desc_cell)
 
 # 11. Infeasible schedule có hậu tố hoặc bị reject

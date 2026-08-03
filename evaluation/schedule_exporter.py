@@ -162,11 +162,15 @@ def export_schedule_to_excel(
     if not isinstance(dataset, dict) or "course_sections" not in dataset or "rooms" not in dataset or "timeslots" not in dataset:
         raise ValueError("Invalid dataset supplied to Excel exporter.")
 
-    # Re-evaluate violations
+    # Re-evaluate violations using unified evaluator
     evaluator = ConstraintEvaluator(dataset)
-    score, hard_violations, soft_penalty = evaluator.calculate_fitness(schedule)
-    _, hard_details = evaluator.evaluate_hard(schedule)
-    _, soft_details = evaluator.evaluate_soft(schedule)
+    unified = evaluator.evaluate_unified(schedule)
+    hard_violations = unified.hard_violations
+    soft_penalty = unified.soft_penalty
+    hard_details = unified.hard_details
+    soft_breakdown = unified.soft_breakdown
+    instance_violations = unified.instance_violations
+    score, _, _ = evaluator.calculate_fitness(schedule)
 
     if hard_violations > 0:
         if not allow_infeasible_export:
@@ -219,6 +223,9 @@ def export_schedule_to_excel(
     # --- 1. SHEET SUMMARY ---
     ws_sum = wb.create_sheet(title="SUMMARY")
     ws_sum.append(["Metric", "Value"])
+    rep_enabled = meta.get("repair_enabled", meta.get("use_repair", True))
+    rep_calls = meta.get("repair_calls", 0)
+
     summary_rows = [
         ("dataset_source", meta.get("dataset_source", meta.get("dataset_preset", "Excel"))),
         ("dataset_path", meta.get("dataset_path", meta.get("input_file", "data/01_data_timetable(1).xlsx"))),
@@ -243,13 +250,26 @@ def export_schedule_to_excel(
         ("fitness_evaluations", meta.get("fitness_evaluations", 0)),
         ("generation_to_first_feasible", meta.get("generation_to_first_feasible", 0 if hard_violations == 0 else "N/A")),
         ("time_to_first_feasible", meta.get("time_to_first_feasible", 0.0 if hard_violations == 0 else "N/A")),
-        ("repair_calls", meta.get("repair_calls", 0)),
+        ("repair_enabled", rep_enabled),
+        ("repair_trigger_policy", meta.get("repair_trigger_policy", "Offspring Mutation Constraint Satisfaction")),
+        ("repair_calls", rep_calls),
+        ("repair_attempts", meta.get("repair_attempts", rep_calls)),
         ("repair_successes", meta.get("repair_successes", 0)),
         ("repair_failures", meta.get("repair_failures", 0)),
         ("sections_repaired", meta.get("sections_repaired", 0)),
+        ("sections_failed", meta.get("sections_failed", 0)),
+        ("candidate_checks", meta.get("candidate_checks", 0)),
+        ("hard_before_repair", meta.get("hard_before_repair", 0)),
+        ("hard_after_repair", meta.get("hard_after_repair", 0)),
+        ("soft_before_repair", meta.get("soft_before_repair", 0)),
+        ("soft_after_repair", meta.get("soft_after_repair", 0)),
         ("repair_runtime_seconds", meta.get("repair_runtime_seconds", 0.0)),
-        ("generated_at", datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")),
     ]
+    if rep_enabled and rep_calls == 0:
+        summary_rows.append(("repair_note", "Repair was enabled but not triggered because no repairable violations were detected."))
+
+    summary_rows.append(("generated_at", datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
+
     for k, v in summary_rows:
         ws_sum.append([k, str(v)])
     format_sheet(ws_sum)
@@ -354,23 +374,73 @@ def export_schedule_to_excel(
 
     # --- 6. SHEET VIOLATIONS ---
     ws_viol = wb.create_sheet(title="VIOLATIONS")
-    viol_cols = ["violation_type", "severity", "section_ids", "lecturer_id", "student_group_ids", "room_id", "day", "periods", "description", "penalty"]
+    viol_cols = [
+        "violation_type",
+        "severity",
+        "constraint_name",
+        "section_ids",
+        "lecturer_id",
+        "student_group_ids",
+        "room_id",
+        "day",
+        "periods",
+        "raw_count",
+        "weight",
+        "weighted_penalty",
+        "description"
+    ]
     ws_viol.append(viol_cols)
 
-    if hard_violations == 0 and soft_penalty == 0:
-        ws_viol.append(["INFO", "NONE", "-", "-", "-", "-", "-", "-", "No hard or soft violations detected", 0])
-    elif hard_violations == 0:
-        ws_viol.append(["INFO", "HARD", "-", "-", "-", "-", "-", "-", "No hard violations detected", 0])
-        for k, v in soft_details.items():
-            if v > 0:
-                ws_viol.append(["SOFT", "LOW", "-", "-", "-", "-", "-", "-", f"Soft constraint penalty: {k}", v])
+    # 6a. Hard Violations
+    if hard_violations == 0:
+        ws_viol.append(["INFO", "NONE", "hard_constraints", "-", "-", "-", "-", "-", "-", 0, 1000, 0, "No hard violations detected"])
     else:
         for k, v in hard_details.items():
             if v > 0:
-                ws_viol.append(["HARD", "HIGH", "-", "-", "-", "-", "-", "-", f"Hard constraint violation: {k}", v])
-        for k, v in soft_details.items():
-            if v > 0:
-                ws_viol.append(["SOFT", "LOW", "-", "-", "-", "-", "-", "-", f"Soft constraint penalty: {k}", v])
+                ws_viol.append(["HARD", "HIGH", k, "-", "-", "-", "-", "-", "-", v, 1000, v * 1000, f"Hard constraint violation: {k} (count={v})"])
+
+    # 6b. Soft Violations (Instance Breakdown)
+    if len(instance_violations) == 0:
+        ws_viol.append(["INFO", "NONE", "soft_constraints", "-", "-", "-", "-", "-", "-", 0, 0, 0, "No soft constraint violations detected"])
+    else:
+        for item in instance_violations:
+            r_cnt = item.get("raw_count", 1)
+            w = item.get("weight", 0)
+            wp = item.get("weighted_penalty", r_cnt * w)
+            ws_viol.append([
+                item.get("violation_type", "SOFT"),
+                item.get("severity", "LOW"),
+                item.get("constraint_name", ""),
+                item.get("section_ids", "-"),
+                item.get("lecturer_id", "-"),
+                item.get("student_group_ids", "-"),
+                item.get("room_id", "-"),
+                item.get("day", "-"),
+                item.get("periods", "-"),
+                r_cnt,
+                w,
+                wp,
+                item.get("description", "")
+            ])
+
+    # 6c. Summary row for TOTAL SOFT PENALTY (Mandatory equal to SUMMARY.soft_penalty)
+    total_raw_soft_count = sum(item.raw_count for item in soft_breakdown)
+    ws_viol.append([
+        "SUMMARY",
+        "TOTAL",
+        "TOTAL_SOFT_PENALTY",
+        "-",
+        "-",
+        "-",
+        "-",
+        "-",
+        "-",
+        total_raw_soft_count,
+        "-",
+        soft_penalty,
+        f"TOTAL SOFT PENALTY (Sum of all soft constraint weighted penalties = {soft_penalty})"
+    ])
+
     format_sheet(ws_viol)
 
     # --- 7. SHEET RUN_CONFIG ---

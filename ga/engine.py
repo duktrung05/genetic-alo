@@ -1,9 +1,3 @@
-"""Genetic Algorithm Engine Module.
-
-Core execution engine for course timetabling optimization using Genetic Algorithm,
-integrating Lexicographic Selection, Elitism, and Constraint Repair Engine.
-"""
-
 import random
 from typing import List, Dict, Optional, Tuple, Set
 from collections import defaultdict
@@ -14,8 +8,6 @@ from .operators import GAOperators
 
 
 class GeneticAlgorithmEngine:
-    """Genetic Algorithm Engine for automatic course schedule optimization."""
-
     def __init__(
         self,
         dataset: dict,
@@ -24,15 +16,6 @@ class GeneticAlgorithmEngine:
         soft_weight: int = 1,
         elite_count: int = 2,
     ):
-        """Initialize GA Engine with dataset parameters and elitism settings.
-
-        Args:
-            dataset: Validated dictionary containing course_sections, rooms, timeslots, etc.
-            pop_size: Population size (number of schedules per generation).
-            hard_weight: Weight multiplier for hard violations in summary score.
-            soft_weight: Weight multiplier for soft penalty in summary score.
-            elite_count: Number of best elite schedules preserved across generations.
-        """
         DatasetValidator.validate(dataset)
         if not isinstance(pop_size, int) or pop_size < 2:
             raise ValueError(f"pop_size must be an integer >= 2, got {pop_size}")
@@ -106,13 +89,6 @@ class GeneticAlgorithmEngine:
         use_repair: bool = True,
         evaluation_budget: Optional[int] = None
     ) -> dict:
-        """Run Genetic Algorithm optimization loop.
-
-        Primary selection & sorting uses Lexicographic Comparison:
-          (hard_violations, soft_penalty)
-        Hard violations have absolute priority (must reach 0 for feasibility).
-        Weighted score is computed as (hard_violations * hard_weight + soft_penalty * soft_weight) for reporting.
-        """
         if evaluation_budget is not None and evaluation_budget < self.pop_size:
             raise ValueError(f"evaluation_budget ({evaluation_budget}) cannot be smaller than population_size ({self.pop_size}).")
 

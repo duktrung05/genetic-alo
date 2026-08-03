@@ -1,9 +1,3 @@
-"""Genetic Algorithm Operators Module.
-
-Provides core genetic operators for timetable chromosome manipulation:
-chromosome validation, tournament selection, single-point crossover, and mutation.
-"""
-
 import random
 from typing import List, Tuple, Optional, Dict, Set
 from collections import defaultdict
@@ -12,11 +6,8 @@ from dataset import get_occupied_periods, is_valid_period_block
 
 
 class GAOperators:
-    """Genetic Algorithm operators for Schedule chromosomes."""
-
     @staticmethod
     def validate_chromosome(schedule: Schedule, dataset: dict) -> bool:
-        """Validate chromosome structural integrity (correct sections, rooms, timeslots count)."""
         if not isinstance(schedule, Schedule) or not isinstance(schedule.genes, list):
             return False
 
@@ -45,11 +36,6 @@ class GAOperators:
 
     @staticmethod
     def tournament_selection(population: List[Schedule], fitness_keys: List[Tuple[int, int]], k: int = 3) -> Schedule:
-        """Select best candidate schedule using k-way tournament selection.
-
-        Fitness selection uses Lexicographic Comparison (hard_violations, soft_penalty):
-        Hard violations have absolute priority over soft penalty.
-        """
         selected_indices = random.sample(range(len(population)), k)
         best_idx = selected_indices[0]
         for idx in selected_indices[1:]:
@@ -59,11 +45,6 @@ class GAOperators:
 
     @staticmethod
     def crossover(parent1: Schedule, parent2: Schedule) -> Tuple[Schedule, Schedule]:
-        """Perform single-point crossover producing two independent offspring schedules.
-
-        Genes are shallow-copied into new Gene instances to ensure independent child states
-        without mutating parent schedules.
-        """
         c1_genes = []
         c2_genes = []
         point = random.randint(1, len(parent1.genes) - 1)

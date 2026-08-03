@@ -29,9 +29,9 @@ def parse_args():
     parser = argparse.ArgumentParser(description="GA Timetable Benchmark Suite")
     parser.add_argument(
         "--mode",
-        choices=["fast", "report"],
+        choices=["fast", "report", "quick"],
         default="fast",
-        help="Benchmark mode: 'fast' (3 seeds, 1000 evals) or 'report' (30 seeds, 4800 evals)"
+        help="Benchmark mode: 'fast'/'quick' (3 seeds, 1000 evals) or 'report' (30 seeds, 4800 evals)"
     )
     parser.add_argument(
         "--data-source",
@@ -140,11 +140,21 @@ def run_single_seed_task(task_args):
     )
     t1 = time.perf_counter()
 
-    r_stats = res_hybrid.get("repair_stats", None)
-    rep_calls = getattr(r_stats, "calls", 0) if r_stats else 0
-    rep_succ = getattr(r_stats, "successes", 0) if r_stats else 0
-    rep_fail = getattr(r_stats, "failures", 0) if r_stats else 0
-    sec_rep = getattr(r_stats, "sections_repaired", 0) if r_stats else 0
+    r_stats = res_hybrid.get("repair_stats", {}) or {}
+    rep_enabled = r_stats.get("repair_enabled", True)
+    rep_policy = r_stats.get("repair_trigger_policy", "Offspring Mutation Constraint Satisfaction")
+    rep_calls = r_stats.get("repair_calls", 0)
+    rep_attempts = r_stats.get("repair_attempts", rep_calls)
+    rep_succ = r_stats.get("repair_successes", 0)
+    rep_fail = r_stats.get("repair_failures", 0)
+    sec_rep = r_stats.get("sections_repaired", 0)
+    sec_fail = r_stats.get("sections_failed", 0)
+    cand_checks = r_stats.get("candidate_checks", 0)
+    h_before = r_stats.get("hard_before_repair", 0)
+    h_after = r_stats.get("hard_after_repair", 0)
+    s_before = r_stats.get("soft_before_repair", 0)
+    s_after = r_stats.get("soft_after_repair", 0)
+    rep_runtime = r_stats.get("repair_runtime_seconds", 0.0)
 
     gen_feasible_hybrid = next((h.get("generation", h.get("iteration", 0)) for h in res_hybrid["history"] if h.get("best_hard") == 0 or h.get("hard_violations") == 0), 0)
 
@@ -163,13 +173,20 @@ def run_single_seed_task(task_args):
         "is_perfect": (res_hybrid["hard_violations"] == 0 and res_hybrid["soft_penalty"] == 0),
         "generation_to_first_feasible": gen_feasible_hybrid,
         "time_to_first_feasible": time_feasible_hybrid,
+        "repair_enabled": rep_enabled,
+        "repair_trigger_policy": rep_policy,
         "repair_calls": rep_calls,
-        "repair_attempts": rep_calls,
+        "repair_attempts": rep_attempts,
         "repair_successes": rep_succ,
         "repair_failures": rep_fail,
         "sections_repaired": sec_rep,
-        "candidate_checks": 0,
-        "repair_runtime_seconds": getattr(r_stats, "runtime_seconds", 0.0) if r_stats else 0.0,
+        "sections_failed": sec_fail,
+        "candidate_checks": cand_checks,
+        "hard_before_repair": h_before,
+        "hard_after_repair": h_after,
+        "soft_before_repair": s_before,
+        "soft_after_repair": s_after,
+        "repair_runtime_seconds": rep_runtime,
         "best_schedule": res_hybrid["best_schedule"],
         "history": res_hybrid["history"]
     }
@@ -213,7 +230,7 @@ def main():
     args = parse_args()
 
     # Configure modes (Task 4: Report mode runs 30 seeds: 0..29)
-    if args.mode == "fast":
+    if args.mode in ("fast", "quick"):
         num_runs = 3
         evaluation_budget = 1000
         generations = 20
@@ -400,8 +417,11 @@ def main():
 
     # Backward compatibility outputs
     legacy_json_path = base_dir / "outputs" / "benchmarks" / "benchmark_results_multiseed.json"
-    with open(legacy_json_path, "w", encoding="utf-8") as f:
-        json.dump(make_json_serializable({"summary": summary_list, "runs": all_runs_flat}), f, ensure_ascii=False, indent=2)
+    try:
+        with open(legacy_json_path, "w", encoding="utf-8") as f:
+            json.dump(make_json_serializable({"summary": summary_list, "runs": all_runs_flat}), f, ensure_ascii=False, indent=2)
+    except Exception as e:
+        print(f"[Warning] Không thể ghi file legacy output '{legacy_json_path}': {e}")
 
     # 8. Generate Charts
     hard_chart_path = str(benchmark_run_dir / "convergence_hard.png")
@@ -455,10 +475,19 @@ def main():
             "runtime_seconds": best_hybrid_run["runtime_seconds"],
             "generation_to_first_feasible": best_hybrid_run.get("generation_to_first_feasible", 0),
             "time_to_first_feasible": best_hybrid_run.get("time_to_first_feasible", 0.0),
+            "repair_enabled": best_hybrid_run.get("repair_enabled", True),
+            "repair_trigger_policy": best_hybrid_run.get("repair_trigger_policy", "Offspring Mutation Constraint Satisfaction"),
             "repair_calls": best_hybrid_run.get("repair_calls", 0),
+            "repair_attempts": best_hybrid_run.get("repair_attempts", 0),
             "repair_successes": best_hybrid_run.get("repair_successes", 0),
             "repair_failures": best_hybrid_run.get("repair_failures", 0),
             "sections_repaired": best_hybrid_run.get("sections_repaired", 0),
+            "sections_failed": best_hybrid_run.get("sections_failed", 0),
+            "candidate_checks": best_hybrid_run.get("candidate_checks", 0),
+            "hard_before_repair": best_hybrid_run.get("hard_before_repair", 0),
+            "hard_after_repair": best_hybrid_run.get("hard_after_repair", 0),
+            "soft_before_repair": best_hybrid_run.get("soft_before_repair", 0),
+            "soft_after_repair": best_hybrid_run.get("soft_after_repair", 0),
             "repair_runtime_seconds": best_hybrid_run.get("repair_runtime_seconds", 0.0),
         }
 

@@ -24,6 +24,8 @@ class RepairResult:
 @dataclass
 class RepairStats:
     """Tracks execution statistics for ScheduleRepairEngine."""
+    repair_enabled: bool = True
+    repair_trigger_policy: str = "Offspring Mutation Constraint Satisfaction"
     repair_calls: int = 0
     repair_attempts: int = 0
     repair_successes: int = 0
@@ -31,6 +33,10 @@ class RepairStats:
     sections_repaired: int = 0
     sections_failed: int = 0
     candidate_checks: int = 0
+    hard_before_repair: int = 0
+    hard_after_repair: int = 0
+    soft_before_repair: int = 0
+    soft_after_repair: int = 0
     repair_runtime_seconds: float = 0.0
 
     def reset(self):
@@ -41,10 +47,16 @@ class RepairStats:
         self.sections_repaired = 0
         self.sections_failed = 0
         self.candidate_checks = 0
+        self.hard_before_repair = 0
+        self.hard_after_repair = 0
+        self.soft_before_repair = 0
+        self.soft_after_repair = 0
         self.repair_runtime_seconds = 0.0
 
     def to_dict(self) -> dict:
         return {
+            "repair_enabled": self.repair_enabled,
+            "repair_trigger_policy": self.repair_trigger_policy,
             "repair_calls": self.repair_calls,
             "repair_attempts": self.repair_attempts,
             "repair_successes": self.repair_successes,
@@ -52,6 +64,10 @@ class RepairStats:
             "sections_repaired": self.sections_repaired,
             "sections_failed": self.sections_failed,
             "candidate_checks": self.candidate_checks,
+            "hard_before_repair": self.hard_before_repair,
+            "hard_after_repair": self.hard_after_repair,
+            "soft_before_repair": self.soft_before_repair,
+            "soft_after_repair": self.soft_after_repair,
             "repair_runtime_seconds": round(self.repair_runtime_seconds, 4),
         }
 
@@ -320,6 +336,10 @@ class ScheduleRepairEngine:
         else:
             self.stats.repair_failures += 1
 
+        self.stats.hard_before_repair += input_hard
+        self.stats.hard_after_repair += best_hard
+        self.stats.soft_before_repair += input_soft
+        self.stats.soft_after_repair += best_soft
         self.stats.sections_failed += len(best_failed_sections)
         self.stats.repair_runtime_seconds += (time.time() - start_time)
 
