@@ -155,45 +155,5 @@ def test_room_capacity_and_room_type_evaluations(constraint_dataset):
     assert details_type["room_type_mismatch"] == 1
 
 # --- Soft Constraints Tests ---
+# Soft constraint logic (S1-S5) is now extensively tested in test_step4_soft_constraints.py
 
-@pytest.mark.unit
-def test_soft_constraints_student_gaps_multi_period(constraint_dataset):
-    # Set SEC_B group to SV_CNTT1 for testing gaps in SV_CNTT1 schedule
-    ds = dict(constraint_dataset)
-    sec_b_g1 = CourseSection("SEC_B", "C2", "Course 2", "GV02", "SV_CNTT1", 40, duration_periods=1, required_room_type="NORMAL")
-    ds["course_sections"] = [constraint_dataset["course_sections"][0], sec_b_g1, constraint_dataset["course_sections"][2], constraint_dataset["course_sections"][3]]
-    evaluator = ConstraintEvaluator(ds)
-
-    # Mon P1..P3 (SEC_A) vs Mon P4 (SEC_B) -> Contiguous P1..P4 -> 0 gap
-    sched_no_gap = Schedule(genes=[
-        Gene(section_id="SEC_A", timeslot_id=0, room_id="P101"),
-        Gene(section_id="SEC_B", timeslot_id=3, room_id="P102"),
-        Gene(section_id="SEC_C", timeslot_id=6, room_id="P101"),
-        Gene(section_id="SEC_LAB", timeslot_id=6, room_id="LAB01"),
-    ])
-    _, details_no_gap = evaluator.evaluate_soft_raw(sched_no_gap)
-    assert details_no_gap["student_gaps"] == 0
-
-    # Mon P1..P3 (SEC_A) vs Mon P5 (SEC_B) -> Gap on P4 -> 1 gap
-    sched_with_gap = Schedule(genes=[
-        Gene(section_id="SEC_A", timeslot_id=0, room_id="P101"),
-        Gene(section_id="SEC_B", timeslot_id=4, room_id="P102"),
-        Gene(section_id="SEC_C", timeslot_id=6, room_id="P101"),
-        Gene(section_id="SEC_LAB", timeslot_id=6, room_id="LAB01"),
-    ])
-    _, details_gap = evaluator.evaluate_soft_raw(sched_with_gap)
-    assert details_gap["student_gaps"] == 1
-
-@pytest.mark.unit
-def test_soft_constraints_weighted_penalty_calculation(constraint_dataset):
-    config = SoftConstraintConfig(weights={"student_gaps": 10, "consecutive_teaching": 5, "difficult_afternoon": 3, "daily_imbalance": 2})
-    evaluator = ConstraintEvaluator(constraint_dataset, soft_config=config)
-
-    sched = Schedule(genes=[
-        Gene(section_id="SEC_A", timeslot_id=0, room_id="P101"),
-        Gene(section_id="SEC_B", timeslot_id=4, room_id="P102"),
-        Gene(section_id="SEC_C", timeslot_id=6, room_id="P101"),
-        Gene(section_id="SEC_LAB", timeslot_id=6, room_id="LAB01"),
-    ])
-    tot, details = evaluator.evaluate_soft(sched)
-    assert tot == details["student_gaps"] * 10 + details["consecutive_teaching"] * 5 + details["difficult_afternoon"] * 3 + details["daily_imbalance"] * 2

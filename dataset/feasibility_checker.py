@@ -1,9 +1,3 @@
-"""Feasibility Checker Module.
-
-Constructive / backtracking scheduler to verify that a dataset possesses at least
-one valid reference schedule with 0 hard violations.
-"""
-
 from collections import defaultdict
 from typing import Dict, List, Set, Tuple, Optional
 from domain import Schedule, Gene, CourseSection, Room, Timeslot, Lecturer

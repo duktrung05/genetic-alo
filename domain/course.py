@@ -1,4 +1,7 @@
 from dataclasses import dataclass
+from typing import Optional
+
+VALID_SHIFTS = frozenset({"morning", "afternoon", "evening"})
 
 @dataclass
 class Course:
@@ -18,7 +21,18 @@ class CourseSection:
     is_difficult: bool = False
     required_room_type: str = "NORMAL"
     duration_periods: int = 1
+    preferred_campus_id: Optional[str] = None
+    preferred_shift: Optional[str] = None
+    meetings_per_week: int = 1
 
     def __post_init__(self):
         if self.duration_periods < 1:
             raise ValueError(f"duration_periods must be >= 1, got {self.duration_periods}")
+        if self.meetings_per_week < 1:
+            raise ValueError(f"meetings_per_week must be >= 1, got {self.meetings_per_week}")
+        if self.preferred_shift is not None and self.preferred_shift not in VALID_SHIFTS:
+            raise ValueError(
+                f"Invalid preferred_shift '{self.preferred_shift}' for section '{self.section_id}'. "
+                f"Allowed values: {sorted(VALID_SHIFTS)}"
+            )
+

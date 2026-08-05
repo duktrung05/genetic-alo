@@ -79,7 +79,7 @@ def is_valid_period_block(
     available_periods: Optional[Set[int]] = None,
     day: Optional[str] = None,
     max_period_in_day: int = 16,
-    require_same_session: bool = False,
+    require_same_session: bool = True,
 ) -> bool:
     if duration_periods < 1 or start_period < 1:
         return False

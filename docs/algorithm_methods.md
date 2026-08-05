@@ -118,13 +118,14 @@ flowchart TD
 
 ## 📊 3. Bảng So Sánh Tổng Hop (Benchmark Performance Comparison)
 
-Dưới đây là bảng so sánh đặc tính kỹ thuật giữa 4 phương pháp dựa trên kết quả chạy chính thức 30 seeds:
+Dưới đây là bảng so sánh đặc tính kỹ thuật giữa 4 phương pháp dựa trên kết quả chạy thử nghiệm chính thức (Official Benchmark: `data/01_data_timetable.xlsx`, 30 seeds, evaluation budget 4,800/run):
 
 | Tiêu chí | Hybrid GA + Repair | GA without Repair | Greedy Search | Random Search |
 | :--- | :---: | :---: | :---: | :---: |
 | **Loại thuật toán** | Metaheuristic + Heuristic Repair | Metaheuristic tiêu chuẩn | Constructive Heuristic | Random Sampling |
 | **Tính Định hướng** | Stochastic (Multi-seed) | Stochastic (Multi-seed) | **100% Deterministic** | Stochastic |
-| **Tỉ lệ Khả thi (Feasible %)** | **100.0%** | ~90.0% | **100.0%** | 0.0% |
-| **Điểm Phạt Mềm (Median Soft Pen)** | **~58 - 60** (Tốt nhất) | ~320 - 323 | ~1208 (Kém) | ~440 - 450 |
-| **Thời gian Chạy TB / Run** | ~11.4 giây | ~5.8 giây | **~0.0017 giây** | ~2.1 giây |
-| **Số Lần Đánh giá (Evaluations)** | 4,800 | 4,800 | **1** | 4,800 |
+| **Tỉ lệ Khả thi (Feasible %)** | **100.0%** (30/30) | 90.0% (27/30) | **100.0%** (1/1) | 0.0% (0/30) |
+| **Điểm Phạt Mềm (Median Soft Pen)** | **60.5** (Tốt nhất) | 322.0 | 1208.0 (Kém) | N/A (0% feasible) |
+| **Điểm Phạt Mềm (Mean Soft Pen)** | **58.5** | 317.5 | 1208.0 | N/A |
+| **Thời gian Chạy TB (Runtime Median)** | ~12.8 giây | ~6.5 giây | **~0.0021 giây** | ~2.68 giây |
+| **Số Lần Đánh giá (Evaluations Budget)** | 4,800 | 4,800 | **1** | 4,800 |

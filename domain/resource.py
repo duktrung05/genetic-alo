@@ -35,6 +35,7 @@ class Room:
     name: str
     capacity: int
     room_type: str = "NORMAL"
+    campus_id: Optional[str] = None
 
 @dataclass
 class Lecturer:
@@ -47,3 +48,4 @@ class StudentGroup:
     id: str
     name: str
     student_count: int
+    home_campus_id: Optional[str] = None

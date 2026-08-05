@@ -111,6 +111,8 @@ class ConvergenceVisualizer:
         plt.figure(figsize=(10, 6))
 
         for method_name, history in histories.items():
+            if not history:
+                continue
             x_vals, y_vals, q25, q75 = cls._extract_series(history, "best_hard")
             x_plot, y_plot, q25_p, q75_p = cls._prepare_plot_data(x_vals, y_vals, q25, q75, evaluation_budget)
 
@@ -119,7 +121,7 @@ class ConvergenceVisualizer:
             if q25_p is not None and q75_p is not None:
                 plt.fill_between(x_plot, q25_p, q75_p, step="post", alpha=0.18, color=c)
 
-        plt.title("Aggregated Hard Constraint Violations Convergence (30-Seed Median & IQR)", fontsize=13, fontweight="bold", pad=15)
+        plt.title("Aggregated Hard Constraint Violations Convergence (Median & IQR)", fontsize=13, fontweight="bold", pad=15)
         plt.xlabel("Number of Fitness Evaluations", fontsize=12)
         plt.ylabel("Median Best Hard Violations", fontsize=12)
         plt.grid(True, linestyle=":", alpha=0.6)
@@ -134,6 +136,8 @@ class ConvergenceVisualizer:
         plt.figure(figsize=(10, 6))
 
         for method_name, history in histories.items():
+            if not history:
+                continue
             x_vals, y_vals, q25, q75 = cls._extract_series(history, "best_soft_penalty")
             x_plot, y_plot, q25_p, q75_p = cls._prepare_plot_data(x_vals, y_vals, q25, q75, evaluation_budget)
 
@@ -142,7 +146,7 @@ class ConvergenceVisualizer:
             if q25_p is not None and q75_p is not None:
                 plt.fill_between(x_plot, q25_p, q75_p, step="post", alpha=0.18, color=c)
 
-        plt.title("Aggregated Soft Penalty Convergence (30-Seed Median & IQR)", fontsize=13, fontweight="bold", pad=15)
+        plt.title("Aggregated Soft Penalty Convergence (Median & IQR)", fontsize=13, fontweight="bold", pad=15)
         plt.xlabel("Number of Fitness Evaluations", fontsize=12)
         plt.ylabel("Median Best Soft Penalty", fontsize=12)
         plt.grid(True, linestyle=":", alpha=0.6)
@@ -158,13 +162,15 @@ class ConvergenceVisualizer:
             os.makedirs(os.path.dirname(compat_path), exist_ok=True)
             plt.figure(figsize=(10, 6))
             for method_name, history in histories.items():
+                if not history:
+                    continue
                 x_vals, y_vals, q25, q75 = cls._extract_series(history, "best_hard")
                 x_plot, y_plot, q25_p, q75_p = cls._prepare_plot_data(x_vals, y_vals, q25, q75, evaluation_budget)
                 c = colors.get(method_name, None)
                 plt.step(x_plot, y_plot, where="post", label=method_name, linewidth=2, color=c)
                 if q25_p is not None and q75_p is not None:
                     plt.fill_between(x_plot, q25_p, q75_p, step="post", alpha=0.18, color=c)
-            plt.title("Aggregated Hard Constraint Violations Convergence (30-Seed Median & IQR)", fontsize=13, fontweight="bold", pad=15)
+            plt.title("Aggregated Hard Constraint Violations Convergence (Median & IQR)", fontsize=13, fontweight="bold", pad=15)
             plt.xlabel("Number of Fitness Evaluations", fontsize=12)
             plt.ylabel("Median Best Hard Violations", fontsize=12)
             plt.grid(True, linestyle=":", alpha=0.6)
@@ -172,3 +178,4 @@ class ConvergenceVisualizer:
             plt.tight_layout()
             plt.savefig(compat_path, dpi=300)
             plt.close()
+

@@ -34,10 +34,10 @@ def test_get_occupied_periods(start_p, duration, expected):
 @pytest.mark.parametrize("start_p, duration, avail, expected", [
     (1, 2, None, True),
     (5, 2, None, True),
-    (5, 3, None, True),    # Spans 5, 6, 7 (valid if all periods exist)
+    (5, 3, None, False),   # Spans 5, 6, 7: morning->afternoon — INVALID (cross-session)
     (7, 3, None, True),
-    (11, 3, None, True),   # Spans 11, 12, 13 (valid if all periods exist)
-    (8, 4, None, True),    # Duration 4 from 8 to 11
+    (11, 3, None, False),  # Spans 11, 12, 13: afternoon->evening — INVALID (cross-session)
+    (8, 4, None, True),    # Duration 4 from 8 to 11 — all in afternoon, valid
     (14, 4, None, False),  # 14..17 exceeds max period 16 -> Invalid!
     (1, 2, {1}, False),    # Missing period 2 in available set
     (1, 2, {1, 2}, True),  # Fully in available set
@@ -166,7 +166,7 @@ def test_dataset_validator_timeslot_and_availability_blocks():
     ds = create_valid_validator_base_dataset()
     ds["timeslots"] = create_theory_timeslots(days=["Thứ 2"], max_period=2)
     ds["course_sections"][0] = CourseSection("SEC_1", "C1", "Course 1", "GV1", "G1", 30, duration_periods=3)
-    with pytest.raises(ValueError, match="No valid timeslot block"):
+    with pytest.raises(ValueError, match="has no valid timeslot block"):
         DatasetValidator.validate(ds)
 
     # Restricted lecturer unavailable for duration 2 block
@@ -212,17 +212,22 @@ def test_medium_dataset_all_sections_have_matching_room(medium_dataset):
 
 @pytest.mark.unit
 def test_medium_dataset_all_sections_have_valid_start_period(medium_dataset):
+    """All sections must have at least one valid same-session block in the medium dataset."""
     from collections import defaultdict
     day_avail = defaultdict(set)
     for ts in medium_dataset["timeslots"]:
         day_avail[ts.day].add(ts.period)
 
     for sec in medium_dataset["course_sections"]:
+        # require_same_session=True is now the default
         valid_starts = [
             t for t in medium_dataset["timeslots"]
             if is_valid_period_block(t.period, sec.duration_periods, day_avail.get(t.day))
         ]
-        assert len(valid_starts) > 0, f"Section {sec.section_id} has no valid start period"
+        assert len(valid_starts) > 0, (
+            f"Section {sec.section_id} (duration={sec.duration_periods}) has no valid "
+            f"same-session start period"
+        )
 
 @pytest.mark.unit
 def test_medium_dataset_lecturer_capacity(medium_dataset):
@@ -240,6 +245,7 @@ def test_medium_dataset_lecturer_capacity(medium_dataset):
 
 @pytest.mark.unit
 def test_duration_4_period_8_valid():
+    """Tiết 8-11 nằm trọn trong ca chiều (7-12) — hợp lệ."""
     avail = set(range(1, 17))
     assert is_valid_period_block(start_period=8, duration_periods=4, available_periods=avail) is True
 
@@ -260,4 +266,168 @@ def test_medium_dataset_feasibility_checker_and_evaluator(medium_dataset):
     evaluator = ConstraintEvaluator(medium_dataset)
     hard_violations, details = evaluator.evaluate_hard(ref_schedule)
     assert hard_violations == 0, f"Reference schedule has hard violations: {details}"
+
+
+# ============================================================
+# BƯỚC 2: Same-Session Block Rule — Tests bắt buộc
+# ============================================================
+
+def _get_session_for_period(period: int) -> str:
+    """Helper: trả về tên session của một tiết học."""
+    if 1 <= period <= 6:
+        return "morning"
+    elif 7 <= period <= 12:
+        return "afternoon"
+    elif 13 <= period <= 16:
+        return "evening"
+    return "unknown"
+
+
+def assert_no_cross_session_assignments(schedule, sections, timeslots):
+    """Helper: xác nhận không có assignment nào vắt qua ca học."""
+    section_map = {s.section_id: s for s in sections}
+    timeslot_map = {t.id: t for t in timeslots}
+    for gene in schedule.genes:
+        sec = section_map[gene.section_id]
+        ts = timeslot_map[gene.timeslot_id]
+        duration = getattr(sec, "duration_periods", 1)
+        sessions_used = {
+            _get_session_for_period(ts.period + offset)
+            for offset in range(duration)
+        }
+        assert len(sessions_used) == 1, (
+            f"Section '{gene.section_id}' (duration={duration}) assigned at period "
+            f"{ts.period} crosses sessions: {sessions_used}"
+        )
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize("start, duration, expected", [
+    # Ca sáng (1-6)
+    (1, 1, True),
+    (1, 3, True),
+    (5, 2, True),
+    (6, 1, True),
+    # Vắt sáng→chiều
+    (6, 2, False),
+    (5, 3, False),
+    (4, 4, False),
+    # Ca chiều (7-12)
+    (7, 3, True),
+    (11, 2, True),
+    (9, 4, True),
+    # Vắt chiều→tối
+    (12, 2, False),
+    (11, 3, False),
+    (10, 4, False),
+    # Ca tối (13-16)
+    (13, 4, True),
+    (14, 3, True),
+    (15, 2, True),
+    # Vượt cuối ngày
+    (16, 2, False),
+    (15, 3, False),
+    # Edge: invalid input
+    (0, 1, False),
+    (1, 0, False),
+])
+def test_is_valid_period_block_same_session(start, duration, expected):
+    """Kiểm tra is_valid_period_block với require_same_session=True (default mới)."""
+    avail = set(range(1, 17))
+    assert is_valid_period_block(start, duration, avail) == expected, (
+        f"start={start}, duration={duration}: expected {expected}"
+    )
+
+
+@pytest.mark.unit
+def test_validator_rejects_section_with_duration_exceeding_session(medium_dataset):
+    """Validator phải báo lỗi nếu section có duration > 6 (không thể nằm trong 1 ca)."""
+    import copy
+    ds = copy.deepcopy(medium_dataset)
+    # Patch một section với duration = 7 (không ca nào chứa được)
+    bad_sec = ds["course_sections"][0]
+    object.__setattr__(bad_sec, "duration_periods", 7)
+    report = DatasetValidator.validate_report(ds)
+    assert not report["valid"]
+    assert any(bad_sec.section_id in e for e in report["errors"])
+    assert any("same session" in e for e in report["errors"])
+
+
+@pytest.mark.integration
+def test_ga_initialization_no_cross_session(small_dataset):
+    """Chromosome khởi tạo không có lớp nào vắt qua ca."""
+    from ga import GeneticAlgorithmEngine
+    ga = GeneticAlgorithmEngine(small_dataset, pop_size=5)
+    for _ in range(5):
+        sched = ga.create_random_schedule()
+        assert_no_cross_session_assignments(
+            sched,
+            small_dataset["course_sections"],
+            small_dataset["timeslots"],
+        )
+
+
+@pytest.mark.integration
+def test_mutation_no_cross_session(medium_dataset):
+    """Sau mutation không xuất hiện assignment vắt ca."""
+    from ga import GeneticAlgorithmEngine, GAOperators
+    import random
+    ga = GeneticAlgorithmEngine(medium_dataset, pop_size=5)
+    parent = ga.create_random_schedule()
+    for _ in range(10):
+        random.seed(_ * 7)
+        mutated = GAOperators.mutate(
+            parent,
+            medium_dataset["rooms"],
+            medium_dataset["timeslots"],
+            mutation_rate=1.0,
+            dataset=medium_dataset,
+        )
+        assert_no_cross_session_assignments(
+            mutated,
+            medium_dataset["course_sections"],
+            medium_dataset["timeslots"],
+        )
+
+
+@pytest.mark.integration
+def test_repair_no_cross_session(medium_dataset):
+    """Sau repair không xuất hiện assignment vắt ca."""
+    from ga import GeneticAlgorithmEngine
+    from constraints import ScheduleRepairEngine
+    ga = GeneticAlgorithmEngine(medium_dataset, pop_size=5)
+    repairer = ScheduleRepairEngine(medium_dataset)
+    for _ in range(3):
+        sched = ga.create_random_schedule()
+        result = repairer.repair(sched)
+        assert_no_cross_session_assignments(
+            result.schedule,
+            medium_dataset["course_sections"],
+            medium_dataset["timeslots"],
+        )
+
+
+@pytest.mark.integration
+def test_greedy_no_cross_session(medium_dataset):
+    """Greedy scheduler không sinh assignment vắt ca."""
+    from evaluation import GreedyScheduler
+    result = GreedyScheduler(medium_dataset).run()
+    assert_no_cross_session_assignments(
+        result["best_schedule"],
+        medium_dataset["course_sections"],
+        medium_dataset["timeslots"],
+    )
+
+
+@pytest.mark.integration
+def test_ga_best_schedule_no_cross_session(small_dataset):
+    """Lịch tốt nhất của GA không có assignment vắt ca."""
+    from ga import GeneticAlgorithmEngine
+    ga = GeneticAlgorithmEngine(small_dataset, pop_size=20)
+    result = ga.run(generations=5, evaluation_budget=100, use_repair=True)
+    assert_no_cross_session_assignments(
+        result["best_schedule"],
+        small_dataset["course_sections"],
+        small_dataset["timeslots"],
+    )
 

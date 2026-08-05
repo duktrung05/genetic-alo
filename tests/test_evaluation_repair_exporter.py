@@ -3,12 +3,13 @@
 Verifies:
 1. Unified evaluation result soft_penalty == sum(item.weighted_penalty for item in soft_breakdown).
 2. Workbook VIOLATIONS sheet TOTAL SOFT PENALTY == SUMMARY.soft_penalty.
-3. RepairStats increment correctness.
-4. Hybrid engine repair execution on dataset with intentional conflicts.
+3. Repair Engine direct repair execution on guaranteed hard conflict (Test A).
+4. Deterministic integration test for GA + Repair (Test B).
 5. Lexicographic non-worsening guarantee of Repair Engine.
 6. Export prohibition on infeasible schedules unless allow_infeasible_export=True.
 """
 
+import random
 import pytest
 import openpyxl
 from pathlib import Path
@@ -22,6 +23,7 @@ from evaluation.schedule_exporter import export_schedule_to_excel
 
 @pytest.fixture
 def sample_dataset():
+    random.seed(42)
     sections = [
         CourseSection(section_id="SEC01", course_id="CRS01", course_name="Course 1", lecturer_id="LEC01", group_id="GRP01", student_count=30, duration_periods=2, is_difficult=True),
         CourseSection(section_id="SEC02", course_id="CRS02", course_name="Course 2", lecturer_id="LEC01", group_id="GRP01", student_count=30, duration_periods=2, is_difficult=False),
@@ -53,10 +55,11 @@ def sample_dataset():
 
 
 def test_unified_evaluation_result_breakdown_identity(sample_dataset):
+    random.seed(42)
     evaluator = ConstraintEvaluator(sample_dataset)
     sched = Schedule(genes=[
         Gene("SEC01", "R101", 7),  # Difficult afternoon
-        Gene("SEC02", "R101", 1),  # Same room conflict with SEC03?
+        Gene("SEC02", "R101", 1),
         Gene("SEC03", "R102", 2),
     ])
     unified = evaluator.evaluate_unified(sched)
@@ -68,6 +71,7 @@ def test_unified_evaluation_result_breakdown_identity(sample_dataset):
 
 
 def test_workbook_violations_total_equals_summary(sample_dataset, tmp_path):
+    random.seed(42)
     evaluator = ConstraintEvaluator(sample_dataset)
     sched = Schedule(genes=[
         Gene("SEC01", "R101", 7),
@@ -110,32 +114,69 @@ def test_workbook_violations_total_equals_summary(sample_dataset, tmp_path):
     assert viol_total_penalty == sum_soft_penalty == unified.soft_penalty
 
 
-def test_repair_stats_increment(sample_dataset):
+def test_repair_engine_direct_hard_conflict(sample_dataset):
+    """TEST A: Direct Repair Engine execution on guaranteed hard conflict."""
+    random.seed(42)
     repairer = ScheduleRepairEngine(sample_dataset)
-    sched = Schedule(genes=[
-        Gene("SEC01", "R101", 1),  # Hard conflict: SEC01 & SEC02 both on R101, period 1, LEC01, GRP01
-        Gene("SEC02", "R101", 1),
-        Gene("SEC03", "R102", 1),
+    evaluator = ConstraintEvaluator(sample_dataset)
+
+    # Conflicting schedule: SEC01 & SEC02 share same lecturer (LEC01) at same timeslot 1
+    conflicting_sched = Schedule(genes=[
+        Gene("SEC01", "R101", 1),
+        Gene("SEC02", "R102", 1),
+        Gene("SEC03", "R102", 3),
     ])
 
-    initial_calls = repairer.stats.repair_calls
-    res = repairer.repair(sched)
+    h_before, _ = evaluator.evaluate_hard(conflicting_sched)
+    soft_before, _ = evaluator.evaluate_soft(conflicting_sched)
+    assert h_before > 0, "Initial schedule must have hard violations before repair"
 
-    assert repairer.stats.repair_calls == initial_calls + 1
-    assert repairer.stats.hard_before_repair > 0
-    assert res.remaining_hard_violations <= repairer.stats.hard_before_repair
+    repairer.stats.reset()
+    res = repairer.repair(conflicting_sched)
+
+    h_after, _ = evaluator.evaluate_hard(res.schedule)
+    soft_after, _ = evaluator.evaluate_soft(res.schedule)
+
+    assert repairer.stats.repair_calls == 1
+    assert repairer.stats.repair_attempts > 0
+    assert repairer.stats.candidate_checks > 0
+    assert (h_after, soft_after) <= (h_before, soft_before)
 
 
-def test_hybrid_engine_calls_repair_on_conflicting_dataset(sample_dataset):
-    ga = GeneticAlgorithmEngine(sample_dataset, pop_size=10)
-    res = ga.run(generations=5, use_repair=True, evaluation_budget=100)
+def test_ga_engine_calls_repair_on_conflicting_offspring(sample_dataset, monkeypatch):
+    """TEST B: Deterministic integration test for GA + Repair using injected conflicting offspring."""
+    random.seed(42)
+    ga = GeneticAlgorithmEngine(sample_dataset, pop_size=4)
+
+    # Inject a guaranteed conflicting offspring via GAOperators.mutate monkeypatch
+    def mock_mutate(sched, rooms, timeslots, rate, **kwargs):
+        return Schedule(genes=[
+            Gene("SEC01", "R101", 1),
+            Gene("SEC02", "R101", 1),  # Hard conflict on R101, period 1
+            Gene("SEC03", "R102", 1),
+        ])
+
+    monkeypatch.setattr("ga.operators.GAOperators.mutate", mock_mutate)
+
+    spy_calls = [0]
+    original_repair = ga.repairer.repair
+
+    def spy_repair(sched, max_attempts=15):
+        spy_calls[0] += 1
+        return original_repair(sched, max_attempts=max_attempts)
+
+    monkeypatch.setattr(ga.repairer, "repair", spy_repair)
+
+    res = ga.run(generations=2, use_repair=True, evaluation_budget=20)
 
     rep_stats = res.get("repair_stats", {})
     assert rep_stats.get("repair_enabled") is True
+    assert spy_calls[0] > 0, "RepairEngine.repair must be invoked on conflicting offspring"
     assert rep_stats.get("repair_calls", 0) > 0
 
 
 def test_repair_does_not_worsen_lexicographic_tuple(sample_dataset):
+    random.seed(42)
     repairer = ScheduleRepairEngine(sample_dataset)
     evaluator = ConstraintEvaluator(sample_dataset)
     sched = Schedule(genes=[
@@ -152,6 +193,7 @@ def test_repair_does_not_worsen_lexicographic_tuple(sample_dataset):
 
 
 def test_export_prohibits_infeasible_schedule_unless_allowed(sample_dataset, tmp_path):
+    random.seed(42)
     infeasible_sched = Schedule(genes=[
         Gene("SEC01", "R101", 1),
         Gene("SEC02", "R101", 1),  # Hard conflict

@@ -1,41 +1,49 @@
-# Python
+# Python bytecode and caches
 __pycache__/
 *.py[cod]
+*$py.class
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
 .coverage
+coverage.xml
 htmlcov/
 
 # Virtual environments
 .venv/
 venv/
 env/
+ENV/
 
-# IDE
+# IDE files
 .vscode/
 .idea/
+*.swp
+*.swo
 
 # OS files
 .DS_Store
 Thumbs.db
 
+# Logs and temporary files
+*.log
+*.tmp
+*.temp
+*.bak
+cleanup_report_before.txt
+cleanup_report_after.txt
+
 # Excel temporary files
 ~$*.xlsx
 .~lock.*
 
-# Benchmark outputs - Only track official benchmark
-outputs/benchmarks/*
-!outputs/benchmarks/official_excel_k18_2023_30seeds/
+# Benchmark test outputs (ignore temporary smoke tests)
+outputs/benchmark/smoke_test/
+outputs/benchmark/cleanup_smoke_test/
+outputs/benchmark/test_run/
+outputs/benchmarks/benchmark_*
 
-# Timetables & temporary exports
-outputs/timetables/*_INFEASIBLE.xlsx
-outputs/timetables/*.tmp
-outputs/charts/
-
-# Archives
-*.zip
-*.tar
-*.tar.gz
-*.7z
-*.rar
+# Keep production and official benchmark outputs
+!outputs/production/
+!outputs/datasets/
+!outputs/benchmark/official_v1_30seeds_soft35/

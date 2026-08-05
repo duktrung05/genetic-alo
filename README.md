@@ -1,6 +1,6 @@
 # Timetable Optimization & Benchmarking System (Genetic Algorithm)
 
-Hệ thống tối ưu hóa và xếp lịch thời khóa biểu trường đại học dựa trên **Thuật giải Di truyền (Genetic Algorithm)** kết hợp với cơ chế sửa lỗi **Heuristic Repair Engine**. Dự án tích hợp bộ so sánh hiệu năng (Benchmark Suite) đa phương pháp với cùng ngân sách đánh giá (fitness evaluation budget) trên bộ dữ liệu quy mô đại học, hỗ trợ các lớp học phần kéo dài nhiều tiết (`duration_periods`) và xuất thời khóa biểu hợp lệ ra file CSV theo khung giờ thực tế.
+Hệ thống tối ưu hóa và xếp lịch thời khóa biểu trường đại học dựa trên **Thuật giải Di truyền (Genetic Algorithm)** kết hợp cơ chế sửa lỗi **Heuristic Repair Engine**. Dự án tích hợp bộ so sánh hiệu năng (Benchmark Suite) đa phương pháp trên cùng ngân sách đánh giá (fitness evaluation budget) cho bộ dữ liệu quy mô đại học, hỗ trợ các lớp học phần kéo dài nhiều tiết (`duration_periods`) và xuất thời khóa biểu chính thức dưới dạng Excel workbook 7 sheets (kèm CSV / JSON metadata).
 
 ---
 
@@ -14,25 +14,39 @@ Hệ thống tối ưu hóa và xếp lịch thời khóa biểu trường đạ
   - Khung giờ giảng viên rảnh (`lecturer_unavailable`): Giảng viên phải khả dụng trên toàn bộ các tiết của khối lớp.
   - Loại phòng phù hợp (`room_type_mismatch`: NORMAL / LAB): Lớp thực hành (LAB) phải được xếp vào phòng LAB.
 
-- **Đánh giá Ràng buộc Mềm có Trọng số (Weighted Soft Constraints):**
-  - Hạn chế khoảng trống lịch học của sinh viên (`student_gaps`): Tính theo khoảng tiết trống thực tế giữa các khối tiết trong ngày (lớp 2-3 tiết liên tiếp không bị tính nhầm tiết trống).
-  - Giảm thiểu số tiết dạy liên tục của giảng viên (`consecutive_teaching`): Tính tổng số tiết dạy liên tiếp thực tế trong ngày.
-  - Hạn chế xếp môn khó vào ca chiều/tối (`difficult_afternoon`).
-  - Phân bổ đều tải học theo ngày (`daily_imbalance`): Tính tổng số tiết học thực tế trong ngày của sinh viên.
+- **Đánh giá Ràng buộc Mềm có Trọng số (Excel-driven Soft Constraints S1–S5):**
+  - **S1 `weekly_distribution` (Weight: 10):** Phân bố môn học của mỗi nhóm sinh viên đều trong tuần.
+  - **S2 `late_day_periods` (Weight: 5):** Hạn chế quá nhiều tiết học vào ca tối (ca `evening`).
+  - **S3 `preferred_shift_mismatch` (Weight: 4):** Ưu tiên xếp lớp học phần đúng ca học mong muốn (`preferred_shift`).
+  - **S4 `room_seat_waste` (Weight: 2):** Giảm số ghế trống lãng phí trong phòng học.
+  - **S5 `consecutive_cross_campus` (Weight: 8):** Hạn chế giảng viên di chuyển liên tiếp giữa 2 cơ sở trong ngày.
+  
+  > *Lưu ý:* Trọng số và trạng thái `enabled` của S1–S5 được tự động đọc trực tiếp từ sheet `CONSTRAINTS` của file Excel đầu vào (`data/01_data_timetable.xlsx`).
 
-- **Dataset Validator (`DatasetValidator`):** Tự động kiểm tra tính hợp lệ và khả thi của dữ liệu (trùng ID, lỗi khóa ngoại, thời lượng < 1, thiếu phòng LAB, giảng viên không có khối tiết rảnh) trước khi khởi tạo quần thể GA.
+- **Dataset Validator (`DatasetValidator`):** Kiểm tra tính hợp lệ và khả thi của dữ liệu trước khi khởi tạo quần thể GA.
 
-- **Heuristic Repair Engine:** Tự động phát hiện và sửa chữa các gen vi phạm cứng sau bước lai ghép/đột biến, đảm bảo khối tiết liên tiếp không vượt ca (sáng/chiều/tối).
+- **Heuristic Repair Engine:** Tự động phát hiện và sửa chữa các gen vi phạm cứng sau bước lai ghép/đột biến với chiến lược tìm kiếm ưu tiên 3 tầng (3-tier candidate search).
 
-- **Multi-Seed Benchmark Suite:** So sánh 4 phương pháp (`GA without Repair`, `Hybrid GA + Repair`, `Greedy Search`, `Random Search`) trên cùng ngân sách evaluations với nhiều random seed.
+- **Multi-Seed Benchmark Suite:** So sánh 4 phương pháp (`Hybrid GA + Repair`, `GA without Repair`, `Greedy Search`, `Random Search`) trên cùng ngân sách evaluations với cờ `--methods` tùy chọn.
 
-- **Xuất thời khóa biểu tự động (CSV chuẩn 13 cột & Metadata JSON):** Chọn thời khóa biểu tốt nhất của Hybrid GA và xuất ra file CSV với đầy đủ thông tin tiết bắt đầu/kết thúc, giờ học thực tế và ca học.
+- **Xuất thời khóa biểu tự động (Excel Workbook 7 Sheets & Metadata JSON):** Tự động tổng hợp thời khóa biểu tổng quan, theo giảng viên, theo lớp sinh viên, theo phòng học và chi tiết vi phạm.
+
+---
+
+## 📊 Dữ Liệu Đầu Vào (`data/01_data_timetable.xlsx`)
+
+Bộ dữ liệu chuẩn quy mô đại học được nạp từ `data/01_data_timetable.xlsx`:
+- **60** lớp học phần (`CourseSection`)
+- **15** giảng viên (`Lecturer`)
+- **12** nhóm sinh viên (`StudentGroup`)
+- **15** phòng học (`Room`: NORMAL & LAB)
+- **96** khung giờ tiết học (`Timeslot`: 6 ngày x 16 tiết/ngày, phân ca Sáng / Chiều / Tối)
 
 ---
 
 ## ⏰ Cấu Trúc Khung Giờ Học (HaUI 2025–2026)
 
-Hệ thống tích hợp cấu hình khung giờ học lý thuyết chuẩn Đại học Công nghiệp Hà Nội (HaUI) năm học 2025–2026 tại Cơ sở 1 và Cơ sở 2:
+Hệ thống tích hợp cấu hình khung giờ học lý thuyết chuẩn Đại học Công nghiệp Hà Nội (HaUI) tại Cơ sở 1 và Cơ sở 2:
 
 ### Model `Timeslot`
 ```python
@@ -49,120 +63,102 @@ class Timeslot:
 ### Bảng Khung Giờ Tiết Học
 | Ca học (`session`) | Tiết (`period`) | Thời gian thực tế (`start_time` – `end_time`) |
 | :--- | :--- | :--- |
-| **Ca sáng** (`morning`) | Tiết 1 | 07:00 – 07:50 |
-| | Tiết 2 | 07:50 – 08:40 |
-| | Tiết 3 | 08:45 – 09:35 |
-| | Tiết 4 | 09:40 – 10:30 |
-| | Tiết 5 | 10:35 – 11:25 |
-| | Tiết 6 | 11:25 – 12:15 |
-| **Ca chiều** (`afternoon`) | Tiết 7 | 12:30 – 13:20 |
-| | Tiết 8 | 13:20 – 14:10 |
-| | Tiết 9 | 14:15 – 15:05 |
-| | Tiết 10 | 15:10 – 16:00 |
-| | Tiết 11 | 16:05 – 16:55 |
-| | Tiết 12 | 16:55 – 17:45 |
-| **Ca tối** (`evening`) | Tiết 13 | 18:00 – 18:50 |
-| | Tiết 14 | 18:50 – 19:40 |
-| | Tiết 15 | 19:45 – 20:35 |
-| | Tiết 16 | 20:35 – 21:25 |
-
----
-
-## ⏱️ Ý Nghĩa `duration_periods` & `Gene.timeslot_id`
-
-- **`CourseSection.duration_periods`:** Số tiết liên tiếp mà một lớp học phần chiếm dụng ($1, 2, 3, \dots$).
-  - **Lớp lý thuyết:** Thường có `duration_periods = 2` (60% dữ liệu) hoặc `duration_periods = 1` (20% dữ liệu).
-  - **Lớp thực hành (LAB):** Có `duration_periods = 3` và yêu cầu `required_room_type = "LAB"` (20% dữ liệu).
-- **`Gene.timeslot_id`:** Lưu ID của khung giờ **bắt đầu** (`start_timeslot`).
-- **Quy tắc nguyên khối theo ca (`is_valid_period_block`):**
-  Tất cả các tiết thuộc khối $\text{occupied\_periods} = [\text{start\_period}, \dots, \text{start\_period} + \text{duration} - 1]$ phải nằm gọn hoàn toàn trong **cùng một ca học** (không vắt từ Ca sáng sang Ca chiều hay Ca chiều sang Ca tối).
-
-### 💡 Ví dụ Lớp 3 tiết Thực hành
-Giả sử Lớp học phần `LHP07` (Thực hành Học máy) có:
-- `duration_periods = 3`
-- `required_room_type = "LAB"`
-- Gen gán `timeslot_id = 1` (Thứ 2, Tiết 2, Ca sáng)
-- **Tải tiết chiếm dụng:** Tiết 2, Tiết 3, Tiết 4 (`occupied_periods = [2, 3, 4]`).
-- **Thời gian thực tế:** Bắt đầu lúc `07:50` (bắt đầu Tiết 2), kết thúc lúc `10:30` (kết thúc Tiết 4).
-- **Phòng học:** `LAB01` (loại phòng `LAB`, sức chứa $\ge$ sĩ số sinh viên).
+| **Ca sáng** (`morning`) | Tiết 1 – Tiết 6 | 07:00 – 12:15 |
+| **Ca chiều** (`afternoon`) | Tiết 7 – Tiết 12 | 12:30 – 17:45 |
+| **Ca tối** (`evening`) | Tiết 13 – Tiết 16 | 18:00 – 21:25 |
 
 ---
 
 ## ⚙️ Yêu Cầu Môi Trường & Cài Đặt
 
 ### Môi Trường
-- **OS:** Windows / Linux / macOS
+- **OS:** Linux / macOS / Windows
 - **Python:** `>= 3.8` (khuyến nghị 3.10+)
 
 ### Cài Đặt
 
-#### Trên Windows (PowerShell / CMD):
-```powershell
-# 1. Tạo môi trường ảo
-python -m venv .venv
-
-# 2. Kích hoạt môi trường ảo
-# Trong PowerShell:
-.\.venv\Scripts\Activate.ps1
-# Hoặc trong CMD (Command Prompt):
-.\.venv\Scripts\activate.bat
-
-# 3. Cài đặt các thư viện phụ thuộc
-pip install -r requirements.txt
-```
-
-#### Trên Linux / macOS:
 ```bash
-# 1. Tạo môi trường ảo
+# 1. Tạo và kích hoạt môi trường ảo
 python3 -m venv .venv
+source .venv/bin/activate  # Trên Windows: .venv\Scripts\activate
 
-# 2. Kích hoạt môi trường ảo
-source .venv/bin/activate
-
-# 3. Cài đặt các thư viện phụ thuộc
+# 2. Cài đặt các thư viện phụ thuộc
 pip install -r requirements.txt
 ```
 
 ---
 
-## 🧪 Hướng Dẫn Chạy Tests
+## 🧪 Kiểm Thử Hệ Thống (Pytest Suite)
 
-Dự án đi kèm bộ unit tests toàn diện (**152 test cases**) kiểm thử toàn bộ ràng buộc cứng, mềm, toán tử GA, repair engine và exporter.
+Dự án đi kèm bộ test tự động toàn diện: **`314 tests passed / 0 failed`** (bao gồm **14 tests** kiểm thử package `schedule_assistant`), kiểm thử toàn bộ domain, dataset, constraints, repair engine, GA operators, exporter và benchmark metrics.
 
-Chạy toàn bộ tests:
 ```bash
-pytest -v
+# Chạy toàn bộ 314 test cases
+pytest -q
+
+# Kiểm tra collection
+pytest --collect-only -q
+
+# Kiểm tra riêng package schedule_assistant
+pytest tests/test_schedule_assistant.py -q
 ```
 
 ---
 
-## 📊 Hướng Dẫn Chạy Benchmark & Test Suite
+## 🚀 Hướng Dẫn Chạy Hệ Thống
 
-### 1. Chạy Bộ Kiểm Thử (Pytest Suite)
-```bash
-# Chạy toàn bộ test suite
-pytest -v
-
-# Chạy nhanh các test đơn vị (Unit Tests)
-pytest -m unit -v
-
-# Chạy các test tích hợp (Integration Tests)
-pytest -m integration -v
-```
-
-### 2. Chạy Demo & Benchmark So Sánh
+### 1. Tạo Thời Khóa Biểu Production (`main.py`)
+Sử dụng phương pháp đề xuất chính **Hybrid GA + Repair** để tạo thời khóa biểu chính thức:
 
 ```bash
-# 1. Chạy Demo tối ưu GA & xuất trực tiếp file Thời khóa biểu (Excel & CSV):
-python scripts/run_ga_demo.py
-# Hoặc chạy qua Docker:
-docker compose up --build test-ga
+# Chạy tạo thời khóa biểu sản phẩm bằng Hybrid GA + Repair
+python main.py
 
-# 2. Chạy Benchmark đầy đủ & xuất Báo cáo (Excel, CSV, Charts & JSON):
-python main_benchmark.py --mode report
-# Hoặc chạy qua Docker:
-docker compose up --build benchmark
+# Chỉ định file Excel đầu vào và đường dẫn xuất workbook:
+python main.py --input data/01_data_timetable.xlsx --output outputs/production/best_timetable.xlsx --seed 42
 ```
+
+### 2. Chạy Benchmark So Sánh Thử Nghiệm (`main_benchmark.py`)
+So sánh hiệu năng các phương pháp với cờ `--methods` và số lượng seed tùy chọn:
+
+```bash
+# Benchmark chính thức phục vụ đồ án (Hybrid, Ablation GA, Greedy Baseline):
+python main_benchmark.py --methods hybrid,ga,greedy --seeds 0-9 --experiment-name graduation_experiment
+
+# Benchmark thử nghiệm nhanh (chế độ Fast):
+python main_benchmark.py --methods hybrid,ga,greedy --seeds 0-2 --mode fast
+
+# Benchmark mở rộng toàn bộ phương pháp (bao gồm Random Search):
+python main_benchmark.py --methods hybrid,ga,greedy,random --seeds 0-9 --experiment-name full_baseline_experiment
+```
+
+> **Phân định vai trò phương pháp:**
+> - **`hybrid` (Hybrid GA + Repair):** Phương pháp đề xuất chính duy nhất dùng trong production (`main.py`).
+> - **`ga` (GA without Repair):** Thuật toán GA tiêu chuẩn dùng làm thí nghiệm Ablation Study nhằm chứng minh đóng góp của Repair Engine.
+> - **`greedy` (Greedy Search):** Baseline Heuristic định hướng (deterministic), không tham gia vào luồng sản phẩm của Hybrid GA.
+> - **`random` (Random Search):** Baseline Lower Bound lấy mẫu ngẫu nhiên (chỉ dùng cho benchmark đánh giá).
+> - *Hệ thống đánh giá các phương pháp bằng feasible rate, hard violations, soft penalty, runtime và thống kê mô tả trên nhiều random seeds.*
+
+### 3. Web Demo — Trợ Lý Tra Cứu Thời Khóa Biểu (`ui_app.py`)
+Đây là giao diện Web Demo chỉ đọc (Read-Only Presenter) xây dựng bằng Streamlit. Giao diện **không chạy lại GA, không sửa lịch, không gọi API LLM ngoài và không phụ thuộc Internet**, chỉ đọc dữ liệu production từ JSON/Excel.
+
+```bash
+# Khởi chạy Streamlit Web Demo (mặc định cổng 8501)
+streamlit run ui_app.py
+
+# Hoặc sử dụng uv:
+uv run streamlit run ui_app.py
+```
+
+Truy cập trình duyệt tại: `http://localhost:8501`
+
+**Ví dụ câu hỏi tra cứu hỗ trợ:**
+- `Lịch thứ 2` (Tra cứu tất cả lớp học trong ngày Thứ 2)
+- `Lịch của lớp CNTT1` (Tra cứu lịch học của nhóm lớp)
+- `Giảng viên GV01 dạy khi nào?` (Tra cứu lịch dạy của giảng viên)
+- `Phòng A9-205 được sử dụng khi nào?` (Tra cứu lịch phòng học)
+- `Môn Lập trình hướng đối tượng` (Tra cứu lịch học phần môn học)
+- `Lịch thứ 2 của lớp CNTT1` (Tra cứu kết hợp nhiều điều kiện)
 
 ---
 
@@ -172,45 +168,23 @@ Toàn bộ dữ liệu kết quả sau khi tối ưu và benchmark được lưu
 
 ```text
 outputs/
-├── timetables/
-│   ├── best_timetable.csv             # Thời khóa biểu tối ưu tốt nhất (13 cột chuẩn)
-│   └── best_timetable_metadata.json   # Thông số metadata của kết quả tối ưu
-├── benchmarks/
-│   └── benchmark_results_multiseed.json # Chi tiết kết quả benchmark multi-seed 4 phương pháp
-└── charts/
-    ├── convergence_hard.png            # Biểu đồ hội tụ vi phạm cứng
-    └── convergence_soft.png            # Biểu đồ hội tụ điểm phạt mềm
-```
-
----
-
-## 📋 Cấu Trúc File CSV Thời Khóa Biểu (`13 Cột`)
-
-File thời khóa biểu tốt nhất được lưu tại: [outputs/timetables/best_timetable.csv](file:///home/trung.nguyen12/Downloads/GA/outputs/timetables/best_timetable.csv).
-
-| Cột CSV | Ý nghĩa | Ví dụ |
-| :--- | :--- | :--- |
-| `section_id` | Mã lớp học phần | `LHP01` |
-| `course_id` | Mã môn học | `CS101` |
-| `lecturer_id` | Mã giảng viên | `GV01` |
-| `student_group_id` | Mã lớp sinh viên | `SV_CNTT1` |
-| `room_id` | Mã phòng học | `P101` |
-| `day` | Ngày học trong tuần | `Thứ 2` |
-| `start_period` | Tiết bắt đầu | `1` |
-| `end_period` | Tiết kết thúc | `2` |
-| `start_time` | Giờ bắt đầu | `07:00` |
-| `end_time` | Giờ kết thúc | `08:40` |
-| `duration_periods` | Số tiết của lớp | `2` |
-| `session` | Ca học | `morning` |
-| `room_type` | Loại phòng học | `NORMAL` |
-
-### 📝 Ví Dụ Dữ Liệu File CSV Output
-```csv
-section_id,course_id,lecturer_id,student_group_id,room_id,day,start_period,end_period,start_time,end_time,duration_periods,session,room_type
-LHP01,CS101,GV01,SV_CNTT1,P101,Thứ 2,1,2,07:00,08:40,2,morning,NORMAL
-LHP07,ML201,GV03,SV_KHMT1,LAB01,Thứ 2,2,4,07:50,10:30,3,morning,LAB
-LHP04,DB101,GV04,SV_CNTT2,P102,Thứ 2,5,5,10:35,11:25,1,morning,NORMAL
-LHP05,NET101,GV05,SV_CNTT2,P201,Thứ 3,7,8,12:30,14:10,2,afternoon,NORMAL
+├── production/
+│   ├── best_timetable.xlsx             # Workbook thời khóa biểu chính thức (7 sheets)
+│   ├── schedule_query_data.json        # Dữ liệu JSON tra cứu cho Trợ lý tra cứu thời khóa biểu
+│   └── convergence_hybrid.png          # Biểu đồ hội tụ vi phạm cứng & mềm của Hybrid GA
+├── datasets/
+│   └── 01_data_timetable.normalized.json # Snapshot dữ liệu đã chuẩn hóa (fast loader)
+└── benchmark/
+    └── <experiment_name>/              # Kết quả benchmark thử nghiệm theo tên thí nghiệm
+        ├── best_timetable.xlsx         # Workbook thời khóa biểu của phương pháp tốt nhất
+        ├── summary.csv                 # Bảng tổng hợp thống kê hiệu năng các phương pháp
+        ├── summary.json                # Metadata JSON tổng hợp kết quả
+        ├── raw_runs.csv                # Chi tiết dữ liệu từng run/seed
+        ├── raw_runs.json               # Chi tiết JSON từng run/seed
+        ├── config.json                 # Cấu hình tham số thí nghiệm
+        ├── dataset_snapshot.json       # Snapshot dataset thí nghiệm
+        ├── convergence_hard.png        # Biểu đồ hội tụ vi phạm cứng
+        └── convergence_soft.png        # Biểu đồ hội tụ điểm phạt mềm
 ```
 
 ---
@@ -218,13 +192,26 @@ LHP05,NET101,GV05,SV_CNTT2,P201,Thứ 3,7,8,12:30,14:10,2,afternoon,NORMAL
 ## 📂 Cấu Trúc Thư Mục Dự Án
 
 ```text
-constraints/     HardConstraints, SoftConstraints và ScheduleRepairEngine
-dataset/         DatasetFactory, DatasetValidator và timeslot_factory (HaUI periods)
-domain/          Course, CourseSection, Lecturer, Room, StudentGroup, Timeslot, Schedule, Gene
-ga/              GeneticAlgorithmEngine (Genetic Algorithm with Constraint Repair), GAOperators
-evaluation/      Baselines, metrics, benchmark_statistics, visualizer, schedule_exporter
-scripts/         run_ga_demo.py (Script demo chạy GA xếp thời khóa biểu)
-outputs/         Thư mục chứa kết quả CSV, JSON metadata, benchmark JSON và biểu đồ PNG
-tests/           Automated pytest suite (7 files tiêu chuẩn)
-main_benchmark.py Benchmark chính so sánh 4 thuật toán & xuất thời khóa biểu
+GA/
+├── main.py                        # Entry point tạo thời khóa biểu sản phẩm (Hybrid GA + Repair)
+├── main_benchmark.py              # Entry point chạy benchmark so sánh đa phương pháp
+├── ui_app.py                      # Giao diện Web UI Trợ lý tra cứu thời khóa biểu (Read-only)
+├── README.md                      # Tài liệu hướng dẫn sử dụng và báo cáo dự án
+├── pyproject.toml                 # Cấu hình dự án & dependencies
+├── requirements.txt               # Danh sách thư viện Python phụ thuộc
+├── Dockerfile                     # Cấu hình Docker container
+├── docker-compose.yml             # Cấu hình Docker Compose service
+├── .gitignore                     # Cấu hình loại trừ Git
+│
+├── schedule_assistant/            # Package Trợ lý tra cứu (intent_parser, query_service, response_formatter, models)
+├── domain/                        # Data models (@dataclass: Schedule, Gene, CourseSection, Room, Timeslot...)
+├── dataset/                       # Excel loader, dataset validator, timeslot factory & mock factory
+├── constraints/                   # HardConstraintChecker, SoftConstraintChecker (S1-S5) & ScheduleRepairEngine
+├── ga/                            # GeneticAlgorithmEngine & GAOperators (selection, crossover, mutation)
+├── evaluation/                    # Baselines (Greedy, Random), metrics, query_data_exporter, visualizer
+├── docs/                          # Tài liệu kỹ thuật ERD schema & phân tích thuật toán
+├── scripts/                       # Script demo chạy GA
+├── data/                          # Dữ liệu Excel đầu vào (01_data_timetable.xlsx)
+├── outputs/                       # Thư mục chứa kết quả sản phẩm & benchmark
+└── tests/                         # Bộ kiểm thử tự động Pytest
 ```

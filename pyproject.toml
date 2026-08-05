@@ -10,10 +10,13 @@ readme = "README.md"
 requires-python = ">=3.8"
 license = {text = "MIT"}
 authors = [
-    {name = "Senior GA Optimization Team"}
+    {name = "Nguyen Duc Trung"}
 ]
 dependencies = [
+    "numpy>=1.20.0",
+    "openpyxl>=3.0.0",
     "matplotlib>=3.5.0",
+    "streamlit>=1.20.0",
     "python-dotenv>=1.0.0",
 ]
 

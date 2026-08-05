@@ -1,0 +1,2 @@
+53717f13eb8cbe210af98e8365a383d8891567cbe3f59e01d1cbfcff870b934d  data/01_data_timetable(1).xlsx
+42e30f6f4945885506193e2655d3bdedc04e4468f3785b937ba5bb0031bfe182  outputs/benchmarks/official_v1_30seeds_soft35/best_timetable.xlsx

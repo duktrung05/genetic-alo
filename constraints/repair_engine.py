@@ -9,9 +9,10 @@ import random
 from dataclasses import dataclass, field
 from typing import Dict, List, Set, Tuple, Optional, Any
 from collections import defaultdict
-from domain import Schedule, Gene, CourseSection, Room, Timeslot, Lecturer
+from domain import Schedule, Gene, CourseSection, Room, Timeslot, Lecturer, RepairStatus
 from dataset import get_occupied_periods, is_valid_period_block
 from .hard_constraints import HardConstraintChecker
+
 
 @dataclass
 class RepairResult:
@@ -20,6 +21,7 @@ class RepairResult:
     success: bool
     remaining_hard_violations: int
     failed_section_ids: List[str] = field(default_factory=list)
+    status: RepairStatus = RepairStatus.UNCHANGED
 
 @dataclass
 class RepairStats:
@@ -28,8 +30,9 @@ class RepairStats:
     repair_trigger_policy: str = "Offspring Mutation Constraint Satisfaction"
     repair_calls: int = 0
     repair_attempts: int = 0
-    repair_successes: int = 0
-    repair_failures: int = 0
+    repair_improved: int = 0
+    repair_unchanged: int = 0
+    repair_failed: int = 0
     sections_repaired: int = 0
     sections_failed: int = 0
     candidate_checks: int = 0
@@ -39,11 +42,20 @@ class RepairStats:
     soft_after_repair: int = 0
     repair_runtime_seconds: float = 0.0
 
+    @property
+    def repair_successes(self) -> int:
+        return self.repair_improved
+
+    @property
+    def repair_failures(self) -> int:
+        return self.repair_unchanged + self.repair_failed
+
     def reset(self):
         self.repair_calls = 0
         self.repair_attempts = 0
-        self.repair_successes = 0
-        self.repair_failures = 0
+        self.repair_improved = 0
+        self.repair_unchanged = 0
+        self.repair_failed = 0
         self.sections_repaired = 0
         self.sections_failed = 0
         self.candidate_checks = 0
@@ -53,6 +65,7 @@ class RepairStats:
         self.soft_after_repair = 0
         self.repair_runtime_seconds = 0.0
 
+
     def to_dict(self) -> dict:
         return {
             "repair_enabled": self.repair_enabled,
@@ -61,6 +74,9 @@ class RepairStats:
             "repair_attempts": self.repair_attempts,
             "repair_successes": self.repair_successes,
             "repair_failures": self.repair_failures,
+            "repair_improved": self.repair_improved,
+            "repair_unchanged": self.repair_unchanged,
+            "repair_failed": self.repair_failed,
             "sections_repaired": self.sections_repaired,
             "sections_failed": self.sections_failed,
             "candidate_checks": self.candidate_checks,
@@ -70,6 +86,7 @@ class RepairStats:
             "soft_after_repair": self.soft_after_repair,
             "repair_runtime_seconds": round(self.repair_runtime_seconds, 4),
         }
+
 
 class ScheduleRepairEngine:
     """Constraint Satisfaction Repair Transformer for repairing hard violations."""
@@ -152,21 +169,24 @@ class ScheduleRepairEngine:
         return (cand_count, is_lab, duration, restricted_lec, st_count, sec.section_id)
 
     def repair(self, schedule: Schedule, max_attempts: int = 15) -> RepairResult:
-        start_time = time.time()
+        start_time = time.perf_counter()
         self.stats.repair_calls += 1
 
         if not isinstance(schedule, Schedule) or not isinstance(getattr(schedule, "genes", None), list):
             self.stats.repair_failures += 1
-            self.stats.repair_runtime_seconds += (time.time() - start_time)
+            self.stats.repair_failed += 1
+            self.stats.repair_runtime_seconds += (time.perf_counter() - start_time)
             return RepairResult(
                 schedule=schedule,
                 success=False,
                 remaining_hard_violations=len(self.section_map),
-                failed_section_ids=sorted(list(self.section_map.keys()))
+                failed_section_ids=sorted(list(self.section_map.keys())),
+                status=RepairStatus.FAILED,
             )
 
-        input_hard, _ = self.hard_checker.evaluate(schedule)
-        input_soft, _ = self.evaluator.evaluate_soft(schedule)
+        input_hard, _ = self.evaluator.evaluate_hard(schedule, category="internal")
+        input_soft, _ = self.evaluator.evaluate_soft(schedule, category="internal")
+
 
         best_schedule = schedule
         best_hard = input_hard
@@ -309,8 +329,9 @@ class ScheduleRepairEngine:
             ]
             cand_schedule = Schedule(genes=final_genes)
 
-            cand_hard, _ = self.hard_checker.evaluate(cand_schedule)
-            cand_soft, _ = self.evaluator.evaluate_soft(cand_schedule)
+            cand_hard, _ = self.evaluator.evaluate_hard(cand_schedule, category="internal")
+            cand_soft, _ = self.evaluator.evaluate_soft(cand_schedule, category="internal")
+
 
             # Update best_schedule on attempt 0 or when strictly better than best schedule found so far
             if attempt == 0 or (cand_hard, cand_soft) < (best_hard, best_soft):
@@ -324,28 +345,34 @@ class ScheduleRepairEngine:
                     if (g.timeslot_id, g.room_id) != input_gene_map.get(g.section_id)
                 )
 
-
             if best_hard == 0:
                 break
 
-        # A call is successful ONLY IF output schedule is strictly better than input schedule
-        is_success = (best_hard, best_soft) < (input_hard, input_soft)
-        if is_success:
-            self.stats.repair_successes += 1
+        # Classify status based on (best_hard, best_soft) vs (input_hard, input_soft)
+        if (best_hard, best_soft) < (input_hard, input_soft):
+            status = RepairStatus.IMPROVED
+            self.stats.repair_improved += 1
             self.stats.sections_repaired += best_repaired_count
+        elif (best_hard, best_soft) == (input_hard, input_soft):
+            status = RepairStatus.UNCHANGED
+            self.stats.repair_unchanged += 1
         else:
-            self.stats.repair_failures += 1
+            status = RepairStatus.FAILED
+            self.stats.repair_failed += 1
+
 
         self.stats.hard_before_repair += input_hard
         self.stats.hard_after_repair += best_hard
         self.stats.soft_before_repair += input_soft
         self.stats.soft_after_repair += best_soft
         self.stats.sections_failed += len(best_failed_sections)
-        self.stats.repair_runtime_seconds += (time.time() - start_time)
+        self.stats.repair_runtime_seconds += (time.perf_counter() - start_time)
 
         return RepairResult(
             schedule=best_schedule,
-            success=(best_hard == 0),
+            success=(status != RepairStatus.FAILED),
             remaining_hard_violations=best_hard,
-            failed_section_ids=best_failed_sections
+            failed_section_ids=best_failed_sections,
+            status=status,
         )
+

@@ -3,6 +3,8 @@ from typing import Dict, Set, List, Tuple, Any
 from domain import CourseSection, Room, Timeslot, Lecturer, StudentGroup
 from .timeslot_factory import get_occupied_periods, is_valid_period_block
 
+VALID_SHIFTS = frozenset({"morning", "afternoon", "evening"})
+
 class DatasetValidator:
     @staticmethod
     def validate_report(dataset: dict) -> Dict[str, Any]:
@@ -97,11 +99,38 @@ class DatasetValidator:
         lab_required_periods = 0
 
         # Section validations
+        # Build known campus IDs from rooms for reference checking
+        known_campus_ids: Set[str] = {r.campus_id for r in rooms if getattr(r, "campus_id", None)}
+
         for sec in sections:
             duration = getattr(sec, "duration_periods", 1)
             if duration < 1:
                 errors.append(f"Section '{sec.section_id}' has invalid duration_periods {duration} (must be >= 1).")
                 continue
+
+            meetings = getattr(sec, "meetings_per_week", 1)
+            if meetings < 1:
+                errors.append(f"Section '{sec.section_id}' has invalid meetings_per_week {meetings} (must be >= 1).")
+            elif meetings > 1:
+                warnings.append(
+                    f"Section '{sec.section_id}' has meetings_per_week={meetings}. "
+                    f"Current chromosome model assigns exactly one timeslot per section; "
+                    f"multiple meetings per week are recorded but not enforced by the scheduler."
+                )
+
+            pref_shift = getattr(sec, "preferred_shift", None)
+            if pref_shift is not None and pref_shift not in VALID_SHIFTS:
+                errors.append(
+                    f"Section '{sec.section_id}' has invalid preferred_shift='{pref_shift}'. "
+                    f"Allowed values: {sorted(VALID_SHIFTS)}."
+                )
+
+            pref_campus = getattr(sec, "preferred_campus_id", None)
+            if pref_campus is not None and known_campus_ids and pref_campus not in known_campus_ids:
+                errors.append(
+                    f"Section '{sec.section_id}' references unknown preferred_campus_id='{pref_campus}'. "
+                    f"Known campuses from rooms: {sorted(known_campus_ids)}."
+                )
 
             if sec.lecturer_id:
                 lec_required_periods[sec.lecturer_id] += duration
@@ -123,13 +152,17 @@ class DatasetValidator:
                 else:
                     errors.append(f"Section '{sec.section_id}' requires NORMAL room with capacity >= {sec.student_count}, but no suitable room exists.")
 
-            # Valid start timeslot block check
+            # Valid start timeslot block check (require_same_session=True enforced by default)
             valid_start_ts = [
                 t for t in timeslots
                 if is_valid_period_block(t.period, duration, day_available_periods.get(t.day))
             ]
             if not valid_start_ts:
-                errors.append(f"No valid timeslot block of duration {duration} available for section '{sec.section_id}'.")
+                errors.append(
+                    f"Section '{sec.section_id}' (duration_periods={duration}) has no valid "
+                    f"timeslot block: all {duration} periods must be consecutive and within the "
+                    f"same session (morning=1-6, afternoon=7-12, evening=13-16)."
+                )
 
             # Lecturer availability block check
             if sec.lecturer_id:
@@ -159,6 +192,14 @@ class DatasetValidator:
                 errors.append(f"StudentGroup '{grp.id}' required periods ({req}) exceeds total available timeslots ({total_timeslots}).")
             elif req > 0.75 * total_timeslots:
                 warnings.append(f"StudentGroup '{grp.id}' load is high ({req}/{total_timeslots} periods).")
+
+            # Validate home_campus_id reference
+            home_campus = getattr(grp, "home_campus_id", None)
+            if home_campus is not None and known_campus_ids and home_campus not in known_campus_ids:
+                errors.append(
+                    f"StudentGroup '{grp.id}' references unknown home_campus_id='{home_campus}'. "
+                    f"Known campuses from rooms: {sorted(known_campus_ids)}."
+                )
 
         # Check total LAB demand vs LAB room supply
         lab_rooms = [r for r in rooms if getattr(r, "room_type", "NORMAL") == "LAB"]

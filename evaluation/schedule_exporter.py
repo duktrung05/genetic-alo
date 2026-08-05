@@ -228,11 +228,11 @@ def export_schedule_to_excel(
 
     summary_rows = [
         ("dataset_source", meta.get("dataset_source", meta.get("dataset_preset", "Excel"))),
-        ("dataset_path", meta.get("dataset_path", meta.get("input_file", "data/01_data_timetable(1).xlsx"))),
-        ("dataset_name", meta.get("dataset_name", "01_data_timetable(1).xlsx")),
+        ("dataset_path", meta.get("dataset_path", meta.get("input_file", "data/01_data_timetable.xlsx"))),
+        ("dataset_name", meta.get("dataset_name", "01_data_timetable.xlsx")),
         ("dataset_version", meta.get("dataset_version", "1.0")),
         ("dataset_hash", meta.get("dataset_hash", "N/A")),
-        ("input_file", meta.get("input_file", "data/01_data_timetable(1).xlsx")),
+        ("input_file", meta.get("input_file", "data/01_data_timetable.xlsx")),
         ("normalized_json_path", meta.get("normalized_json_path", "outputs/datasets/01_data_timetable.normalized.json")),
         ("algorithm", meta.get("method", "Hybrid GA + Repair")),
         ("seed", meta.get("seed", 0)),
@@ -309,7 +309,7 @@ def export_schedule_to_excel(
             "room_id": room.id,
             "room_number": getattr(room, "name", room.id),
             "building": getattr(room, "name", "").split("-")[0] if "-" in getattr(room, "name", "") else "",
-            "campus_id": getattr(room, "campus_id", "CS1"),
+            "campus_id": getattr(room, "campus_id", None) or "",
             "room_type": getattr(room, "room_type", "NORMAL"),
             "day_no": day_order.get(start_ts.day, 99),
             "day_name": start_ts.day,
@@ -321,8 +321,8 @@ def export_schedule_to_excel(
             "end_time": end_time,
             "shift": getattr(start_ts, "session", "morning"),
             "required_room_type": getattr(sec, "required_room_type", "NORMAL"),
-            "preferred_campus_id": getattr(sec, "preferred_campus_id", "CS1"),
-            "preferred_shift": getattr(sec, "preferred_shift", "morning"),
+            "preferred_campus_id": getattr(sec, "preferred_campus_id", None) or "",
+            "preferred_shift": getattr(sec, "preferred_shift", None) or "",
             "time_range": time_range,
             "room_display": getattr(room, "name", room.id),
         })
@@ -446,27 +446,134 @@ def export_schedule_to_excel(
     # --- 7. SHEET RUN_CONFIG ---
     ws_cfg = wb.create_sheet(title="RUN_CONFIG")
     ws_cfg.append(["Parameter", "Value"])
+    soft_cfg = evaluator.soft_checker.config
     cfg_rows = [
+        ("primary_method", meta.get("primary_method", "hybrid")),
+        ("selected_methods", meta.get("selected_methods", "hybrid")),
+        ("search_evaluation_budget", meta.get("evaluation_budget", meta.get("search_evaluation_budget", 1000))),
         ("population_size", meta.get("pop_size", 60)),
         ("generations", meta.get("generations", 80)),
         ("crossover_rate", meta.get("crossover_rate", 0.8)),
         ("mutation_rate", meta.get("mutation_rate", 0.2)),
         ("hard_weight", meta.get("hard_weight", 1000)),
         ("soft_weight", meta.get("soft_weight", 1)),
-        ("afternoon_start_period", 7),
-        ("student_gaps_weight", 5),
-        ("consecutive_teaching_weight", 6),
-        ("difficult_afternoon_weight", 3),
-        ("daily_imbalance_weight", 8),
+        ("same_session_rule", True),
+        ("S1_weekly_distribution_weight", soft_cfg.get_weight("weekly_distribution")),
+        ("S1_weekly_distribution_enabled", soft_cfg.is_enabled("weekly_distribution")),
+        ("S2_late_day_periods_weight", soft_cfg.get_weight("late_day_periods")),
+        ("S2_late_day_periods_enabled", soft_cfg.is_enabled("late_day_periods")),
+        ("S3_preferred_shift_mismatch_weight", soft_cfg.get_weight("preferred_shift_mismatch")),
+        ("S3_preferred_shift_mismatch_enabled", soft_cfg.is_enabled("preferred_shift_mismatch")),
+        ("S4_room_seat_waste_weight", soft_cfg.get_weight("room_seat_waste")),
+        ("S4_room_seat_waste_enabled", soft_cfg.is_enabled("room_seat_waste")),
+        ("S5_consecutive_cross_campus_weight", soft_cfg.get_weight("consecutive_cross_campus")),
+        ("S5_consecutive_cross_campus_enabled", soft_cfg.is_enabled("consecutive_cross_campus")),
         ("repair_enabled", meta.get("use_repair", True)),
     ]
     for k, v in cfg_rows:
         ws_cfg.append([k, str(v)])
     format_sheet(ws_cfg)
 
+
+    # --- 8. SHEET RUN_METRICS (If multi-run details provided) ---
+    all_runs_flat = meta.get("all_runs_flat")
+    if all_runs_flat:
+        ws_m = wb.create_sheet(title="RUN_METRICS")
+        headers = [
+            "method", "seed", "feasible", "final_hard_violations", "final_soft_penalty",
+            "runtime_seconds", "time_to_first_feasible_seconds", "search_fitness_evaluations",
+            "search_hard_constraint_evaluations", "search_soft_constraint_evaluations", "search_constraint_evaluations",
+            "internal_hard_constraint_evaluations", "internal_soft_constraint_evaluations", "internal_constraint_evaluations",
+            "reporting_hard_constraint_evaluations", "reporting_soft_constraint_evaluations", "reporting_constraint_evaluations",
+            "total_constraint_evaluations",
+            "candidate_checks", "repair_calls", "repair_improved", "repair_unchanged", "repair_failed",
+            "first_feasible_generation", "first_feasible_search_evaluation", "first_feasible_total_constraint_evaluation"
+        ]
+        ws_m.append(headers)
+        for r in all_runs_flat:
+            row = [
+                r.get("method", ""),
+                r.get("seed", ""),
+                r.get("is_hard_feasible", r.get("hard_violations", 1) == 0),
+                r.get("hard_violations", 0),
+                r.get("soft_penalty", 0),
+                round(r.get("runtime_seconds", 0.0), 4),
+                round(r.get("time_to_first_feasible_seconds"), 4) if r.get("time_to_first_feasible_seconds") is not None and r.get("time_to_first_feasible_seconds") != "N/A" else "",
+                r.get("search_fitness_evaluations", r.get("fitness_evaluations", 0)),
+                r.get("search_hard_constraint_evaluations", 0),
+                r.get("search_soft_constraint_evaluations", 0),
+                r.get("search_constraint_evaluations", 0),
+                r.get("internal_hard_constraint_evaluations", 0),
+                r.get("internal_soft_constraint_evaluations", 0),
+                r.get("internal_constraint_evaluations", 0),
+                r.get("reporting_hard_constraint_evaluations", 0),
+                r.get("reporting_soft_constraint_evaluations", 0),
+                r.get("reporting_constraint_evaluations", 0),
+                r.get("total_constraint_evaluations", 0),
+                r.get("candidate_checks", 0),
+                r.get("repair_calls", 0),
+                r.get("repair_improved", 0),
+                r.get("repair_unchanged", 0),
+                r.get("repair_failed", 0),
+                r.get("first_feasible_generation") if r.get("first_feasible_generation") is not None and r.get("first_feasible_generation") != "N/A" else "",
+                r.get("first_feasible_search_evaluation") if r.get("first_feasible_search_evaluation") is not None and r.get("first_feasible_search_evaluation") != "N/A" else "",
+                r.get("first_feasible_total_constraint_evaluation") if r.get("first_feasible_total_constraint_evaluation") is not None and r.get("first_feasible_total_constraint_evaluation") != "N/A" else "",
+            ]
+            ws_m.append(row)
+        format_sheet(ws_m)
+
+    # --- 9. SHEET BENCHMARK_SUMMARY (If summary provided) ---
+    summary_list = meta.get("summary_list", meta.get("summary"))
+    if summary_list:
+        ws_s = wb.create_sheet(title="BENCHMARK_SUMMARY")
+        sum_headers = [
+            "method", "run_count", "feasible_rate", "median_final_hard", "median_final_soft",
+            "mean_final_soft", "median_runtime_seconds", "median_time_to_first_feasible_seconds",
+            "median_search_fitness_evaluations", "median_search_constraint_evaluations",
+            "median_internal_constraint_evaluations", "median_reporting_constraint_evaluations",
+            "median_total_constraint_evaluations",
+            "median_candidate_checks", "median_repair_calls", "total_repair_calls",
+            "total_repair_improved", "total_repair_unchanged", "total_repair_failed",
+            "improvement_rate", "non_failure_rate"
+        ]
+        ws_s.append(sum_headers)
+        for s in summary_list:
+            med_ttff = s.get("median_time_to_first_feasible_seconds", s.get("time_to_first_feasible_median"))
+            imp_rate = s.get("improvement_rate")
+            non_fail = s.get("non_failure_rate")
+            search_fit = s.get("median_search_fitness_evaluations", s.get("search_evaluations_median", 0))
+            row = [
+                s.get("method", ""),
+                s.get("run_count", s.get("runs", 0)),
+                round(s.get("feasible_rate", s.get("hard_feasible_rate", 0.0)), 4),
+                s.get("median_final_hard", s.get("median_hard", 0.0)),
+                s.get("median_final_soft", s.get("median_soft_penalty", 0.0)),
+                round(s.get("mean_final_soft", s.get("mean_soft_penalty", 0.0)), 2),
+                round(s.get("median_runtime_seconds", s.get("runtime_median", 0.0)), 4),
+                round(med_ttff, 4) if med_ttff is not None and med_ttff != "N/A" else "",
+                search_fit,
+                s.get("median_search_constraint_evaluations", search_fit * 2),
+                s.get("median_internal_constraint_evaluations", 0),
+                s.get("median_reporting_constraint_evaluations", 0),
+                s.get("median_total_constraint_evaluations", s.get("total_constraint_evaluations_median", 0)),
+                s.get("median_candidate_checks", s.get("candidate_checks_median", 0)),
+                s.get("median_repair_calls", s.get("repair_calls_median", 0)),
+                s.get("total_repair_calls", s.get("repair_calls_total", 0)),
+                s.get("total_repair_improved", s.get("repair_improved_total", 0)),
+                s.get("total_repair_unchanged", s.get("repair_unchanged_total", 0)),
+                s.get("total_repair_failed", s.get("repair_failed_total", 0)),
+                round(imp_rate, 4) if imp_rate is not None else "",
+                round(non_fail, 4) if non_fail is not None else "",
+            ]
+            ws_s.append(row)
+        format_sheet(ws_s)
+
+
     out_path.parent.mkdir(parents=True, exist_ok=True)
     wb.save(out_path)
     return str(out_path)
+
+
 
 def export_metadata_to_json(
     metadata: dict,

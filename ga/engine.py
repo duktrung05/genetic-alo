@@ -1,9 +1,13 @@
+import time
 import random
 from typing import List, Dict, Optional, Tuple, Set
 from collections import defaultdict
+import numpy as np
+
 from domain import Schedule, Gene, CourseSection, Room, Timeslot, Lecturer
 from constraints import ConstraintEvaluator, ScheduleRepairEngine
 from dataset import get_occupied_periods, is_valid_period_block, DatasetValidator
+from evaluation.run_metrics import RunMetrics
 from .operators import GAOperators
 
 
@@ -15,6 +19,7 @@ class GeneticAlgorithmEngine:
         hard_weight: int = 1000,
         soft_weight: int = 1,
         elite_count: int = 2,
+        seed: Optional[int] = None,
     ):
         DatasetValidator.validate(dataset)
         if not isinstance(pop_size, int) or pop_size < 2:
@@ -27,12 +32,13 @@ class GeneticAlgorithmEngine:
         self.hard_weight = hard_weight
         self.soft_weight = soft_weight
         self.elite_count = elite_count
+        self.seed = seed
 
         self.evaluator = ConstraintEvaluator(dataset)
         self.repairer = ScheduleRepairEngine(dataset=dataset, evaluator=self.evaluator)
 
-
         self.sections: List[CourseSection] = dataset["course_sections"]
+
         self.rooms: List[Room] = dataset["rooms"]
         self.timeslots: List[Timeslot] = dataset["timeslots"]
         self.lecturer_map: Dict[str, Lecturer] = {l.id: l for l in dataset.get("lecturers", [])}
@@ -87,12 +93,25 @@ class GeneticAlgorithmEngine:
         crossover_rate: float = 0.8,
         mutation_rate: float = 0.2,
         use_repair: bool = True,
-        evaluation_budget: Optional[int] = None
+        evaluation_budget: Optional[int] = None,
+        seed: Optional[int] = None,
     ) -> dict:
         if evaluation_budget is not None and evaluation_budget < self.pop_size:
             raise ValueError(f"evaluation_budget ({evaluation_budget}) cannot be smaller than population_size ({self.pop_size}).")
 
+        run_seed = seed if seed is not None else self.seed
+        if run_seed is not None:
+            random.seed(run_seed)
+            np.random.seed(run_seed)
+
+        start_time = time.perf_counter()
+
+        # Reset evaluator counters and repair stats per run
+        self.evaluator.counters.reset()
         self.repairer.stats.reset()
+        self.repairer.evaluator = self.evaluator
+
+
         population = [self.create_random_schedule() for _ in range(self.pop_size)]
         history = []
         evaluation_count = 0
@@ -101,6 +120,11 @@ class GeneticAlgorithmEngine:
         best_hard = float('inf')
         best_soft = float('inf')
         best_score = float('inf')
+
+        first_feasible_time: Optional[float] = None
+        first_feasible_search_eval: Optional[int] = None
+        first_feasible_total_eval: Optional[int] = None
+        first_feasible_gen: Optional[int] = None
 
         for gen in range(generations):
             if evaluation_budget is not None and evaluation_count >= evaluation_budget:
@@ -112,11 +136,19 @@ class GeneticAlgorithmEngine:
                 if evaluation_budget is not None and evaluation_count >= evaluation_budget:
                     break
 
-                weighted_score, h, s = self.evaluator.calculate_fitness(ind, self.hard_weight, self.soft_weight)
+                weighted_score, h, s = self.evaluator.calculate_fitness(
+                    ind, self.hard_weight, self.soft_weight, is_search_eval=True
+                )
                 evaluation_count += 1
                 scores.append(weighted_score)
                 hard_v.append(h)
                 soft_v.append(s)
+
+                if h == 0 and first_feasible_time is None:
+                    first_feasible_time = time.perf_counter() - start_time
+                    first_feasible_search_eval = evaluation_count
+                    first_feasible_total_eval = self.evaluator.counters.total_constraint_evaluations
+                    first_feasible_gen = gen
 
             if not scores:
                 break
@@ -133,8 +165,11 @@ class GeneticAlgorithmEngine:
                 best_score = scores[best_idx]
                 best_schedule = Schedule(genes=[Gene(g.section_id, g.room_id, g.timeslot_id) for g in population[best_idx].genes])
 
+            elapsed_now = time.perf_counter() - start_time
             history.append({
                 "generation": gen,
+                "elapsed_seconds": round(elapsed_now, 4),
+                "runtime_seconds": round(elapsed_now, 4),  # legacy alias
                 "fitness_evaluations": evaluation_count,
                 "best_score": best_score,
                 "best_hard": best_hard,
@@ -195,22 +230,66 @@ class GeneticAlgorithmEngine:
 
             population = new_pop[:self.pop_size]
 
-        _, h_details = self.evaluator.evaluate_hard(best_schedule)
-        _, s_details = self.evaluator.evaluate_soft(best_schedule)
+        runtime_seconds = time.perf_counter() - start_time
+        _, h_details = self.evaluator.evaluate_hard(best_schedule, category="reporting")
+        _, s_details = self.evaluator.evaluate_soft(best_schedule, category="reporting")
         raw_soft_cnt = sum(s_details.values())
 
-        return {
+        method_name = "Hybrid GA + Repair" if use_repair else "GA without Repair"
+        total_candidate_checks = self.evaluator.counters.candidate_checks + self.repairer.stats.candidate_checks
+
+        metrics = RunMetrics(
+            method=method_name,
+            seed=run_seed,
+            runtime_seconds=runtime_seconds,
+            time_to_first_feasible_seconds=first_feasible_time,
+            search_fitness_evaluations=self.evaluator.counters.search_fitness_evaluations,
+            hard_constraint_evaluations=self.evaluator.counters.hard_constraint_evaluations,
+            soft_constraint_evaluations=self.evaluator.counters.soft_constraint_evaluations,
+            total_constraint_evaluations=self.evaluator.counters.total_constraint_evaluations,
+            candidate_checks=total_candidate_checks,
+            repair_calls=self.repairer.stats.repair_calls,
+            repair_improved=self.repairer.stats.repair_improved,
+            repair_unchanged=self.repairer.stats.repair_unchanged,
+            repair_failed=self.repairer.stats.repair_failed,
+            first_feasible_search_evaluation=first_feasible_search_eval,
+            first_feasible_total_constraint_evaluation=first_feasible_total_eval,
+            first_feasible_generation=first_feasible_gen,
+            final_hard_violations=best_hard,
+            final_soft_penalty=best_soft,
+            feasible=(best_hard == 0),
+            score=best_score,
+            raw_soft_violations=raw_soft_cnt,
+            search_hard_constraint_evaluations=self.evaluator.counters.search_hard_constraint_evaluations,
+            search_soft_constraint_evaluations=self.evaluator.counters.search_soft_constraint_evaluations,
+            search_constraint_evaluations=self.evaluator.counters.search_constraint_evaluations,
+            internal_hard_constraint_evaluations=self.evaluator.counters.internal_hard_constraint_evaluations,
+            internal_soft_constraint_evaluations=self.evaluator.counters.internal_soft_constraint_evaluations,
+            internal_constraint_evaluations=self.evaluator.counters.internal_constraint_evaluations,
+            reporting_hard_constraint_evaluations=self.evaluator.counters.reporting_hard_constraint_evaluations,
+            reporting_soft_constraint_evaluations=self.evaluator.counters.reporting_soft_constraint_evaluations,
+            reporting_constraint_evaluations=self.evaluator.counters.reporting_constraint_evaluations,
+            total_hard_constraint_evaluations=self.evaluator.counters.hard_constraint_evaluations,
+            total_soft_constraint_evaluations=self.evaluator.counters.soft_constraint_evaluations,
+        )
+
+
+        res_dict = metrics.to_dict()
+        res_dict.update({
             "best_schedule": best_schedule,
             "best_score": best_score,
             "hard_violations": best_hard,
             "soft_violations": best_soft,
             "soft_penalty": best_soft,
-            "raw_soft_violations": raw_soft_cnt,
             "fitness_evaluations": evaluation_count,
             "hard_details": h_details,
             "soft_details": s_details,
             "history": history,
             "use_repair": use_repair,
-            "repair_stats": self.repairer.stats.to_dict()
-        }
+            "repair_stats": self.repairer.stats.to_dict(),
+            "run_metrics": metrics,
+        })
+        return res_dict
+
+
 

@@ -7,15 +7,26 @@ import os
 import json
 from typing import Dict, List, Set, Optional, Any
 import openpyxl
-from domain import Timeslot, Room, Lecturer, StudentGroup, Course, CourseSection
+from domain import Timeslot, Room, Lecturer, StudentGroup, Course, CourseSection, ConstraintDefinition
 from .validator import DatasetValidator
 
 class ExcelValidationError(ValueError):
     """Custom exception raised when Excel data fails validation rules with precise row/col context."""
     pass
 
+
 class ExcelDatasetLoader:
     """Loader responsible for reading timetable scheduling entities from Excel workbooks."""
+
+    # Canonical mapping from Excel constraint_id to internal technical key
+    SOFT_CONSTRAINT_KEY_BY_ID: Dict[str, str] = {
+        "S1": "weekly_distribution",
+        "S2": "late_day_periods",
+        "S3": "preferred_shift_mismatch",
+        "S4": "room_seat_waste",
+        "S5": "consecutive_cross_campus",
+    }
+    SUPPORTED_SOFT_IDS: frozenset = frozenset(SOFT_CONSTRAINT_KEY_BY_ID.keys())
 
     SHIFT_MAP = {
         "Sáng": "morning",
@@ -24,7 +35,15 @@ class ExcelDatasetLoader:
         "MORNING": "morning",
         "AFTERNOON": "afternoon",
         "EVENING": "evening",
+        "morning": "morning",
+        "afternoon": "afternoon",
+        "evening": "evening",
+        "Morning": "morning",
+        "Afternoon": "afternoon",
+        "Evening": "evening",
     }
+
+    VALID_SHIFTS = frozenset({"morning", "afternoon", "evening"})
 
     IGNORED_SHEETS = {
         "README",
@@ -36,7 +55,227 @@ class ExcelDatasetLoader:
     }
 
     @classmethod
-    def load(cls, excel_path: str = "data/01_data_timetable(1).xlsx") -> dict:
+    def _normalize_optional_str(cls, value) -> Optional[str]:
+        """Convert cell value to stripped string or None if empty/NaN."""
+        if value is None:
+            return None
+        text = str(value).strip()
+        if not text or text.lower() == "nan":
+            return None
+        return text
+
+    @classmethod
+    def _parse_meetings_per_week(cls, value, row_idx: int) -> int:
+        """Parse meetings_per_week from cell value.
+
+        Rules:
+          - blank/None  → default 1
+          - integer     → use as-is (must be >= 1)
+          - float N.0   → int(N) if fractional part is 0
+          - non-integer float → ExcelValidationError
+          - non-numeric → ExcelValidationError
+        """
+        if value is None:
+            return 1
+        try:
+            f = float(value)
+        except (ValueError, TypeError):
+            raise ExcelValidationError(
+                f"Sheet 'COURSE_SECTIONS', Row {row_idx}, Column 'meetings_per_week', "
+                f"Value '{value}': Must be a positive integer (e.g. 1, 2)"
+            )
+        if f != int(f):
+            raise ExcelValidationError(
+                f"Sheet 'COURSE_SECTIONS', Row {row_idx}, Column 'meetings_per_week', "
+                f"Value '{value}': Non-integer value not allowed (got {f})"
+            )
+        result = int(f)
+        if result < 1:
+            raise ExcelValidationError(
+                f"Sheet 'COURSE_SECTIONS', Row {row_idx}, Column 'meetings_per_week', "
+                f"Value '{value}': Must be >= 1 (got {result})"
+            )
+        return result
+
+    @classmethod
+    def _parse_weight_int(cls, value, sheet: str, row_idx: int, col: str) -> int:
+        """Parse constraint weight from cell: accepts int, float N.0, or str of those.
+
+        Raises ExcelValidationError for:
+          - blank / None
+          - non-numeric string (e.g. 'abc')
+          - non-integral float (e.g. 2.5)
+          - negative value
+        """
+        if value is None:
+            raise ExcelValidationError(
+                f"Sheet '{sheet}', Row {row_idx}, Column '{col}': weight must not be blank"
+            )
+        raw_str = str(value).strip()
+        if not raw_str or raw_str.lower() == "nan":
+            raise ExcelValidationError(
+                f"Sheet '{sheet}', Row {row_idx}, Column '{col}': weight must not be blank"
+            )
+        try:
+            f = float(raw_str)
+        except (ValueError, TypeError):
+            raise ExcelValidationError(
+                f"Sheet '{sheet}', Row {row_idx}, Column '{col}', "
+                f"Value '{value}': weight must be a non-negative integer (e.g. 10, 5)"
+            )
+        if f != int(f):
+            raise ExcelValidationError(
+                f"Sheet '{sheet}', Row {row_idx}, Column '{col}', "
+                f"Value '{value}': Non-integer weight not allowed (got {f}). "
+                f"Only integers like 10, 5, 0 are accepted."
+            )
+        result = int(f)
+        if result < 0:
+            raise ExcelValidationError(
+                f"Sheet '{sheet}', Row {row_idx}, Column '{col}', "
+                f"Value '{value}': weight cannot be negative (got {result})"
+            )
+        return result
+
+    @classmethod
+    def _parse_enabled_bool(cls, value, sheet: str, row_idx: int, col: str) -> bool:
+        """Parse enabled flag: True/False, 'true'/'false', 1/0.
+
+        Raises ExcelValidationError for any unrecognized value.
+        NOTE: bool('False') == True is a Python gotcha — we handle string comparison
+        explicitly.
+        """
+        if value is None:
+            raise ExcelValidationError(
+                f"Sheet '{sheet}', Row {row_idx}, Column '{col}': enabled must not be blank"
+            )
+        if isinstance(value, bool):
+            return value
+        if isinstance(value, (int, float)):
+            if value == 1:
+                return True
+            if value == 0:
+                return False
+            raise ExcelValidationError(
+                f"Sheet '{sheet}', Row {row_idx}, Column '{col}', "
+                f"Value '{value}': enabled must be True/False or 1/0"
+            )
+        s = str(value).strip().lower()
+        if s in ("true", "1"):
+            return True
+        if s in ("false", "0"):
+            return False
+        raise ExcelValidationError(
+            f"Sheet '{sheet}', Row {row_idx}, Column '{col}', "
+            f"Value '{value}': enabled must be True/False, 'true'/'false', 1, or 0"
+        )
+
+    @classmethod
+    def _parse_constraints_sheet(cls, wb) -> List[ConstraintDefinition]:
+        """Parse the CONSTRAINTS sheet into a list of ConstraintDefinition objects.
+
+        Validates:
+        - Required headers present
+        - No duplicate constraint_id
+        - Soft constraint IDs must be in SUPPORTED_SOFT_IDS
+        - weight: non-negative integer
+        - enabled: boolean
+        - constraint_type: SOFT or HARD (case-insensitive, normalized to upper)
+
+        Returns empty list if CONSTRAINTS sheet is missing (non-Excel datasets).
+        """
+        if "CONSTRAINTS" not in wb.sheetnames:
+            return []
+
+        ws = wb["CONSTRAINTS"]
+        rows = list(ws.iter_rows(values_only=True))
+        if not rows:
+            return []
+
+        # Validate header
+        req_cols = ["constraint_id", "constraint_type", "constraint_name", "weight", "enabled"]
+        header = [str(h).strip() if h is not None else "" for h in rows[0]]
+        for col in req_cols:
+            if col not in header:
+                raise ExcelValidationError(
+                    f"Sheet 'CONSTRAINTS', Row 1, Column '{col}': "
+                    f"Required header column is missing. "
+                    f"Expected columns: {req_cols}"
+                )
+
+        def _col(name: str):
+            return header.index(name)
+
+        seen_ids: Set[str] = set()
+        definitions: List[ConstraintDefinition] = []
+
+        for row_idx, row in enumerate(rows[1:], start=2):
+            if not row or row[0] is None:
+                continue
+            # Normalize row to dict by header
+            row_dict = {
+                h: (row[i] if i < len(row) else None)
+                for i, h in enumerate(header) if h
+            }
+
+            c_id_raw = cls._normalize_optional_str(row_dict.get("constraint_id"))
+            if not c_id_raw:
+                raise ExcelValidationError(
+                    f"Sheet 'CONSTRAINTS', Row {row_idx}, Column 'constraint_id': "
+                    f"constraint_id must not be empty"
+                )
+            c_id = c_id_raw.strip()
+
+            if c_id in seen_ids:
+                raise ExcelValidationError(
+                    f"Sheet 'CONSTRAINTS', Row {row_idx}, Column 'constraint_id', "
+                    f"Value '{c_id}': Duplicate constraint_id"
+                )
+            seen_ids.add(c_id)
+
+            # Normalize constraint_type
+            c_type_raw = cls._normalize_optional_str(row_dict.get("constraint_type"))
+            if not c_type_raw:
+                raise ExcelValidationError(
+                    f"Sheet 'CONSTRAINTS', Row {row_idx}, Column 'constraint_type': "
+                    f"constraint_type must not be empty"
+                )
+            c_type = c_type_raw.strip().upper()
+            if c_type not in ("SOFT", "HARD"):
+                raise ExcelValidationError(
+                    f"Sheet 'CONSTRAINTS', Row {row_idx}, Column 'constraint_type', "
+                    f"Value '{c_type_raw}': Must be 'SOFT' or 'HARD'"
+                )
+
+            # Validate soft constraint IDs
+            if c_type == "SOFT" and c_id not in cls.SUPPORTED_SOFT_IDS:
+                raise ExcelValidationError(
+                    f"Sheet 'CONSTRAINTS', Row {row_idx}, Column 'constraint_id', "
+                    f"Value '{c_id}': Unsupported soft constraint_id='{c_id}'. "
+                    f"Supported IDs: {sorted(cls.SUPPORTED_SOFT_IDS)}."
+                )
+
+            c_name = cls._normalize_optional_str(row_dict.get("constraint_name")) or c_id
+
+            weight = cls._parse_weight_int(
+                row_dict.get("weight"), "CONSTRAINTS", row_idx, "weight"
+            )
+            enabled = cls._parse_enabled_bool(
+                row_dict.get("enabled"), "CONSTRAINTS", row_idx, "enabled"
+            )
+
+            definitions.append(ConstraintDefinition(
+                constraint_id=c_id,
+                constraint_type=c_type,
+                constraint_name=c_name,
+                weight=weight,
+                enabled=enabled,
+            ))
+
+        return definitions
+
+    @classmethod
+    def load(cls, excel_path: str = "data/01_data_timetable.xlsx") -> dict:
         """Load and parse dataset dictionary from specified Excel file path.
 
         Args:
@@ -50,6 +289,9 @@ class ExcelDatasetLoader:
             raise FileNotFoundError(f"Excel dataset file not found at path: '{excel_path}'")
 
         wb = openpyxl.load_workbook(excel_path, data_only=True)
+
+        # 0. Parse CONSTRAINTS sheet (before other sheets)
+        constraint_definitions = cls._parse_constraints_sheet(wb)
 
         # Log ignored sheets if present
         for sheet_name in wb.sheetnames:
@@ -148,11 +390,16 @@ class ExcelDatasetLoader:
             r_num = str(r[header_rm.index("room_number")]).strip() if "room_number" in header_rm and r[header_rm.index("room_number")] else r_id
             name = f"{bld}-{r_num}" if bld else r_num
 
+            campus_id = cls._normalize_optional_str(
+                r[header_rm.index("campus_id")] if "campus_id" in header_rm else None
+            )
+
             room = Room(
                 id=r_id,
                 name=name,
                 capacity=cap,
                 room_type=r_type,
+                campus_id=campus_id,
             )
             rooms.append(room)
 
@@ -253,10 +500,15 @@ class ExcelDatasetLoader:
             except (ValueError, TypeError):
                 raise ExcelValidationError(f"Sheet 'STUDENT_GROUPS', Row {row_idx}, Column 'size', Value '{r[header_grp.index('size')]}\': Group size must be positive integer")
 
+            home_campus_id = cls._normalize_optional_str(
+                r[header_grp.index("home_campus_id")] if "home_campus_id" in header_grp else None
+            )
+
             grp = StudentGroup(
                 id=g_id,
                 name=g_name,
                 student_count=size,
+                home_campus_id=home_campus_id,
             )
             student_groups.append(grp)
 
@@ -357,6 +609,30 @@ class ExcelDatasetLoader:
             c_name = str(r[header_sec.index("course_name")]).strip() if "course_name" in header_sec and r[header_sec.index("course_name")] else c_id
             diff = str(r[header_sec.index("difficulty")]).strip() if "difficulty" in header_sec and r[header_sec.index("difficulty")] else ""
 
+            # Optional preference fields
+            preferred_campus_id = cls._normalize_optional_str(
+                r[header_sec.index("preferred_campus_id")] if "preferred_campus_id" in header_sec else None
+            )
+
+            # Normalize preferred_shift via SHIFT_MAP then validate
+            raw_shift = cls._normalize_optional_str(
+                r[header_sec.index("preferred_shift")] if "preferred_shift" in header_sec else None
+            )
+            preferred_shift: Optional[str] = None
+            if raw_shift is not None:
+                preferred_shift = cls.SHIFT_MAP.get(raw_shift, raw_shift.lower())
+                if preferred_shift not in cls.VALID_SHIFTS:
+                    raise ExcelValidationError(
+                        f"Sheet 'COURSE_SECTIONS', Row {row_idx}, Column 'preferred_shift', "
+                        f"Value '{raw_shift}': Invalid shift. Allowed values: "
+                        f"{sorted(cls.VALID_SHIFTS)}"
+                    )
+
+            meetings_per_week = cls._parse_meetings_per_week(
+                r[header_sec.index("meetings_per_week")] if "meetings_per_week" in header_sec else None,
+                row_idx,
+            )
+
             sec = CourseSection(
                 section_id=sec_id,
                 course_id=c_id,
@@ -367,6 +643,9 @@ class ExcelDatasetLoader:
                 is_difficult=(diff == "HARD"),
                 required_room_type=req_type,
                 duration_periods=dur,
+                preferred_campus_id=preferred_campus_id,
+                preferred_shift=preferred_shift,
+                meetings_per_week=meetings_per_week,
             )
             course_sections.append(sec)
 
@@ -377,10 +656,11 @@ class ExcelDatasetLoader:
             "student_groups": student_groups,
             "courses": courses,
             "course_sections": course_sections,
+            "constraints": constraint_definitions,
         }
 
     @classmethod
-    def load_and_validate(cls, excel_path: str = "data/01_data_timetable(1).xlsx") -> dict:
+    def load_and_validate(cls, excel_path: str = "data/01_data_timetable.xlsx") -> dict:
         """Load dataset from Excel file and run DatasetValidator validation.
 
         Args:

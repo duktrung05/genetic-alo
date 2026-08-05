@@ -6,7 +6,7 @@ from dataset import ExcelDatasetLoader, DatasetValidator, DatasetFactory, find_f
 from dataset.excel_loader import ExcelValidationError
 from ga import GeneticAlgorithmEngine
 
-EXCEL_PATH = "data/01_data_timetable(1).xlsx"
+EXCEL_PATH = "data/01_data_timetable.xlsx"
 _real_load_workbook = openpyxl.load_workbook
 
 @pytest.mark.unit
@@ -71,8 +71,9 @@ def test_single_load_workbook_call():
 @pytest.mark.unit
 def test_output_sheets_ignored():
     ds = ExcelDatasetLoader.load(EXCEL_PATH)
-    allowed_keys = {"timeslots", "rooms", "lecturers", "student_groups", "courses", "course_sections"}
+    allowed_keys = {"timeslots", "rooms", "lecturers", "student_groups", "courses", "course_sections", "constraints"}
     assert set(ds.keys()) == allowed_keys
+
 
 @pytest.mark.unit
 def test_detailed_error_messages_missing_sheet():

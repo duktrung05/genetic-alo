@@ -25,13 +25,13 @@ class DatasetFactory:
             max_period=16
         )
 
-        # 2. 5 Phòng học (tất cả NORMAL)
+        # 2. 5 Phòng học (tất cả NORMAL) — campus CS1
         rooms = [
-            Room(id="P101", name="Phòng A101", capacity=50, room_type="NORMAL"),
-            Room(id="P102", name="Phòng A102", capacity=75, room_type="NORMAL"),
-            Room(id="P201", name="Phòng B201", capacity=40, room_type="NORMAL"),
-            Room(id="P202", name="Phòng B202", capacity=90, room_type="NORMAL"),
-            Room(id="LAB01", name="Phòng Máy Tính 1", capacity=45, room_type="NORMAL"),
+            Room(id="P101", name="Phòng A101", capacity=50, room_type="NORMAL", campus_id="CS1"),
+            Room(id="P102", name="Phòng A102", capacity=75, room_type="NORMAL", campus_id="CS1"),
+            Room(id="P201", name="Phòng B201", capacity=40, room_type="NORMAL", campus_id="CS1"),
+            Room(id="P202", name="Phòng B202", capacity=90, room_type="NORMAL", campus_id="CS1"),
+            Room(id="LAB01", name="Phòng Máy Tính 1", capacity=45, room_type="NORMAL", campus_id="CS1"),
         ]
 
         # 3. 8 Giáo viên (tất cả available = None)
@@ -48,10 +48,10 @@ class DatasetFactory:
 
         # 4. 4 Lớp Sinh viên
         student_groups = [
-            StudentGroup(id="SV_CNTT1", name="Lớp CNTT01 K18", student_count=65),
-            StudentGroup(id="SV_CNTT2", name="Lớp CNTT02 K18", student_count=42),
-            StudentGroup(id="SV_KHMT1", name="Lớp KHMT01 K18", student_count=35),
-            StudentGroup(id="SV_HTTT1", name="Lớp HTTT01 K18", student_count=80),
+            StudentGroup(id="SV_CNTT1", name="Lớp CNTT01 K18", student_count=65, home_campus_id="CS1"),
+            StudentGroup(id="SV_CNTT2", name="Lớp CNTT02 K18", student_count=42, home_campus_id="CS1"),
+            StudentGroup(id="SV_KHMT1", name="Lớp KHMT01 K18", student_count=35, home_campus_id="CS1"),
+            StudentGroup(id="SV_HTTT1", name="Lớp HTTT01 K18", student_count=80, home_campus_id="CS1"),
         ]
 
         # 5. Các môn học (Courses)
@@ -114,16 +114,16 @@ class DatasetFactory:
         timeslots = create_theory_timeslots(days=days, max_period=16)
         ts_map: Dict[Tuple[str, int], int] = {(ts.day, ts.period): ts.id for ts in timeslots}
 
-        # 2. 8 Phòng học: 6 phòng NORMAL, 2 phòng LAB
+        # 2. 8 Phòng học: 6 phòng NORMAL, 2 phòng LAB; phân bố CS1/CS2 đa dạng
         rooms = [
-            Room(id="P101", name="Phòng A101", capacity=40, room_type="NORMAL"),
-            Room(id="P102", name="Phòng A102", capacity=50, room_type="NORMAL"),
-            Room(id="P103", name="Phòng A103", capacity=65, room_type="NORMAL"),
-            Room(id="P201", name="Phòng B201", capacity=80, room_type="NORMAL"),
-            Room(id="P202", name="Phòng B202", capacity=100, room_type="NORMAL"),
-            Room(id="P301", name="Phòng C301", capacity=120, room_type="NORMAL"),
-            Room(id="P302", name="Phòng C302", capacity=100, room_type="LAB"),
-            Room(id="LAB01", name="Phòng LAB", capacity=160, room_type="LAB"),
+            Room(id="P101", name="Phòng A101", capacity=40, room_type="NORMAL", campus_id="CS1"),
+            Room(id="P102", name="Phòng A102", capacity=50, room_type="NORMAL", campus_id="CS1"),
+            Room(id="P103", name="Phòng A103", capacity=65, room_type="NORMAL", campus_id="CS1"),
+            Room(id="P201", name="Phòng B201", capacity=80, room_type="NORMAL", campus_id="CS2"),
+            Room(id="P202", name="Phòng B202", capacity=100, room_type="NORMAL", campus_id="CS2"),
+            Room(id="P301", name="Phòng C301", capacity=120, room_type="NORMAL", campus_id="CS2"),
+            Room(id="P302", name="Phòng C302", capacity=100, room_type="LAB", campus_id="CS1"),
+            Room(id="LAB01", name="Phòng LAB", capacity=160, room_type="LAB", campus_id="CS2"),
         ]
 
         # Helper to build contiguous available timeslots for restricted lecturers
@@ -157,20 +157,20 @@ class DatasetFactory:
         lecturers = [Lecturer(id=l_id, name=name, available_timeslot_ids=avail) for l_id, name, avail in raw_lecturers_info]
         lec_ids = [l.id for l in lecturers]
 
-        # 4. 12 Lớp Sinh viên
+        # 4. 12 Lớp Sinh viên — campus_home phân bố CS1/CS2
         student_groups = [
-            StudentGroup(id="SV_CNTT1", name="Lớp CNTT01 K18", student_count=75),
-            StudentGroup(id="SV_CNTT2", name="Lớp CNTT02 K18", student_count=65),
-            StudentGroup(id="SV_KHMT1", name="Lớp KHMT01 K18", student_count=50),
-            StudentGroup(id="SV_HTTT1", name="Lớp HTTT01 K18", student_count=110),
-            StudentGroup(id="SV_KTPM1", name="Lớp KTPM01 K18", student_count=45),
-            StudentGroup(id="SV_ATTT1", name="Lớp ATTT02 K18", student_count=90),
-            StudentGroup(id="SV_CNTT3", name="Lớp CNTT03 K18", student_count=35),
-            StudentGroup(id="SV_KHMT2", name="Lớp KHMT02 K18", student_count=100),
-            StudentGroup(id="SV_HTTT2", name="Lớp HTTT02 K18", student_count=55),
-            StudentGroup(id="SV_KTPM2", name="Lớp KTPM02 K18", student_count=40),
-            StudentGroup(id="SV_ATTT2", name="Lớp ATTT02 K18", student_count=70),
-            StudentGroup(id="SV_TTNT1", name="Lớp TTNT01 K18", student_count=32),
+            StudentGroup(id="SV_CNTT1", name="Lớp CNTT01 K18", student_count=75, home_campus_id="CS1"),
+            StudentGroup(id="SV_CNTT2", name="Lớp CNTT02 K18", student_count=65, home_campus_id="CS1"),
+            StudentGroup(id="SV_KHMT1", name="Lớp KHMT01 K18", student_count=50, home_campus_id="CS1"),
+            StudentGroup(id="SV_HTTT1", name="Lớp HTTT01 K18", student_count=110, home_campus_id="CS1"),
+            StudentGroup(id="SV_KTPM1", name="Lớp KTPM01 K18", student_count=45, home_campus_id="CS2"),
+            StudentGroup(id="SV_ATTT1", name="Lớp ATTT02 K18", student_count=90, home_campus_id="CS2"),
+            StudentGroup(id="SV_CNTT3", name="Lớp CNTT03 K18", student_count=35, home_campus_id="CS2"),
+            StudentGroup(id="SV_KHMT2", name="Lớp KHMT02 K18", student_count=100, home_campus_id="CS1"),
+            StudentGroup(id="SV_HTTT2", name="Lớp HTTT02 K18", student_count=55, home_campus_id="CS1"),
+            StudentGroup(id="SV_KTPM2", name="Lớp KTPM02 K18", student_count=40, home_campus_id="CS2"),
+            StudentGroup(id="SV_ATTT2", name="Lớp ATTT02 K18", student_count=70, home_campus_id="CS2"),
+            StudentGroup(id="SV_TTNT1", name="Lớp TTNT01 K18", student_count=32, home_campus_id="CS1"),
         ]
         grp_ids = [g.id for g in student_groups]
         group_map = {g.id: g for g in student_groups}
@@ -212,6 +212,12 @@ class DatasetFactory:
 
         durations = [2] * 36 + [3] * 15 + [4] * 9
 
+        # Preference pools for distribution
+        _campus_pool = ["CS1"] * 40 + ["CS2"] * 20
+        _shift_pool = ["morning"] * 30 + ["afternoon"] * 25 + ["evening"] * 5
+        rng.shuffle(_campus_pool)
+        rng.shuffle(_shift_pool)
+
         course_sections: List[CourseSection] = []
         for i in range(60):
             sec_id = f"LHP{i+1:02d}"
@@ -238,6 +244,9 @@ class DatasetFactory:
                     is_difficult=is_diff,
                     required_room_type=req_room_type,
                     duration_periods=duration,
+                    preferred_campus_id=_campus_pool[i],
+                    preferred_shift=_shift_pool[i],
+                    meetings_per_week=1,
                 )
             )
 
@@ -256,7 +265,7 @@ class DatasetFactory:
         return ds
 
     @staticmethod
-    def create_excel_dataset(excel_path: str = "data/01_data_timetable(1).xlsx") -> dict:
+    def create_excel_dataset(excel_path: str = "data/01_data_timetable.xlsx") -> dict:
         """Load and validate dataset from specified Excel workbook path."""
         from .excel_loader import ExcelDatasetLoader
         return ExcelDatasetLoader.load_and_validate(excel_path)

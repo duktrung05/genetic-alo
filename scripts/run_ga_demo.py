@@ -62,14 +62,23 @@ def main():
     print_schedule_matrix(result['best_schedule'], dataset)
 
     if result['hard_violations'] == 0:
-        from evaluation import export_schedule_to_csv, export_schedule_to_excel, export_metadata_to_json
-        csv_path = "outputs/timetables/best_timetable.csv"
-        excel_path = "outputs/timetables/best_timetable.xlsx"
-        meta_path = "outputs/timetables/best_timetable_metadata.json"
-        export_schedule_to_csv(result['best_schedule'], dataset, csv_path)
-        export_schedule_to_excel(result['best_schedule'], dataset, excel_path)
-        export_metadata_to_json(result, meta_path)
-        print(f"\n--> Đã xuất thời khóa biểu thành công ra file:\n  CSV: {csv_path}\n  Excel: {excel_path}")
+        from evaluation import export_schedule_to_excel, export_metadata_to_json, export_schedule_query_data
+        excel_path = "outputs/production/best_timetable.xlsx"
+        meta_path = "outputs/production/best_timetable_metadata.json"
+        
+        meta = {
+            "method": "Hybrid GA + Repair (Demo)",
+            "hard_violations": result['hard_violations'],
+            "soft_penalty": result.get('soft_penalty', 0),
+            "best_score": result['best_score'],
+        }
+        if "run_metrics" in result:
+            meta.update(result["run_metrics"].to_dict())
+
+        export_schedule_to_excel(result['best_schedule'], dataset, excel_path, metadata=meta)
+        export_metadata_to_json(meta, meta_path)
+        export_schedule_query_data(result['best_schedule'], dataset, hard_violations=result['hard_violations'])
+        print(f"\n--> Đã xuất thời khóa biểu thành công ra file:\n  Excel: {excel_path}\n  Metadata: {meta_path}")
 
 if __name__ == "__main__":
     main()

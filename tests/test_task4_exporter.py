@@ -13,7 +13,7 @@ from evaluation import export_schedule_to_excel, GreedyScheduler, ConvergenceVis
 from evaluation.benchmark_statistics import aggregate_run_results
 
 
-EXCEL_PATH = "data/01_data_timetable(1).xlsx"
+EXCEL_PATH = "data/01_data_timetable.xlsx"
 
 @pytest.fixture
 def sample_dataset():
@@ -250,10 +250,12 @@ def test_soft_feasible_metrics_in_aggregate():
     assert stats["soft_feasible_min"] == 30
     assert stats["soft_feasible_max"] == 50
 
-# 22. Soft constraint afternoon_start_period bằng 7
-def test_soft_constraint_afternoon_start_period_7():
-    config = SoftConstraintConfig()
-    assert config.afternoon_start_period == 7
+# 22. Soft constraint default config
+def test_soft_constraint_default_config():
+    config = SoftConstraintConfig.default()
+    assert config.get_weight("weekly_distribution") == 10
+    assert config.get_weight("late_day_periods") == 5
+
 
 # 23. Output Excel mở lại được bằng openpyxl
 def test_output_excel_reopenable(sample_dataset, feasible_schedule, tmp_path):
