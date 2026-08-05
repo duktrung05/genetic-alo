@@ -1,24 +1,32 @@
 version: '3.8'
 
 services:
+  web-ui:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ga_timetabling_web_ui
+    ports:
+      - "8501:8501"
+    volumes:
+      - ./outputs:/app/outputs
+    command: streamlit run ui_app.py --server.headless true --server.port 8501
+
   benchmark:
     build:
       context: .
       dockerfile: Dockerfile
     container_name: ga_timetabling_benchmark
-    env_file:
-      - .env.example
     volumes:
       - ./outputs:/app/outputs
-    command: python main_benchmark.py --mode report
+    command: python main_benchmark.py --mode fast
 
   test-ga:
     build:
       context: .
       dockerfile: Dockerfile
     container_name: ga_timetabling_test
-    env_file:
-      - .env.example
     volumes:
       - ./outputs:/app/outputs
-    command: python scripts/run_ga_demo.py
+    command: pytest -q
+
