@@ -1,0 +1,3 @@
+comparison,a_wins,c_wins,ties,median_delta,mean_delta,conclusion
+A vs C (GA Exploration),6,4,0,37.0,11.4,Method A (Baseline) better on 60% of seeds
+B vs D (Post-SLS Combination),8,2,0,68.0,76.6,Method B (Hybrid+SLS) better on 80% of seeds

@@ -95,7 +95,13 @@ class GeneticAlgorithmEngine:
         use_repair: bool = True,
         evaluation_budget: Optional[int] = None,
         seed: Optional[int] = None,
+        use_soft_local_search: bool = False,
+        soft_local_search_max_passes: int = 2,
+        soft_local_search_max_candidate_checks: int = 5000,
+        use_guided_mutation: bool = False,
+        guided_mutation_probability: float = 0.8,
     ) -> dict:
+
         if evaluation_budget is not None and evaluation_budget < self.pop_size:
             raise ValueError(f"evaluation_budget ({evaluation_budget}) cannot be smaller than population_size ({self.pop_size}).")
 
@@ -105,6 +111,7 @@ class GeneticAlgorithmEngine:
             np.random.seed(run_seed)
 
         start_time = time.perf_counter()
+
 
         # Reset evaluator counters and repair stats per run
         self.evaluator.counters.reset()
@@ -125,6 +132,18 @@ class GeneticAlgorithmEngine:
         first_feasible_search_eval: Optional[int] = None
         first_feasible_total_eval: Optional[int] = None
         first_feasible_gen: Optional[int] = None
+
+        sgm = None
+        if use_guided_mutation:
+            from .soft_guided_mutation import SoftGuidedMutation
+            sgm = SoftGuidedMutation(self.dataset, evaluator=self.evaluator)
+
+        guided_mutation_stats = {
+            "guided_mutation_calls": 0,
+            "guided_mutation_attempts": 0,
+            "guided_mutation_successes": 0,
+            "guided_mutation_fallbacks": 0,
+        }
 
         for gen in range(generations):
             if evaluation_budget is not None and evaluation_count >= evaluation_budget:
@@ -198,6 +217,18 @@ class GeneticAlgorithmEngine:
             # Lexicographic fitness keys for tournament selection: (hard_violations, soft_penalty)
             fitness_keys = [(hard_v[i], soft_v[i]) for i in range(len(scores))]
 
+            sgm = None
+            if use_guided_mutation:
+                from .soft_guided_mutation import SoftGuidedMutation
+                sgm = SoftGuidedMutation(self.dataset, evaluator=self.evaluator)
+
+            guided_mutation_stats = {
+                "guided_mutation_calls": 0,
+                "guided_mutation_attempts": 0,
+                "guided_mutation_successes": 0,
+                "guided_mutation_fallbacks": 0,
+            }
+
             while len(new_pop) < self.pop_size:
                 p1 = GAOperators.tournament_selection(population[:len(scores)], fitness_keys)
                 p2 = GAOperators.tournament_selection(population[:len(scores)], fitness_keys)
@@ -208,12 +239,20 @@ class GeneticAlgorithmEngine:
                     c1 = Schedule(genes=[Gene(g.section_id, g.room_id, g.timeslot_id) for g in p1.genes])
                     c2 = Schedule(genes=[Gene(g.section_id, g.room_id, g.timeslot_id) for g in p2.genes])
 
-                c1 = GAOperators.mutate(c1, self.rooms, self.timeslots, mutation_rate,
-                    dataset=self.dataset, day_period_to_ts_id=self.day_period_to_ts_id,
-                    day_available_periods=self.day_available_periods)
-                c2 = GAOperators.mutate(c2, self.rooms, self.timeslots, mutation_rate,
-                    dataset=self.dataset, day_period_to_ts_id=self.day_period_to_ts_id,
-                    day_available_periods=self.day_available_periods)
+                if use_guided_mutation and sgm is not None:
+                    c1, s1_st = sgm.mutate(c1, mutation_rate, guided_mutation_probability)
+                    c2, s2_st = sgm.mutate(c2, mutation_rate, guided_mutation_probability)
+                    guided_mutation_stats["guided_mutation_calls"] += (s1_st["guided_mutation_calls"] + s2_st["guided_mutation_calls"])
+                    guided_mutation_stats["guided_mutation_attempts"] += (s1_st["guided_mutation_attempts"] + s2_st["guided_mutation_attempts"])
+                    guided_mutation_stats["guided_mutation_successes"] += (s1_st["guided_mutation_successes"] + s2_st["guided_mutation_successes"])
+                    guided_mutation_stats["guided_mutation_fallbacks"] += (s1_st["guided_mutation_fallbacks"] + s2_st["guided_mutation_fallbacks"])
+                else:
+                    c1 = GAOperators.mutate(c1, self.rooms, self.timeslots, mutation_rate,
+                        dataset=self.dataset, day_period_to_ts_id=self.day_period_to_ts_id,
+                        day_available_periods=self.day_available_periods)
+                    c2 = GAOperators.mutate(c2, self.rooms, self.timeslots, mutation_rate,
+                        dataset=self.dataset, day_period_to_ts_id=self.day_period_to_ts_id,
+                        day_available_periods=self.day_available_periods)
 
                 if use_repair:
                     c1_res = self.repairer.repair(c1)
@@ -230,13 +269,49 @@ class GeneticAlgorithmEngine:
 
             population = new_pop[:self.pop_size]
 
+        # Record soft penalty before SLS intervention
+        soft_before_sls = best_soft
+        soft_after_sls = best_soft
+
+        # Post-search Soft Local Search (only on feasible best schedule)
+        soft_ls_stats = {
+            "soft_ls_calls": 0,
+            "soft_ls_initial_penalty": 0,
+            "soft_ls_final_penalty": 0,
+            "soft_ls_improvement": 0,
+            "soft_ls_candidate_checks": 0,
+            "soft_ls_accepted_moves": 0,
+            "soft_ls_runtime_seconds": 0.0,
+        }
+        if best_hard == 0 and use_soft_local_search and best_schedule is not None:
+            from .soft_local_search import SoftLocalSearch
+            sls = SoftLocalSearch(
+                dataset=self.dataset,
+                evaluator=self.evaluator,
+                max_passes=soft_local_search_max_passes,
+                max_candidate_checks=soft_local_search_max_candidate_checks,
+            )
+            improved_schedule, soft_ls_stats = sls.optimize(best_schedule)
+
+            # Independent Re-evaluation
+            imp_h, _ = self.evaluator.evaluate_hard(improved_schedule, category="internal")
+            imp_s, _ = self.evaluator.evaluate_soft(improved_schedule, category="internal")
+
+            # Invariant assertion check: Hard must remain 0 and Soft must not increase
+            if imp_h == 0 and imp_s <= best_soft:
+                best_schedule = improved_schedule
+                best_soft = imp_s
+                best_score = float((best_hard * self.hard_weight) + (best_soft * self.soft_weight))
+
+        soft_after_sls = best_soft
+
         runtime_seconds = time.perf_counter() - start_time
         _, h_details = self.evaluator.evaluate_hard(best_schedule, category="reporting")
         _, s_details = self.evaluator.evaluate_soft(best_schedule, category="reporting")
         raw_soft_cnt = sum(s_details.values())
 
         method_name = "Hybrid GA + Repair" if use_repair else "GA without Repair"
-        total_candidate_checks = self.evaluator.counters.candidate_checks + self.repairer.stats.candidate_checks
+        total_candidate_checks = self.evaluator.counters.candidate_checks + self.repairer.stats.candidate_checks + soft_ls_stats["soft_ls_candidate_checks"]
 
         metrics = RunMetrics(
             method=method_name,
@@ -271,7 +346,19 @@ class GeneticAlgorithmEngine:
             reporting_constraint_evaluations=self.evaluator.counters.reporting_constraint_evaluations,
             total_hard_constraint_evaluations=self.evaluator.counters.hard_constraint_evaluations,
             total_soft_constraint_evaluations=self.evaluator.counters.soft_constraint_evaluations,
+            soft_ls_calls=soft_ls_stats["soft_ls_calls"],
+            soft_ls_candidate_checks=soft_ls_stats["soft_ls_candidate_checks"],
+            soft_ls_accepted_moves=soft_ls_stats["soft_ls_accepted_moves"],
+            soft_ls_improvement=soft_ls_stats["soft_ls_improvement"],
+            soft_ls_runtime_seconds=soft_ls_stats["soft_ls_runtime_seconds"],
+            soft_before_sls=soft_before_sls,
+            soft_after_sls=soft_after_sls,
+            guided_mutation_calls=guided_mutation_stats.get("guided_mutation_calls", 0),
+            guided_mutation_attempts=guided_mutation_stats.get("guided_mutation_attempts", 0),
+            guided_mutation_successes=guided_mutation_stats.get("guided_mutation_successes", 0),
+            guided_mutation_fallbacks=guided_mutation_stats.get("guided_mutation_fallbacks", 0),
         )
+
 
 
         res_dict = metrics.to_dict()
@@ -286,10 +373,13 @@ class GeneticAlgorithmEngine:
             "soft_details": s_details,
             "history": history,
             "use_repair": use_repair,
+            "use_soft_local_search": use_soft_local_search,
+            "soft_local_search_stats": soft_ls_stats,
             "repair_stats": self.repairer.stats.to_dict(),
             "run_metrics": metrics,
         })
         return res_dict
+
 
 
 

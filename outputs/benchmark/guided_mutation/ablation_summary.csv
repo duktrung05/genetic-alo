@@ -1,0 +1,5 @@
+method_name,feasible_rate,median_soft_before_sls,mean_soft_before_sls,median_final_soft,mean_final_soft,std_final_soft,min_final_soft,max_final_soft,median_runtime_seconds,mean_runtime_seconds
+Method A (Hybrid Baseline),1.0,2496.0,2512.9,2496.0,2512.9,82.6860864286664,2409,2657,3.4856374554801732,3.482569704996422
+Method B (Hybrid + SLS),1.0,2496.0,2512.9,1737.0,1729,117.54148203932091,1565,1899,5.531488651409745,5.516201424482278
+Method C (Hybrid + Guided Mutation),1.0,2515.5,2524.3,2515.5,2524.3,69.88570033355258,2382,2645,4.386913576978259,4.39837808588054
+Method D (Hybrid + Guided Mutation + SLS),1.0,2515.5,2524.3,1798.5,1805.6,142.62709731635462,1586,2130,6.511595390620641,6.534247743943706

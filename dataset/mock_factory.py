@@ -1,5 +1,5 @@
 import random
-from typing import List, Dict, Optional, FrozenSet
+from typing import List, Dict, Optional, FrozenSet ,Tuple
 from domain import Course, CourseSection, Room, Lecturer, StudentGroup, Timeslot
 from .timeslot_factory import create_theory_timeslots
 from .validator import DatasetValidator

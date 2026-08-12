@@ -1,19 +1,3 @@
-"""Soft Constraint Checker Module — S1–S5 Excel-driven constraints.
-
-Evaluates 5 soft constraints whose weights and enabled flags are loaded from the
-CONSTRAINTS sheet of the Excel dataset.  The 4 legacy constraints
-(student_gaps, consecutive_teaching, difficult_afternoon, daily_imbalance) are
-no longer active and MUST NOT be called from ConstraintEvaluator or anywhere in
-the fitness pipeline.
-
-Canonical key mapping (Excel ID → technical key):
-    S1 → weekly_distribution
-    S2 → late_day_periods
-    S3 → preferred_shift_mismatch
-    S4 → room_seat_waste
-    S5 → consecutive_cross_campus
-"""
-
 from __future__ import annotations
 import math
 from dataclasses import dataclass
@@ -82,19 +66,6 @@ class SoftConstraintDefinition:
 
 
 class SoftConstraintConfig:
-    """Immutable configuration for all 5 soft constraints.
-
-    Backed by a MappingProxyType so callers cannot mutate weights after
-    construction.
-
-    Access methods:
-        config.get_weight(key)         → int
-        config.is_enabled(key)         → bool
-        config.get_name(key)           → str
-        config.get_constraint_id(key)  → str
-        config.definitions             → MappingProxyType[str, SoftConstraintDefinition]
-    """
-
     def __init__(self, definitions: Mapping[str, SoftConstraintDefinition]) -> None:
         self._defs: MappingProxyType[str, SoftConstraintDefinition] = MappingProxyType(
             dict(definitions)
@@ -188,16 +159,6 @@ class SoftConstraintConfig:
 # ---------------------------------------------------------------------------
 
 class SoftConstraintChecker:
-    """Evaluates the 5 Excel-driven soft constraints S1–S5.
-
-    Constraint definitions:
-        S1 weekly_distribution      — student group load spread across days
-        S2 late_day_periods         — occupied periods in evening session
-        S3 preferred_shift_mismatch — section assigned to wrong shift
-        S4 room_seat_waste          — unused seats in assigned room
-        S5 consecutive_cross_campus — lecturer moves campus between consecutive blocks
-    """
-
     def __init__(
         self,
         section_map: Dict[str, CourseSection],

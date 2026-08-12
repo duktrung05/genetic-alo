@@ -36,10 +36,10 @@ Hệ thống tối ưu hóa và xếp lịch thời khóa biểu trường đạ
 ## 📊 Dữ Liệu Đầu Vào (`data/01_data_timetable.xlsx`)
 
 Bộ dữ liệu chuẩn quy mô đại học được nạp từ `data/01_data_timetable.xlsx`:
-- **60** lớp học phần (`CourseSection`)
+- **62** lớp học phần (`CourseSection`)
 - **15** giảng viên (`Lecturer`)
 - **12** nhóm sinh viên (`StudentGroup`)
-- **15** phòng học (`Room`: NORMAL & LAB)
+- **11** phòng học (`Room`: NORMAL & LAB)
 - **96** khung giờ tiết học (`Timeslot`: 6 ngày x 16 tiết/ngày, phân ca Sáng / Chiều / Tối)
 
 ---
@@ -90,18 +90,16 @@ pip install -r requirements.txt
 
 ## 🧪 Kiểm Thử Hệ Thống (Pytest Suite)
 
-Dự án đi kèm bộ test tự động toàn diện: **`314 tests passed / 0 failed`** (bao gồm **14 tests** kiểm thử package `schedule_assistant`), kiểm thử toàn bộ domain, dataset, constraints, repair engine, GA operators, exporter và benchmark metrics.
+Dự án đi kèm bộ test tự động toàn diện: **`309 tests passed / 0 failed`** (bao gồm 10 unit tests thử nghiệm Soft-Guided Mutation và 18 unit tests cho Soft Local Search), kiểm thử toàn bộ domain, dataset, constraints, repair engine, GA operators, exporter và benchmark metrics.
 
 ```bash
-# Chạy toàn bộ 314 test cases
+# Chạy toàn bộ 309 test cases
 pytest -q
 
 # Kiểm tra collection
 pytest --collect-only -q
-
-# Kiểm tra riêng package schedule_assistant
-pytest tests/test_schedule_assistant.py -q
 ```
+
 
 ---
 

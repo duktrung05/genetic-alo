@@ -1,5 +1,0 @@
-﻿method,runs,is_deterministic,feasible_count,feasible_rate,perfect_count,perfect_rate,hard_mean,hard_median,hard_std,soft_feasible_mean,soft_feasible_median,runtime_mean,runtime_median
-GA without Repair,30,False,27,0.9,0,0.0,0.1,0.0,0.3,317.48148148148147,322.0,6.477823703367418,6.452503899985459
-Hybrid GA + Repair,30,False,30,1.0,0,0.0,0.0,0.0,0.0,58.5,60.5,12.91458962187559,12.84184790449217
-Greedy Search,1,True,1,1.0,0,0.0,0.0,0.0,0.0,1208.0,1208.0,0.002110529050696641,0.002110529050696641
-Random Search,30,False,0,0.0,0,0.0,29.0,29.5,2.04939015319192,,,2.6858157349013103,2.6827385784708895

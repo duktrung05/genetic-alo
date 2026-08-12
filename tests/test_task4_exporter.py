@@ -54,7 +54,8 @@ def test_raw_assignments_row_count(sample_dataset, feasible_schedule, tmp_path):
     export_schedule_to_excel(feasible_schedule, sample_dataset, out_file)
     wb = openpyxl.load_workbook(out_file)
     ws = wb["RAW_ASSIGNMENTS"]
-    assert ws.max_row - 1 == len(sample_dataset["course_sections"]) == 60
+    assert ws.max_row - 1 == len(sample_dataset["course_sections"])
+
 
 # 5. Duration 4 start 8 xuất "Tiết 8-11"
 def test_periods_string_duration_4_start_8(sample_dataset, feasible_schedule, tmp_path):
@@ -174,10 +175,10 @@ def test_summary_and_config_sheet_values(sample_dataset, feasible_schedule, tmp_
     assert str(config_map.get("population_size")) == "60"
 
 # 13. Benchmark tạo thư mục timestamp riêng
-def test_benchmark_creates_timestamp_directory():
+def test_benchmark_creates_timestamp_directory(tmp_path):
     import datetime
     timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-    benchmark_dir = os.path.join("outputs", "benchmarks", f"benchmark_{timestamp}")
+    benchmark_dir = os.path.join(tmp_path, "benchmarks", f"benchmark_{timestamp}")
     os.makedirs(benchmark_dir, exist_ok=True)
     assert os.path.exists(benchmark_dir)
 
@@ -201,7 +202,8 @@ def test_snapshot_shared_across_seeds(sample_dataset):
     snap1 = ExcelDatasetLoader.export_normalized_json(sample_dataset, "outputs/datasets/01_data_timetable.normalized.json")
     ds1 = ExcelDatasetLoader.load_normalized_json(snap1)
     ds2 = ExcelDatasetLoader.load_normalized_json(snap1)
-    assert len(ds1["course_sections"]) == len(ds2["course_sections"]) == 60
+    assert len(ds1["course_sections"]) == len(ds2["course_sections"])
+
 
 # 17. Engine không reuse mutable state
 def test_ga_engine_isolated_instances(sample_dataset):

@@ -27,11 +27,11 @@ def test_excel_loader_parses_entities():
     assert "course_sections" in ds
 
     assert len(ds["timeslots"]) == 96
-    assert len(ds["rooms"]) == 15
+    assert len(ds["rooms"]) == 11
     assert len(ds["lecturers"]) == 15
     assert len(ds["student_groups"]) == 12
     assert len(ds["courses"]) == 20
-    assert len(ds["course_sections"]) == 60
+    assert len(ds["course_sections"]) == 62
 
 @pytest.mark.unit
 def test_excel_loader_validate_report():
@@ -40,8 +40,9 @@ def test_excel_loader_validate_report():
 
     assert report["valid"] is True
     assert len(report["errors"]) == 0
-    assert report["statistics"]["sections"] == 60
+    assert report["statistics"]["sections"] == 62
     assert report["statistics"]["total_periods"] == 96
+
 
 @pytest.mark.unit
 def test_json_snapshot_roundtrip_no_data_loss(tmp_path):

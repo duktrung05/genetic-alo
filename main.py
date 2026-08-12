@@ -1,81 +1,128 @@
-"""Main Entry Point — Production Timetable Generation (Hybrid GA + Repair).
-
-Executes the primary project algorithm (Hybrid GA + Repair) to generate the
-official timetable workbook.
-"""
-
 import sys
 import os
 import argparse
-import time
+from datetime import datetime
 from pathlib import Path
+
 import matplotlib.pyplot as plt
 
-sys.stdout.reconfigure(encoding='utf-8')
+sys.stdout.reconfigure(encoding="utf-8")
 
 from dataset import ExcelDatasetLoader
 from constraints import ConstraintEvaluator
 from ga import GeneticAlgorithmEngine
-from evaluation import export_schedule_to_excel, export_schedule_query_data
-
+from evaluation import (
+    export_schedule_to_excel,
+    export_schedule_query_data,
+    export_metadata_to_json,
+)
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(description="Production Timetable Generator (Hybrid GA + Repair)")
+    parser = argparse.ArgumentParser(
+        description="Production Timetable Generator (Hybrid GA + Repair)"
+    )
+
     parser.add_argument(
         "--input",
         type=str,
         default="data/01_data_timetable.xlsx",
-        help="Input Excel dataset path (default: data/01_data_timetable.xlsx)"
+        help="Input Excel dataset path "
+        "(default: data/01_data_timetable.xlsx)",
     )
+
     parser.add_argument(
         "--output",
         type=str,
         default="outputs/production/best_timetable.xlsx",
-        help="Output official Excel timetable path (default: outputs/production/best_timetable.xlsx)"
+        help="Output official Excel timetable path "
+        "(default: outputs/production/best_timetable.xlsx)",
     )
+
     parser.add_argument(
         "--seed",
         type=int,
         default=42,
-        help="Random seed for execution reproducibility (default: 42)"
+        help="Random seed for execution reproducibility (default: 42)",
     )
+
     parser.add_argument(
         "--search-evaluation-budget",
         type=int,
         default=1000,
-        help="Search fitness evaluation budget (default: 1000)"
+        help="Search fitness evaluation budget (default: 1000)",
     )
+
     parser.add_argument(
         "--population-size",
         type=int,
         default=60,
-        help="GA Population Size (default: 60)"
+        help="GA Population Size (default: 60)",
     )
+
+    parser.add_argument(
+        "--soft-local-search",
+        action="store_true",
+        default=False,
+        help="Enable post-search Soft Local Search (default: False)",
+    )
+
     return parser.parse_args()
 
 
 def main():
     args = parse_args()
+
     print("=" * 80)
-    print("PRODUCTION TIMETABLE GENERATOR — HYBRID GA + REPAIR (PRIMARY METHOD)")
+    print(
+        "PRODUCTION TIMETABLE GENERATOR — "
+        "HYBRID GA + REPAIR + OPTIONAL POST-SEARCH SLS"
+    )
     print("=" * 80)
 
-    # 1. Load Dataset
+    # ==================================================================
+    # 1. LOAD DATASET
+    # ==================================================================
+
     input_path = args.input
     snapshot_path = "outputs/datasets/01_data_timetable.normalized.json"
 
     if os.path.exists(input_path):
-        print(f"\n[Phase 1] Đang tải dữ liệu từ Excel file '{input_path}'...")
-        dataset = ExcelDatasetLoader.load_and_validate(input_path)
-    elif os.path.exists(snapshot_path):
-        print(f"\n[Phase 1] Đang tải dữ liệu từ Normalized JSON Snapshot '{snapshot_path}'...")
-        dataset = ExcelDatasetLoader.load_normalized_json(snapshot_path)
-    else:
-        raise FileNotFoundError(f"Neither Excel input '{input_path}' nor snapshot '{snapshot_path}' exist!")
+        print(
+            f"\n[Phase 1] Đang tải dữ liệu từ Excel file "
+            f"'{input_path}'..."
+        )
 
-    # 2. Run Hybrid GA + Repair (Primary Project Method ONLY)
-    print("\n[Phase 2] Đang chạy Thuật toán chính: Hybrid GA + Repair...")
+        dataset = ExcelDatasetLoader.load_and_validate(input_path)
+
+    elif os.path.exists(snapshot_path):
+        print(
+            f"\n[Phase 1] Đang tải dữ liệu từ Normalized JSON Snapshot "
+            f"'{snapshot_path}'..."
+        )
+
+        dataset = ExcelDatasetLoader.load_normalized_json(snapshot_path)
+
+    else:
+        raise FileNotFoundError(
+            f"Neither Excel input '{input_path}' "
+            f"nor snapshot '{snapshot_path}' exist!"
+        )
+
+    # ==================================================================
+    # 2. RUN HYBRID GA + REPAIR
+    # ==================================================================
+
+    print("\n[Phase 2] Đang chạy thuật toán chính: Hybrid GA + Repair...")
+
+    if args.soft_local_search:
+        print(
+            "[Phase 2] Post-Search Soft Local Search: ENABLED "
+            "(quality optimization)"
+        )
+    else:
+        print("[Phase 2] Post-Search Soft Local Search: DISABLED")
+
     ga_config = {
         "pop_size": args.population_size,
         "generations": 100,
@@ -93,58 +140,279 @@ def main():
         seed=args.seed,
     )
 
-    start_time = time.perf_counter()
     run_result = engine.run(
         generations=ga_config["generations"],
         crossover_rate=ga_config["crossover_rate"],
         mutation_rate=ga_config["mutation_rate"],
         use_repair=True,
+        use_soft_local_search=args.soft_local_search,
         evaluation_budget=args.search_evaluation_budget,
         seed=args.seed,
     )
 
+    # ------------------------------------------------------------------
+    # IMPORTANT:
+    # best_schedule ở đây phải là schedule cuối cùng do engine trả về.
+    # Nếu SLS được bật, đây phải là schedule AFTER SLS.
+    # ------------------------------------------------------------------
+
     best_schedule = run_result["best_schedule"]
-    hard_violations = run_result["hard_violations"]
-    soft_penalty = run_result["soft_penalty"]
     metrics = run_result["run_metrics"]
 
-    print("\n" + "=" * 80)
-    print("KẾT QUẢ TẠO THỜI KHÓA BIỂU — HYBRID GA + REPAIR:")
-    print("=" * 80)
-    print(f"  METHOD                   : Hybrid GA + Repair")
-    print(f"  Seed                     : {args.seed}")
-    print(f"  Search Budget            : {args.search_evaluation_budget}")
-    print(f"  Runtime (s)              : {metrics.runtime_seconds:.4f}")
-    print(f"  Time to First Feasible   : {metrics.time_to_first_feasible_seconds}")
-    print(f"  Final Hard Violations    : {hard_violations}")
-    print(f"  Final Soft Penalty       : {soft_penalty}")
-    print(f"  Hard Feasible            : {'CÓ (0 vi phạm)' if hard_violations == 0 else 'KHÔNG'}")
+    # ==================================================================
+    # 3. FINAL INDEPENDENT RE-EVALUATION
+    # ==================================================================
+    #
+    # KHÔNG dùng run_result["soft_penalty"] làm source of truth
+    # cho production output.
+    #
+    # Luôn evaluate lại chính best_schedule cuối cùng.
+    #
+    # Đây là fix chính cho bug:
+    #
+    #   GA + Repair = 2063
+    #   SLS         = 1671
+    #   metadata    = 2063  <-- OLD BUG
+    #
+    # Sau fix:
+    #
+    #   Final Schedule
+    #       ↓
+    #   Evaluator
+    #       ↓
+    #   Excel / Query JSON / Metadata / UI đều cùng final score.
+    # ==================================================================
 
-    # 3. Soft constraint breakdown
     evaluator = ConstraintEvaluator(dataset)
     unified = evaluator.evaluate_unified(best_schedule)
-    print("\n  CHI TIẾT RÀNG BUỘC MỀM (SOFT CONSTRAINTS S1–S5):")
-    print(f"  {'ID':<4} | {'Technical Key':<26} | {'Raw':<5} | {'Weight':<6} | {'Weighted Penalty'}")
-    print("  " + "-" * 65)
-    for item in unified.soft_breakdown:
-        print(f"  {item.constraint_id:<4} | {item.constraint_key:<26} | {item.raw_count:<5} | {item.weight:<6} | {item.weighted_penalty}")
-    print(f"  TỔNG PHẠM QUY MỀM (SOFT PENALTY): {unified.soft_penalty}")
+
+    hard_violations = unified.hard_violations
+    soft_penalty = unified.soft_penalty
+
+    # Audit information cho SLS
+    soft_before_sls = getattr(metrics, "soft_before_sls", None)
+
+    # Source of truth của "after SLS" luôn là final schedule
+    # vừa được evaluator kiểm tra độc lập.
+    soft_after_sls = soft_penalty
+
+    # ==================================================================
+    # 4. PRINT FINAL PRODUCTION RESULT
+    # ==================================================================
+
+    method_name = (
+        "Hybrid GA + Repair + Post-Search SLS"
+        if args.soft_local_search
+        else "Hybrid GA + Repair"
+    )
+
+    print("\n" + "=" * 80)
+    print("KẾT QUẢ TẠO THỜI KHÓA BIỂU — FINAL PRODUCTION RESULT")
     print("=" * 80)
 
-    # 4. Export official timetable workbook if feasible
+    print(f"  METHOD                   : {method_name}")
+    print(f"  Seed                     : {args.seed}")
+    print(
+        f"  Search Budget            : "
+        f"{args.search_evaluation_budget}"
+    )
+    print(
+        f"  Runtime (s)              : "
+        f"{metrics.runtime_seconds:.4f}"
+    )
+    print(
+        f"  Time to First Feasible   : "
+        f"{metrics.time_to_first_feasible_seconds}"
+    )
+    print(
+        f"  Final Hard Violations    : "
+        f"{hard_violations}"
+    )
+    print(
+        f"  Final Soft Penalty       : "
+        f"{soft_penalty}"
+    )
+
+    if args.soft_local_search:
+        print(
+            f"  Soft Before SLS          : "
+            f"{soft_before_sls}"
+        )
+        print(
+            f"  Soft After SLS           : "
+            f"{soft_after_sls}"
+        )
+
+    print(
+        f"  Hard Feasible            : "
+        f"{'CÓ (0 vi phạm)' if hard_violations == 0 else 'KHÔNG'}"
+    )
+
+    # ==================================================================
+    # 5. SOFT CONSTRAINT BREAKDOWN
+    # ==================================================================
+
+    print("\n  CHI TIẾT RÀNG BUỘC MỀM (SOFT CONSTRAINTS S1–S5):")
+
+    print(
+        f"  {'ID':<4} | "
+        f"{'Technical Key':<26} | "
+        f"{'Raw':<5} | "
+        f"{'Weight':<6} | "
+        f"{'Weighted Penalty'}"
+    )
+
+    print("  " + "-" * 65)
+
+    for item in unified.soft_breakdown:
+        print(
+            f"  {item.constraint_id:<4} | "
+            f"{item.constraint_key:<26} | "
+            f"{item.raw_count:<5} | "
+            f"{item.weight:<6} | "
+            f"{item.weighted_penalty}"
+        )
+
+    print(
+        f"  TỔNG PHẠM QUY MỀM (SOFT PENALTY): "
+        f"{soft_penalty}"
+    )
+
+    print("=" * 80)
+
+    # ==================================================================
+    # 6. PREPARE OUTPUT DIRECTORY
+    # ==================================================================
+
     output_path = Path(args.output)
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
+    metadata_path = (
+        output_path.parent / "best_timetable_metadata.json"
+    )
+
+    query_json_path = (
+        output_path.parent / "schedule_query_data.json"
+    )
+
+    # ==================================================================
+    # 7. SYNCHRONIZE RUN METRICS FOR EXPORT
+    # ==================================================================
+    #
+    # metrics.to_dict() có thể vẫn chứa final_soft_penalty
+    # từ trước khi SLS chạy.
+    #
+    # Ta tạo một bản dictionary rồi override các field FINAL
+    # bằng kết quả từ independent re-evaluation.
+    # ==================================================================
+
+    metrics_dict = metrics.to_dict()
+
+    metrics_dict["hard_violations"] = hard_violations
+    metrics_dict["soft_penalty"] = soft_penalty
+
+    metrics_dict["final_hard_violations"] = hard_violations
+    metrics_dict["final_soft_penalty"] = soft_penalty
+
+    metrics_dict["soft_before_sls"] = soft_before_sls
+    metrics_dict["soft_after_sls"] = soft_after_sls
+
+    metrics_dict["feasible"] = hard_violations == 0
+    metrics_dict["is_hard_feasible"] = hard_violations == 0
+
+    # Nếu score tồn tại và Hard = 0 thì score cuối
+    # phải phản ánh final Soft Penalty.
+    if "score" in metrics_dict:
+        metrics_dict["score"] = (
+            float(soft_penalty)
+            if hard_violations == 0
+            else metrics_dict["score"]
+        )
+
+    # ==================================================================
+    # 8. BUILD FINAL METADATA
+    # ==================================================================
+
     meta_export = {
-        "method": "Hybrid GA + Repair",
+        "method": method_name,
         "primary_method": "hybrid",
         "selected_methods": "hybrid",
+
         "seed": args.seed,
-        "hard_violations": hard_violations,
-        "soft_penalty": soft_penalty,
-        "runtime_seconds": metrics.runtime_seconds,
-        "all_runs_flat": [metrics.to_dict()],
+
+        "generated_at": datetime.now().isoformat(
+            timespec="seconds"
+        ),
+
+        "search_evaluation_budget":
+            args.search_evaluation_budget,
+
+        "population_size":
+            args.population_size,
+
+        "generations":
+            ga_config["generations"],
+
+        "crossover_rate":
+            ga_config["crossover_rate"],
+
+        "mutation_rate":
+            ga_config["mutation_rate"],
+
+        "soft_local_search_enabled":
+            args.soft_local_search,
+
+        # --------------------------------------------------------------
+        # FINAL PRODUCTION RESULT
+        # --------------------------------------------------------------
+
+        "hard_violations":
+            hard_violations,
+
+        "soft_penalty":
+            soft_penalty,
+
+        "final_hard_violations":
+            hard_violations,
+
+        "final_soft_penalty":
+            soft_penalty,
+
+        "feasible":
+            hard_violations == 0,
+
+        # --------------------------------------------------------------
+        # SLS AUDIT
+        # --------------------------------------------------------------
+
+        "soft_before_sls":
+            soft_before_sls,
+
+        "soft_after_sls":
+            soft_after_sls,
+
+        # --------------------------------------------------------------
+        # RUNTIME
+        # --------------------------------------------------------------
+
+        "runtime_seconds":
+            metrics.runtime_seconds,
+
+        "time_to_first_feasible_seconds":
+            metrics.time_to_first_feasible_seconds,
+
+        # --------------------------------------------------------------
+        # RUN METRICS
+        # --------------------------------------------------------------
+
+        "all_runs_flat": [
+            metrics_dict
+        ],
     }
+
+    # ==================================================================
+    # 9. EXPORT OFFICIAL TIMETABLE EXCEL
+    # ==================================================================
 
     exported_file = export_schedule_to_excel(
         schedule=best_schedule,
@@ -153,10 +421,17 @@ def main():
         metadata=meta_export,
         allow_infeasible_export=False,
     )
-    print(f"\n--> Đã xuất workbook thời khóa biểu chính thức tại: {exported_file}")
+
+    print(
+        f"\n--> Đã xuất workbook thời khóa biểu chính thức tại: "
+        f"{exported_file}"
+    )
+
+    # ==================================================================
+    # 10. EXPORT QUERY JSON
+    # ==================================================================
 
     if hard_violations == 0:
-        query_json_path = output_path.parent / "schedule_query_data.json"
         query_file = export_schedule_query_data(
             schedule=best_schedule,
             dataset=dataset,
@@ -165,34 +440,157 @@ def main():
             soft_penalty=soft_penalty,
             metadata=meta_export,
         )
-        print(f"--> Đã xuất dữ liệu tra cứu JSON tại: {query_file}")
 
-    # 5. Plot Hybrid convergence chart
+        print(
+            f"--> Đã xuất dữ liệu tra cứu JSON tại: "
+            f"{query_file}"
+        )
+
+    # ==================================================================
+    # 11. EXPORT FINAL METADATA JSON
+    # ==================================================================
+    #
+    # Đây là phần trước đây main.py bị thiếu.
+    #
+    # Nếu không ghi lại file này thì UI tiếp tục đọc
+    # best_timetable_metadata.json cũ.
+    # ==================================================================
+
+    export_metadata_to_json(
+        meta_export,
+        metadata_path,
+    )
+
+    print(
+        f"--> Đã xuất metadata FINAL tại: "
+        f"{metadata_path}"
+    )
+
+    # ==================================================================
+    # 12. FINAL EXPORT CONSISTENCY SUMMARY
+    # ==================================================================
+
+    print("\n" + "=" * 80)
+    print("FINAL OUTPUT CONSISTENCY")
+
+    print(
+        f"  Excel Final Hard         : "
+        f"{hard_violations}"
+    )
+
+    print(
+        f"  Excel Final Soft         : "
+        f"{soft_penalty}"
+    )
+
+    print(
+        f"  Metadata Final Hard      : "
+        f"{hard_violations}"
+    )
+
+    print(
+        f"  Metadata Final Soft      : "
+        f"{soft_penalty}"
+    )
+
+    if args.soft_local_search:
+        print(
+            f"  SLS Improvement          : "
+            f"{soft_before_sls} -> {soft_after_sls}"
+        )
+
+    print("=" * 80)
+
+    # ==================================================================
+    # 13. PLOT GA CONVERGENCE CHART
+    # ==================================================================
+    #
+    # Lưu ý:
+    # history là quá trình GLOBAL GA SEARCH.
+    # SLS là post-search nên final SLS score có thể thấp hơn
+    # điểm cuối trên convergence curve.
+    # ==================================================================
+
     history = run_result.get("history", [])
+
     if history:
         chart_dir = output_path.parent
         chart_path = chart_dir / "convergence_hybrid.png"
-        gens = [h["generation"] for h in history]
-        hards = [h["best_hard"] for h in history]
-        softs = [h["best_soft_penalty"] for h in history]
 
-        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 4.5))
-        ax1.plot(gens, hards, color="#D95F02", linewidth=2, label="Hard Violations")
-        ax1.set_title("Hybrid GA + Repair — Hard Violations Convergence")
+        gens = [
+            h["generation"]
+            for h in history
+        ]
+
+        hards = [
+            h["best_hard"]
+            for h in history
+        ]
+
+        softs = [
+            h["best_soft_penalty"]
+            for h in history
+        ]
+
+        fig, (ax1, ax2) = plt.subplots(
+            1,
+            2,
+            figsize=(12, 4.5),
+        )
+
+        ax1.plot(
+            gens,
+            hards,
+            linewidth=2,
+            label="Hard Violations",
+        )
+
+        ax1.set_title(
+            "Hybrid GA + Repair — Hard Violations Convergence"
+        )
+
         ax1.set_xlabel("Generation")
         ax1.set_ylabel("Hard Violations")
-        ax1.grid(True, linestyle="--", alpha=0.6)
 
-        ax2.plot(gens, softs, color="#7570B3", linewidth=2, label="Soft Penalty")
-        ax2.set_title("Hybrid GA + Repair — Soft Penalty Convergence")
+        ax1.grid(
+            True,
+            linestyle="--",
+            alpha=0.6,
+        )
+
+        ax2.plot(
+            gens,
+            softs,
+            linewidth=2,
+            label="Soft Penalty",
+        )
+
+        ax2.set_title(
+            "Hybrid GA Search — Soft Penalty Convergence"
+        )
+
         ax2.set_xlabel("Generation")
         ax2.set_ylabel("Soft Penalty")
-        ax2.grid(True, linestyle="--", alpha=0.6)
+
+        ax2.grid(
+            True,
+            linestyle="--",
+            alpha=0.6,
+        )
 
         plt.tight_layout()
-        plt.savefig(chart_path, dpi=300)
+
+        plt.savefig(
+            chart_path,
+            dpi=300,
+        )
+
         plt.close()
-        print(f"--> Đã lưu biểu đồ hội tụ Hybrid tại: {chart_path}")
+
+        print(
+            f"--> Đã lưu biểu đồ hội tụ Hybrid tại: "
+            f"{chart_path}"
+        )
 
 
 if __name__ == "__main__":

@@ -1,0 +1,12 @@
+seed,method_a_soft,method_c_soft,delta_c_minus_a,winner
+0,2472,2511,39,Method A
+1,2657,2514,-143,Method C
+2,2433,2557,124,Method A
+3,2537,2517,-20,Method C
+4,2476,2522,46,Method A
+5,2437,2382,-55,Method C
+6,2516,2602,86,Method A
+7,2409,2505,96,Method A
+8,2610,2645,35,Method A
+9,2582,2488,-94,Method C
+SUMMARY,A_wins: 6/10,C_wins: 4/10,"Median: +37.0, Mean: +11.4",Ties: 0/10

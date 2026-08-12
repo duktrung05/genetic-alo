@@ -1,0 +1,5 @@
+method_name,median_soft_before_sls,median_soft_after_sls,sls_median_delta,sls_mean_accepted_moves
+Method A (Hybrid Baseline),2496.0,2496.0,0.0,0
+Method B (Hybrid + SLS),2496.0,1737.0,-759.0,42.9
+Method C (Hybrid + Guided Mutation),2515.5,2515.5,0.0,0
+Method D (Hybrid + Guided Mutation + SLS),2515.5,1798.5,-717.0,42.1

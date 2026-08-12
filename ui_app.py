@@ -57,7 +57,6 @@ def load_production_data():
 
 
 def sort_assignments(assignments: list) -> list:
-    """Sort assignments deterministically by Day, Start Period, Room Name, Section ID."""
     return sorted(
         assignments,
         key=lambda a: (
@@ -121,8 +120,8 @@ def main():
     st.markdown("### 📊 Trạng thái lịch sản phẩm")
     col1, col2, col3, col4 = st.columns(4)
 
-    hard_v = meta.get("hard_violations", meta.get("final_hard_violations", 0))
-    soft_p = meta.get("soft_penalty", meta.get("final_soft_penalty", 0))
+    hard_v = meta.get("final_hard_violations", meta.get("hard_violations", 0))
+    soft_p = meta.get("final_soft_penalty", meta.get("soft_penalty", 0))
     total_sec = len(assignments)
     gen_time = meta.get("generated_at", meta.get("timestamp", "N/A"))
     if isinstance(gen_time, str) and "T" in gen_time:
@@ -164,7 +163,7 @@ def main():
     if excel_file_path.exists():
         with open(excel_file_path, "rb") as f:
             st.sidebar.download_button(
-                label="📥 Tải thời khóa biểu Excel",
+                label="Tải thời khóa biểu Excel",
                 data=f.read(),
                 file_name="best_timetable.xlsx",
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",

@@ -1,6 +1,14 @@
-version: '3.8'
-
 services:
+
+  production:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ga_timetabling_production
+    volumes:
+      - ./outputs:/app/outputs
+    command: python main.py --seed 42 --soft-local-search
+
   web-ui:
     build:
       context: .
@@ -10,7 +18,7 @@ services:
       - "8501:8501"
     volumes:
       - ./outputs:/app/outputs
-    command: streamlit run ui_app.py --server.headless true --server.port 8501
+    command: streamlit run ui_app.py --server.headless true --server.port 8501 --server.address 0.0.0.0
 
   benchmark:
     build:
@@ -29,4 +37,3 @@ services:
     volumes:
       - ./outputs:/app/outputs
     command: pytest -q
-

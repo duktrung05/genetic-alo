@@ -1,0 +1,14 @@
+Metric,Baseline (SLS OFF),SLS ON (Budget 5000),Delta / Paired Imp
+Runs,10,10,10 paired seeds
+Feasible Rate,100.0%,100.0%,0% hard regression
+Median Hard,0.0,0.0,0
+Mean Hard,0,0,0
+Median Soft,2496.0,1737.0,-759.0
+Mean Soft,2512.9,1729,-783.9
+Std Soft,78.44,111.51,N/A
+Min Soft,2409,1565,N/A
+Max Soft,2657,1899,N/A
+Median Paired Improvement %,N/A,N/A,30.29%
+Mean Paired Improvement %,N/A,N/A,31.17%
+Std Paired Improvement %,N/A,N/A,4.33%
+Median Runtime (s),3.5,5.47,+1.97s

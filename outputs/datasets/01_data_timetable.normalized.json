@@ -771,12 +771,6 @@
   ],
   "rooms": [
     {
-      "id": "205-A9-CS1",
-      "name": "A9-205",
-      "capacity": 80,
-      "room_type": "NORMAL"
-    },
-    {
       "id": "206-A9-CS1",
       "name": "A9-206",
       "capacity": 70,
@@ -801,12 +795,6 @@
       "room_type": "NORMAL"
     },
     {
-      "id": "603-A8-CS1",
-      "name": "A8-603",
-      "capacity": 80,
-      "room_type": "NORMAL"
-    },
-    {
       "id": "LAB-A1-01-CS1",
       "name": "A1-LAB-01",
       "capacity": 72,
@@ -817,12 +805,6 @@
       "name": "A1-LAB-02",
       "capacity": 60,
       "room_type": "LAB"
-    },
-    {
-      "id": "301-A9-CS2",
-      "name": "A9-301",
-      "capacity": 80,
-      "room_type": "NORMAL"
     },
     {
       "id": "302-A9-CS2",
@@ -846,12 +828,6 @@
       "id": "402-A8-CS2",
       "name": "A8-402",
       "capacity": 100,
-      "room_type": "NORMAL"
-    },
-    {
-      "id": "403-A8-CS2",
-      "name": "A8-403",
-      "capacity": 80,
       "room_type": "NORMAL"
     },
     {
@@ -1430,8 +1406,8 @@
       "student_count": 44
     },
     {
-      "id": "HTT2-K18",
-      "name": "HTT2",
+      "id": "HTTT2-K18",
+      "name": "HTTT2",
       "student_count": 40
     }
   ],
@@ -1516,7 +1492,7 @@
     },
     {
       "course_id": "C14",
-      "name": "Điện toán đám mây",
+      "name": "Deeplearning",
       "credits": 3,
       "is_difficult": true
     },
@@ -2164,59 +2140,81 @@
       "duration_periods": 2
     },
     {
-      "section_id": "SEC-HTT2-C04",
+      "section_id": "SEC-HTTT2-C04",
       "course_id": "C04",
       "course_name": "Mạng máy tính",
       "lecturer_id": "GV03",
-      "group_id": "HTT2-K18",
+      "group_id": "HTTT2-K18",
       "student_count": 40,
       "is_difficult": false,
       "required_room_type": "NORMAL",
       "duration_periods": 2
     },
     {
-      "section_id": "SEC-HTT2-C05",
+      "section_id": "SEC-HTTT2-C05",
       "course_id": "C05",
       "course_name": "Hệ điều hành",
       "lecturer_id": "GV04",
-      "group_id": "HTT2-K18",
+      "group_id": "HTTT2-K18",
       "student_count": 40,
       "is_difficult": true,
       "required_room_type": "NORMAL",
       "duration_periods": 2
     },
     {
-      "section_id": "SEC-HTT2-C06",
+      "section_id": "SEC-HTTT2-C06",
       "course_id": "C06",
       "course_name": "Kiến trúc máy tính",
       "lecturer_id": "GV04",
-      "group_id": "HTT2-K18",
+      "group_id": "HTTT2-K18",
       "student_count": 40,
       "is_difficult": false,
       "required_room_type": "NORMAL",
       "duration_periods": 2
     },
     {
-      "section_id": "SEC-HTT2-C14",
+      "section_id": "SEC-HTTT2-C14",
       "course_id": "C14",
       "course_name": "Deeplearning",
       "lecturer_id": "GV11",
-      "group_id": "HTT2-K18",
+      "group_id": "HTTT2-K18",
       "student_count": 40,
       "is_difficult": true,
       "required_room_type": "LAB",
       "duration_periods": 3
     },
     {
-      "section_id": "SEC-HTT2-C01",
+      "section_id": "SEC-HTTT2-C01",
       "course_id": "C01",
       "course_name": "Lập trình hướng đối tượng",
       "lecturer_id": "GV01",
-      "group_id": "HTT2-K18",
+      "group_id": "HTTT2-K18",
       "student_count": 40,
       "is_difficult": false,
       "required_room_type": "NORMAL",
       "duration_periods": 4
+    },
+    {
+      "section_id": "SEC-KHMT1-C11",
+      "course_id": "C11",
+      "course_name": "Khai phá dữ liệu",
+      "lecturer_id": "GV07",
+      "group_id": "KHMT1-K18",
+      "student_count": 55,
+      "is_difficult": true,
+      "required_room_type": "LAB",
+      "duration_periods": 3
+    },
+    {
+      "section_id": "SEC-ATTT1-C20",
+      "course_id": "C20",
+      "course_name": "Triết học Mác-Lênin",
+      "lecturer_id": "GV15",
+      "group_id": "ATTT1-K18",
+      "student_count": 46,
+      "is_difficult": false,
+      "required_room_type": "NORMAL",
+      "duration_periods": 2
     }
   ]
 }

@@ -1,0 +1,12 @@
+seed,method_b_final_soft,method_d_final_soft,delta_d_minus_b,winner
+0,1615,1719,104,Method B
+1,1867,1586,-281,Method D
+2,1565,1761,196,Method B
+3,1782,1824,42,Method B
+4,1715,2130,415,Method B
+5,1899,1881,-18,Method D
+6,1759,1806,47,Method B
+7,1702,1791,89,Method B
+8,1814,1858,44,Method B
+9,1572,1700,128,Method B
+SUMMARY,B_wins: 8/10,D_wins: 2/10,"Median: +68.0, Mean: +76.6",Ties: 0/10

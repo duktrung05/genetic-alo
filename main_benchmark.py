@@ -1,9 +1,3 @@
-"""Official Timetable Algorithm Benchmark Suite.
-
-Executes multi-seed benchmarking across selected algorithms, aggregating metric
-statistics, plotting convergence curves, and exporting raw & summary files.
-"""
-
 import sys
 import json
 import os

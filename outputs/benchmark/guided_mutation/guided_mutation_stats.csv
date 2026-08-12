@@ -1,0 +1,5 @@
+method_name,guided_mutation_calls,guided_mutation_attempts,guided_mutation_successes,guided_mutation_fallbacks,guided_success_pct
+Method A (Hybrid Baseline),0,0,0,0,0.0
+Method B (Hybrid + SLS),0,0,0,0,0.0
+Method C (Hybrid + Guided Mutation),580,7264,3613,3651,49.738436123348016
+Method D (Hybrid + Guided Mutation + SLS),580,7264,3613,3651,49.738436123348016

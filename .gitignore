@@ -37,13 +37,17 @@ cleanup_report_after.txt
 ~$*.xlsx
 .~lock.*
 
-# Benchmark test outputs (ignore temporary smoke tests)
+# Benchmark test outputs (ignore temporary smoke tests and legacy runs)
 outputs/benchmark/smoke_test/
 outputs/benchmark/cleanup_smoke_test/
 outputs/benchmark/test_run/
+outputs/benchmark/benchmark_*
 outputs/benchmarks/benchmark_*
 
 # Keep production and official benchmark outputs
 !outputs/production/
 !outputs/datasets/
-!outputs/benchmark/official_v1_30seeds_soft35/
+!outputs/benchmark/sls_validation/
+!outputs/benchmark/guided_mutation/
+
+

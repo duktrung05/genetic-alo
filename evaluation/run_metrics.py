@@ -84,6 +84,23 @@ class RunMetrics:
     total_hard_constraint_evaluations: int = 0
     total_soft_constraint_evaluations: int = 0
 
+    # Soft Local Search metrics
+    soft_ls_calls: int = 0
+    soft_ls_candidate_checks: int = 0
+    soft_ls_accepted_moves: int = 0
+    soft_ls_improvement: int = 0
+    soft_ls_runtime_seconds: float = 0.0
+
+    # Soft-Guided Mutation & Pre/Post SLS metrics
+    soft_before_sls: Optional[int] = None
+    soft_after_sls: Optional[int] = None
+    guided_mutation_calls: int = 0
+    guided_mutation_attempts: int = 0
+    guided_mutation_successes: int = 0
+    guided_mutation_fallbacks: int = 0
+
+
+
     def __post_init__(self):
         # Auto-compute breakdown properties if not passed explicitly
         if self.search_constraint_evaluations == 0:
