@@ -1,8 +1,7 @@
-"""Soft-Guided Mutation Module for Hybrid Genetic Algorithm.
+"""Module đột biến định hướng ràng buộc mềm (Soft-Guided Mutation) cho thuật toán di truyền.
 
-Implements stochastic guided mutation that uses soft-constraint violation breakdown
-(S1-S5) to bias gene mutations towards sections with high weighted soft penalty,
-while maintaining population diversity via random fallback and stochastic shortlist selection.
+Ưu tiên đột biến các gen vi phạm ràng buộc mềm cao (S1-S5) để giảm phạt soft,
+đồng thời kết hợp ngẫu nhiên nhằm duy trì tính đa dạng của quần thể.
 """
 
 from __future__ import annotations
@@ -17,7 +16,8 @@ from ga.operators import GAOperators
 
 
 class SoftGuidedMutation:
-    """Stochastic soft-constraint guided mutation operator for GA Engine."""
+    """Toán tử đột biến định hướng giảm phạt ràng buộc mềm."""
+
 
     def __init__(
         self,
@@ -88,10 +88,11 @@ class SoftGuidedMutation:
         guided_probability: float = 0.8,
         rng: Optional[random.Random] = None,
     ) -> Tuple[Schedule, Dict[str, Any]]:
-        """Perform Soft-Guided Mutation on schedule.
+        """Thực hiện đột biến định hướng ràng buộc mềm trên lịch.
 
-        Returns (mutated_schedule, stats_dict).
+        Trả về (mutated_schedule, stats_dict).
         """
+
         random_gen = rng if rng is not None else random
 
         stats: Dict[str, Any] = {

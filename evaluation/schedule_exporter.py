@@ -32,7 +32,8 @@ def export_schedule_to_csv(
     output_path: Union[str, Path],
     metadata: Optional[dict] = None,
 ) -> str:
-    """Validate and export best schedule to CSV format sorted by Day, Start Period, Room ID."""
+    """Kiểm tra tính hợp lệ và xuất lịch học tốt nhất ra file CSV được sắp xếp theo Ngày, Tiết bắt đầu, Mã phòng."""
+
     if schedule is None or not hasattr(schedule, "genes") or not isinstance(schedule.genes, list) or len(schedule.genes) == 0:
         raise ValueError("Cannot export empty or invalid schedule.")
 
@@ -143,9 +144,9 @@ def export_schedule_to_excel(
     metadata: Optional[dict] = None,
     allow_infeasible_export: bool = False,
 ) -> str:
-    """Export schedule to a standardized 7-sheet Excel workbook.
+    """Xuất thời khóa biểu ra file Excel 7 sheet chuẩn hóa.
 
-    Sheets:
+    Các sheet:
     1. SUMMARY
     2. RAW_ASSIGNMENTS
     3. SCHEDULE_BY_GROUP
@@ -579,7 +580,7 @@ def export_metadata_to_json(
     metadata: dict,
     output_path: Union[str, Path],
 ) -> str:
-    """Export metadata dictionary to formatted JSON file."""
+    """Xuất dictionary metadata ra file JSON."""
     out_file = Path(output_path)
     out_file.parent.mkdir(parents=True, exist_ok=True)
 

@@ -26,7 +26,7 @@ from evaluation.run_metrics import validate_search_budget
 
 
 def parse_args():
-    """Parse command line arguments for benchmark execution mode, selected methods, and inputs."""
+    """Phân tích tham số dòng lệnh cho chế độ chạy thử nghiệm benchmark, chọn phương pháp và dữ liệu đầu vào."""
     parser = argparse.ArgumentParser(description="GA Timetable Benchmark Suite")
     parser.add_argument(
         "--mode",
@@ -98,7 +98,7 @@ def parse_args():
 
 
 def make_json_serializable(obj):
-    """Recursively convert benchmark result structures into JSON-serializable dictionaries."""
+    """Chuyển đổi đệ quy cấu trúc kết quả benchmark thành dictionary để ghi JSON."""
     if isinstance(obj, dict):
         return {k: make_json_serializable(v) for k, v in obj.items() if k not in ("best_schedule", "schedule")}
     elif isinstance(obj, list):
@@ -110,7 +110,7 @@ def make_json_serializable(obj):
 
 
 def parse_seed_spec(seed_spec: str) -> list:
-    """Parse seed spec string (e.g. '0-9' or '0,1,2') into a sorted list of unique seed integers."""
+    """Phân tích chuỗi quy định seed (ví dụ: '0-9' hoặc '0,1,2') thành danh sách các số nguyên seed duy nhất."""
     if not seed_spec or not seed_spec.strip():
         return list(range(30))
     seeds = []
@@ -126,7 +126,7 @@ def parse_seed_spec(seed_spec: str) -> list:
 
 
 def main():
-    """Main entry point for official timetable algorithm benchmark suite."""
+    """Điểm khởi chạy chính cho bộ thử nghiệm benchmark thuật toán xếp thời khóa biểu."""
     args = parse_args()
     selected_methods = parse_methods(args.methods)
 

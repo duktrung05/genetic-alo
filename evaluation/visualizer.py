@@ -23,7 +23,8 @@ class ConvergenceVisualizer:
 
     @classmethod
     def _extract_series(cls, history_input: Any, field: str) -> tuple[list, list, Optional[list], Optional[list]]:
-        """Extract (x_vals, median_y, q25_y, q75_y) from single history or multi-seed histories."""
+        """Trích xuất (x_vals, median_y, q25_y, q75_y) từ lịch sử của 1 seed hoặc nhiều seed."""
+
         if not isinstance(history_input, list) or not history_input:
             raise ValueError("History input cannot be empty or invalid.")
 

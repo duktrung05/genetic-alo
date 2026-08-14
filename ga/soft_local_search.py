@@ -1,8 +1,7 @@
-"""Deterministic Post-Search Soft Local Search Module.
+"""Module tìm kiếm cục bộ sau GA (Post-Search Soft Local Search).
 
-Performs bounded post-search Hill-Climbing optimization on a 100% hard-feasible
-Schedule chromosome (hard_violations == 0) to strictly reduce soft constraint penalty
-without compromising feasibility.
+Tối ưu hóa Hill-Climbing trên lịch đã hợp lệ 100% (hard_violations == 0)
+nhằm giảm vi phạm ràng buộc mềm mà không làm phát sinh vi phạm ràng buộc cứng.
 """
 
 from __future__ import annotations
@@ -16,7 +15,8 @@ from constraints.evaluator import ConstraintEvaluator
 
 
 class SoftLocalSearch:
-    """Post-search deterministic Hill-Climbing optimizer for soft penalty reduction."""
+    """Bộ tối ưu Hill-Climbing sau tìm kiếm để giảm phạt ràng buộc mềm."""
+
 
     def __init__(
         self,
@@ -73,12 +73,8 @@ class SoftLocalSearch:
         self,
         schedule: Schedule,
     ) -> Tuple[Schedule, Dict[str, Any]]:
-        """Run post-search deterministic Hill-Climbing on a feasible schedule.
+        """Thực thi tối ưu Hill-Climbing sau tìm kiếm trên phương án lịch hợp lệ."""
 
-        Invariant:
-            final_hard == 0
-            final_soft <= initial_soft
-        """
         start_time = time.perf_counter()
 
         initial_hard, _ = self.evaluator.evaluate_hard(schedule, category="internal")

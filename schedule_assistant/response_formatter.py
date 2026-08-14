@@ -1,6 +1,6 @@
-"""Schedule Assistant Response Formatter Module.
+"""Module định dạng kết quả trả về cho trợ lý tra cứu thời khóa biểu.
 
-Formats query results into clean natural Vietnamese text responses and structured table records.
+Chuyển đổi QueryResult thành văn bản tự nhiên hoặc bảng dữ liệu.
 """
 
 from typing import Dict, List, Any
@@ -8,11 +8,11 @@ from .models import QueryResult, ScheduleQuery
 
 
 class ResponseFormatter:
-    """Formats QueryResult into natural text and tabular structures."""
+    """Định dạng QueryResult thành dạng văn bản và bảng."""
 
     @staticmethod
     def format_text(result: QueryResult) -> str:
-        """Generate human-readable Vietnamese text response."""
+        """Tạo câu trả lời dạng văn bản tiếng Việt dễ đọc."""
         if not result.success:
             text = f"⚠️ {result.message}\n"
             if result.suggestions:
@@ -28,7 +28,7 @@ class ResponseFormatter:
         assignments = result.assignments
         count = len(assignments)
 
-        # Header generation based on intent / parameters
+        # Tạo tiêu đề dựa trên ý định / tham số
         header = ResponseFormatter._build_header(q, count)
         lines = [header, ""]
 
@@ -76,7 +76,7 @@ class ResponseFormatter:
 
     @staticmethod
     def format_table_data(result: QueryResult) -> List[Dict[str, Any]]:
-        """Format assignments into table-friendly dictionary rows."""
+        """Định dạng danh sách phân công thành các dòng dữ liệu cho bảng."""
         table_rows = []
         for a in result.assignments:
             start_p = a.get("start_period", 1)
@@ -98,3 +98,4 @@ class ResponseFormatter:
                 "Cơ sở": a.get("campus_id", ""),
             })
         return table_rows
+

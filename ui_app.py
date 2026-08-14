@@ -69,7 +69,8 @@ def sort_assignments(assignments: list) -> list:
 
 
 def format_dataframe(assignments: list) -> pd.DataFrame:
-    """Format list of assignment dicts into pandas DataFrame matching required column titles."""
+    """Định dạng danh sách phân công thành DataFrame theo các cột hiển thị."""
+
     rows = []
     for a in sort_assignments(assignments):
         start_p = a.get("start_period", 1)
@@ -118,7 +119,7 @@ def main():
 
     # 2. Trạng thái lịch (Metrics Banner)
     st.markdown("### 📊 Trạng thái lịch sản phẩm")
-    col1, col2, col3, col4 = st.columns(4)
+    col1, col2, col3 = st.columns(3)
 
     hard_v = meta.get("final_hard_violations", meta.get("hard_violations", 0))
     soft_p = meta.get("final_soft_penalty", meta.get("soft_penalty", 0))
@@ -133,8 +134,8 @@ def main():
         st.metric("Soft penalty", soft_p)
     with col3:
         st.metric("Số lớp học phần", total_sec)
-    with col4:
-        st.metric("Thời gian tạo lịch", str(gen_time))
+    # with col4:
+    #     st.metric("Thời gian tạo lịch", str(gen_time))
 
     st.markdown("---")
 

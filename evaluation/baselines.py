@@ -8,7 +8,7 @@ from dataset import get_occupied_periods, is_valid_period_block, DatasetValidato
 from evaluation.run_metrics import RunMetrics
 
 class RandomSearchScheduler:
-    """Random Search baseline scheduler for random schedule sampling."""
+    """Bộ lập lịch Random Search dùng làm baseline lấy mẫu lịch ngẫu nhiên."""
 
     def __init__(self, dataset: dict, seed: Optional[int] = None):
         DatasetValidator.validate(dataset)
@@ -19,7 +19,7 @@ class RandomSearchScheduler:
         self.seed = seed
 
     def run(self, iterations: int = 1000, evaluation_budget: Optional[int] = None, seed: Optional[int] = None) -> dict:
-        """Execute Random Search sampling loop for specified evaluation budget."""
+        """Thực thi vòng lặp lấy mẫu Random Search theo ngân sách đánh giá quy định."""
         run_seed = seed if seed is not None else self.seed
         if run_seed is not None:
             random.seed(run_seed)
@@ -141,10 +141,10 @@ class RandomSearchScheduler:
         return res_dict
 
 class GreedyScheduler:
-    """Pure Deterministic Greedy baseline scheduler using heuristic first-fit section assignment."""
+    """Bộ lập lịch Greedy thuần định hướng dùng làm baseline phân công lớp học phần tham lam."""
 
     def __init__(self, dataset: dict, seed: Optional[int] = None):
-        """Initialize Greedy Scheduler with dataset."""
+        """Khởi tạo Bộ lập lịch Greedy với dữ liệu đầu vào."""
         DatasetValidator.validate(dataset)
         self.dataset = dataset
         self.sections: List[CourseSection] = dataset["course_sections"]
@@ -154,7 +154,7 @@ class GreedyScheduler:
         self.seed = seed
 
     def run(self, seed: Optional[int] = None) -> dict:
-        """Execute 100% deterministic heuristic Greedy schedule construction."""
+        """Thực thi xây dựng thời khóa biểu theo thuật toán Greedy định hướng 100%."""
         run_seed = seed if seed is not None else self.seed
         start_time = time.perf_counter()
         self.evaluator = ConstraintEvaluator(self.dataset)

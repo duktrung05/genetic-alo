@@ -1,6 +1,6 @@
-"""Schedule Assistant Package.
+"""Gói trợ lý tra cứu thời khóa biểu cá nhân.
 
-Natural language read-only timetable query assistant for Timetable Optimization System.
+Hỗ trợ truy vấn lịch học theo ngôn ngữ tự nhiên (chỉ đọc).
 """
 
 from .models import ScheduleQuery, QueryResult
@@ -15,3 +15,4 @@ __all__ = [
     "ScheduleQueryService",
     "ResponseFormatter",
 ]
+

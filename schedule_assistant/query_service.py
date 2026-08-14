@@ -1,8 +1,7 @@
-"""Schedule Assistant Query Service Module.
+"""Service truy vấn dữ liệu thời khóa biểu cho trợ lý cá nhân.
 
-Read-only schedule query and filtering engine for natural language assistant requests.
-Purely deterministic filtering operating ONLY on pre-generated query JSON datasets.
-Strictly isolated from Genetic Algorithm execution, Repair Engine, and schedule generation.
+Lọc dữ liệu tĩnh (chỉ đọc) từ file JSON đã xuất trước đó.
+Tách biệt hoàn toàn với thuật toán di truyền (GA) và engine sửa lỗi (Repair).
 """
 
 import json
@@ -18,24 +17,24 @@ DEFAULT_QUERY_DATA_PATH = "outputs/production/schedule_query_data.json"
 
 
 def normalize_text(text: str) -> str:
-    """Normalize string for case-insensitive and whitespace-insensitive matching."""
+    """Chuyển chuỗi về dạng chữ thường và loại bỏ khoảng trắng thừa."""
     if not text:
         return ""
     return " ".join(text.lower().strip().split())
 
 
 class ScheduleQueryService:
-    """Read-only query service for natural language timetable assistant requests."""
+    """Dịch vụ truy vấn lịch (chỉ đọc) cho trợ lý tra cứu."""
 
     def __init__(self, data_path: Union[str, Path] = DEFAULT_QUERY_DATA_PATH):
-        """Initialize query service with target JSON file path."""
+        """Khởi tạo service truy vấn với đường dẫn file JSON dữ liệu."""
         self.data_path = Path(data_path)
         self.data: Optional[Dict[str, Any]] = None
         self.parser: Optional[IntentParser] = None
         self._load_data()
 
     def _load_data(self) -> bool:
-        """Load schedule query data JSON if file exists."""
+        """Tải dữ liệu từ file JSON nếu tồn tại."""
         if not self.data_path.exists():
             self.data = None
             self.parser = IntentParser()
@@ -52,13 +51,13 @@ class ScheduleQueryService:
             return False
 
     def is_data_available(self) -> bool:
-        """Check if schedule query data is loaded and available."""
+        """Kiểm tra xem dữ liệu thời khóa biểu đã sẵn sàng chưa."""
         return self.data is not None and "assignments" in self.data
 
     def query(self, query_input: Union[str, ScheduleQuery]) -> QueryResult:
-        """Execute read-only timetable query and return QueryResult."""
+        """Thực thi truy vấn thời khóa biểu và trả về QueryResult."""
         if not self.is_data_available():
-            # Reload attempt
+            # Thử tải lại dữ liệu
             if not self._load_data():
                 return QueryResult(
                     query=ScheduleQuery(raw_query=str(query_input), intent="missing_data"),
@@ -115,10 +114,10 @@ class ScheduleQueryService:
         )
 
     def _filter_assignments(self, assignments: List[Dict[str, Any]], query: ScheduleQuery) -> List[Dict[str, Any]]:
-        """Filter assignment list deterministically by query parameters (AND logic)."""
+        """Lọc danh sách phân công theo các tham số truy vấn (phép AND)."""
         filtered = list(assignments)
 
-        # 1. Day Filter
+        # 1. Lọc theo ngày
         if query.day:
             norm_day = normalize_text(query.day)
             filtered = [
@@ -126,7 +125,7 @@ class ScheduleQueryService:
                 if normalize_text(a.get("day", "")) == norm_day or norm_day in normalize_text(a.get("day_key", ""))
             ]
 
-        # 2. Campus Filter
+        # 2. Lọc theo cơ sở
         if query.campus:
             norm_campus = normalize_text(query.campus)
             filtered = [
@@ -134,7 +133,7 @@ class ScheduleQueryService:
                 if norm_campus in normalize_text(a.get("campus_id", ""))
             ]
 
-        # 3. Student Group Filter
+        # 3. Lọc theo nhóm sinh viên
         if query.student_group:
             norm_grp = normalize_text(query.student_group)
             filtered = [
@@ -143,7 +142,7 @@ class ScheduleQueryService:
                 or norm_grp in normalize_text(a.get("student_group_name", ""))
             ]
 
-        # 4. Lecturer Filter
+        # 4. Lọc theo giảng viên
         if query.lecturer:
             norm_lec = normalize_text(query.lecturer)
             filtered = [
@@ -152,7 +151,7 @@ class ScheduleQueryService:
                 or norm_lec in normalize_text(a.get("lecturer_name", ""))
             ]
 
-        # 5. Room Filter
+        # 5. Lọc theo phòng học
         if query.room:
             norm_rm = normalize_text(query.room)
             filtered = [
@@ -161,7 +160,7 @@ class ScheduleQueryService:
                 or norm_rm in normalize_text(a.get("room_name", ""))
             ]
 
-        # 6. Course Filter
+        # 6. Lọc theo môn học
         if query.course:
             norm_crs = normalize_text(query.course)
             filtered = [
@@ -171,3 +170,4 @@ class ScheduleQueryService:
             ]
 
         return filtered
+

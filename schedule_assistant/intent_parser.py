@@ -1,7 +1,6 @@
-"""Schedule Assistant Intent Parser Module.
+"""Module phân tích ý định và trích xuất thực thể cho trợ lý tra cứu lịch.
 
-Rule-based intent parser and entity extractor for natural language timetable queries.
-Requires zero external APIs, zero LLMs, and zero network calls.
+Phân tích bằng luật (rule-based), không cần API ngoài, LLM hay kết nối mạng.
 """
 
 import re
@@ -23,17 +22,17 @@ DAY_ALIASES: Dict[str, str] = {
 
 
 def strip_accents(text: str) -> str:
-    """Remove Vietnamese accents for robust regex matching."""
+    """Bỏ dấu tiếng Việt để so khớp regex chuẩn xác."""
     text = unicodedata.normalize("NFD", text)
     text = "".join(c for c in text if unicodedata.category(c) != "MN")
     return text.lower()
 
 
 class IntentParser:
-    """Deterministic, rule-based parser for timetable queries."""
+    """Bộ phân tích ý định tra cứu thời khóa biểu dựa trên luật."""
 
     def __init__(self, dataset_index: Optional[Dict[str, Any]] = None):
-        """Initialize parser with optional index of known entities from dataset."""
+        """Khởi tạo bộ phân tích kèm chỉ mục thực thể từ dữ liệu."""
         self.known_lecturers: Set[str] = set()
         self.known_groups: Set[str] = set()
         self.known_rooms: Set[str] = set()
@@ -70,7 +69,7 @@ class IntentParser:
                 self.known_campuses.add(a["campus_id"].lower())
 
     def parse(self, query_text: str) -> ScheduleQuery:
-        """Parse raw query string and extract intent & entity parameters."""
+        """Phân tích câu hỏi thô và trích xuất ý định cùng các tham số thực thể."""
         if not query_text or not query_text.strip():
             return ScheduleQuery(raw_query="", intent="unknown_or_ambiguous")
 
@@ -78,31 +77,31 @@ class IntentParser:
         lower_q = cleaned.lower()
         no_accent_q = strip_accents(lower_q)
 
-        # 1. Extract Day
+        # 1. Trích xuất Ngày
         extracted_day = self._extract_day(lower_q, no_accent_q)
 
-        # 2. Extract Campus
+        # 2. Trích xuất Cơ sở
         extracted_campus = self._extract_campus(lower_q, no_accent_q)
 
-        # 3. Extract Lecturer
+        # 3. Trích xuất Giảng viên
         extracted_lecturer = self._extract_lecturer(cleaned, lower_q)
 
-        # 4. Extract Student Group
+        # 4. Trích xuất Nhóm SV
         extracted_group = self._extract_group(cleaned, lower_q)
 
-        # 5. Extract Room
+        # 5. Trích xuất Phòng
         extracted_room = self._extract_room(cleaned, lower_q)
 
-        # 6. Extract Course
+        # 6. Trích xuất Môn học
         extracted_course = self._extract_course(cleaned, lower_q)
 
-        # Count extracted filter entities
+        # Đếm số lượng thực thể lọc
         active_filters = [
             f for f in [extracted_day, extracted_group, extracted_lecturer, extracted_room, extracted_course, extracted_campus]
             if f is not None
         ]
 
-        # Determine Intent
+        # Xác định ý định (Intent)
         if len(active_filters) > 1:
             intent = "schedule_combined"
         elif extracted_day:
@@ -132,11 +131,76 @@ class IntentParser:
         )
 
     def _extract_day(self, lower_q: str, no_accent_q: str) -> Optional[str]:
+        """
+        Trích xuất ngày trong tuần từ câu query.
 
-        for alias, canonical in DAY_ALIASES.items():
-            pattern = r"\b" + re.escape(alias) + r"\b"
-            if re.search(pattern, lower_q) or re.search(pattern, no_accent_q):
-                return canonical
+        Ví dụ:
+            "Lịch Thứ 2" -> "Thứ 2"
+            "lịch thứ 6" -> "Thứ 6"
+            "thu 7"      -> "Thứ 7"
+            "Friday"     -> "Thứ 6"
+        """
+
+        # ------------------------------------------------------------
+        # 1. Ưu tiên bắt trực tiếp tiếng Việt: Thứ 2 ... Thứ 7
+        # ------------------------------------------------------------
+        match = re.search(r"\bthứ\s*([2-7])\b", lower_q)
+
+        if match:
+            return f"Thứ {match.group(1)}"
+
+        # ------------------------------------------------------------
+        # 2. Bắt bản không dấu: thu 2 ... thu 7
+        # ------------------------------------------------------------
+        match = re.search(r"\bthu\s*([2-7])\b", no_accent_q)
+
+        if match:
+            return f"Thứ {match.group(1)}"
+
+        # ------------------------------------------------------------
+        # 3. Chủ nhật
+        # ------------------------------------------------------------
+        if (
+            "chủ nhật" in lower_q
+            or "chu nhat" in no_accent_q
+            or "sunday" in lower_q
+            or re.search(r"\bcn\b", no_accent_q)
+        ):
+            return "Chủ nhật"
+
+        # ------------------------------------------------------------
+        # 4. English day names
+        # ------------------------------------------------------------
+        english_days = {
+            "monday": "Thứ 2",
+            "mon": "Thứ 2",
+
+            "tuesday": "Thứ 3",
+            "tue": "Thứ 3",
+
+            "wednesday": "Thứ 4",
+            "wed": "Thứ 4",
+
+            "thursday": "Thứ 5",
+            "thu": "Thứ 5",
+
+            "friday": "Thứ 6",
+            "fri": "Thứ 6",
+
+            "saturday": "Thứ 7",
+            "sat": "Thứ 7",
+
+            "sunday": "Chủ nhật",
+            "sun": "Chủ nhật",
+        }
+
+        for alias, canonical_day in english_days.items():
+            if re.search(
+                rf"\b{re.escape(alias)}\b",
+                no_accent_q,
+            ):
+                return canonical_day
+
         return None
 
     def _extract_campus(self, lower_q: str, no_accent_q: str) -> Optional[str]:
@@ -147,24 +211,23 @@ class IntentParser:
         return None
 
     def _extract_lecturer(self, raw_q: str, lower_q: str) -> Optional[str]:
-
-        # Match codes like GV01, GV-05, gv03
+        # So khớp mã giảng viên (GV01, GV-05...)
         match = re.search(r"\b(gv[-_]?\d+)\b", lower_q)
         if match:
             return match.group(1).upper().replace("-", "").replace("_", "")
 
-        # Match explicit keywords e.g. "giảng viên X", "gv X", "thầy X", "cô X"
+        # So khớp từ khóa "giảng viên", "thầy", "cô"
         match_kw = re.search(r"\b(?:giảng viên|giang vien|gv|thầy|thay|cô|co)\s+([a-vxyàáảãạăắằẳẵặâấầẩẫậèéẻẽẹêếềểễệìíỉĩịòóỏõọôốồổỗộơớờởỡợùúủũụưứừửữựỳýỷỹỵ\s]+)", lower_q)
         if match_kw:
             candidate = match_kw.group(1).strip()
-            # Stop at common query prepositions
+            # Dừng tại các từ nối phổ biến
             for stop in ["dạy", "học", "khi", "vào", "lúc", "thứ", "phòng", "ở"]:
                 if f" {stop} " in f" {candidate} ":
                     candidate = candidate.split(f" {stop} ")[0].strip()
             if candidate and len(candidate) >= 2:
                 return candidate
 
-        # Match against known lecturers from dataset index
+        # So khớp với danh sách giảng viên trong chỉ mục
         for lec in self.known_lecturers:
             if lec in lower_q:
                 return lec
@@ -172,18 +235,17 @@ class IntentParser:
         return None
 
     def _extract_group(self, raw_q: str, lower_q: str) -> Optional[str]:
-
-        # Match phrases like "lớp CNTT01", "lớp CNTT1-K18", "lop KTPM02"
+        # So khớp cụm từ tên lớp (lớp CNTT01...)
         match = re.search(r"\b(?:lớp|lop|nhóm|nhom|group)\s+([a-z0-9\-_]+)", lower_q)
         if match:
             return match.group(1).upper()
 
-        # Match patterns like CNTT1-K18, SV_CNTT1, KTPM02, CNTT01
+        # So khớp mã lớp
         match_code = re.search(r"\b((?:cntt|ktpm|khmt|net|se|cs|sv)[_\-]?[a-z0-9\-_]+)\b", lower_q)
         if match_code:
             return match_code.group(1).upper()
 
-        # Match known groups from index
+        # So khớp nhóm sinh viên trong chỉ mục
         for grp in self.known_groups:
             if grp in lower_q:
                 return grp.upper()
@@ -191,18 +253,17 @@ class IntentParser:
         return None
 
     def _extract_room(self, raw_q: str, lower_q: str) -> Optional[str]:
-
-        # Match phrases like "phòng A201", "phong LAB01", "phòng 205-A9-CS1"
+        # So khớp cụm từ phòng học
         match = re.search(r"\b(?:phòng|phong|room|lab)\s+([a-z0-9\-_]+)", lower_q)
         if match:
             return match.group(1).upper()
 
-        # Match patterns like A201, LAB01, 205-A9-CS1, P101
+        # So khớp mã phòng
         match_code = re.search(r"\b([a-z0-9]+[_\-][a-z0-9_\-]+)\b", lower_q)
         if match_code and ("cs" in lower_q or "lab" in lower_q or "a" in lower_q or "p" in lower_q):
             return match_code.group(1).upper()
 
-        # Match known rooms from index
+        # So khớp phòng trong chỉ mục
         for rm in self.known_rooms:
             if rm in lower_q:
                 return rm.upper()
@@ -210,8 +271,7 @@ class IntentParser:
         return None
 
     def _extract_course(self, raw_q: str, lower_q: str) -> Optional[str]:
-
-        # Match phrases like "môn Trí tuệ nhân tạo", "mon Co so du lieu"
+        # So khớp cụm từ tên môn học
         match = re.search(r"\b(?:môn|mon|học phần|hoc phan|course)\s+([a-vxyàáảãạăắằẳẵặâấầẩẫậèéẻẽẹêếềểễệìíỉĩịòóỏõọôốồổỗộơớờởỡợùúủũụưứừửữựỳýỷỹỵ\s0-9]+)", lower_q)
         if match:
             candidate = match.group(1).strip()
@@ -221,9 +281,10 @@ class IntentParser:
             if candidate and len(candidate) >= 2:
                 return candidate
 
-        # Match known courses from index
+        # So khớp môn học trong chỉ mục
         for crs in self.known_courses:
             if crs in lower_q:
                 return crs
 
         return None
+

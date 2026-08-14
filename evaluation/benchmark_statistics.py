@@ -4,7 +4,8 @@ from evaluation.run_metrics import AggregateRunMetrics
 
 
 def aggregate_run_results(method_name: str, runs: List[Dict[str, Any]], is_deterministic: bool = False) -> Dict[str, Any]:
-    """Aggregate multi-seed benchmark run results into descriptive summary statistics."""
+    """Tổng hợp kết quả chạy thử nghiệm qua nhiều seed thành các thống kê mô tả."""
+
     if not runs:
         raise ValueError(f"No run data available for method: {method_name}")
 

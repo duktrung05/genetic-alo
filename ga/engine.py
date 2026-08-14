@@ -51,7 +51,8 @@ class GeneticAlgorithmEngine:
             self.day_available_periods[ts.day].add(ts.period)
 
     def create_random_schedule(self) -> Schedule:
-        """Create a randomized initial valid-structured Schedule chromosome."""
+        """Tạo nhiễm sắc thể Thời khóa biểu ban đầu ngẫu nhiên với cấu trúc hợp lệ."""
+
         genes = []
         for sec in self.sections:
             duration = getattr(sec, "duration_periods", 1)

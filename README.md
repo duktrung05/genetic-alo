@@ -147,7 +147,10 @@ streamlit run ui_app.py
 # Hoặc sử dụng uv:
 uv run streamlit run ui_app.py
 ```
-
+```
+docker compose build web-ui
+docker compose up -d web-ui
+```
 Truy cập trình duyệt tại: `http://localhost:8501`
 
 **Ví dụ câu hỏi tra cứu hỗ trợ:**

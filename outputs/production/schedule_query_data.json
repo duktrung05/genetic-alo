@@ -1,6 +1,6 @@
 {
   "meta": {
-    "generated_at": "2026-08-11T09:13:18.002809",
+    "generated_at": "2026-08-12T07:01:34.847649",
     "total_assignments": 62,
     "hard_violations": 0,
     "soft_penalty": 1671,
@@ -19,14 +19,14 @@
     "feasible": true,
     "soft_before_sls": 2439,
     "soft_after_sls": 1671,
-    "runtime_seconds": 6.298559521092102,
-    "time_to_first_feasible_seconds": 0.7369180070236325,
+    "runtime_seconds": 6.364253788022324,
+    "time_to_first_feasible_seconds": 0.7405822309665382,
     "all_runs_flat": [
       {
         "method": "Hybrid GA + Repair",
         "seed": 42,
-        "runtime_seconds": 6.298559521092102,
-        "time_to_first_feasible_seconds": 0.7369180070236325,
+        "runtime_seconds": 6.364253788022324,
+        "time_to_first_feasible_seconds": 0.7405822309665382,
         "search_fitness_evaluations": 1000,
         "hard_constraint_evaluations": 7860,
         "soft_constraint_evaluations": 5550,
@@ -59,7 +59,7 @@
         "soft_ls_candidate_checks": 5000,
         "soft_ls_accepted_moves": 38,
         "soft_ls_improvement": 768,
-        "soft_ls_runtime_seconds": 2.194,
+        "soft_ls_runtime_seconds": 2.1937,
         "soft_before_sls": 2439,
         "soft_after_sls": 1671,
         "guided_mutation_calls": 0,
@@ -73,7 +73,7 @@
         "hard_violations": 0,
         "soft_penalty": 1671,
         "generation_to_first_feasible": 1,
-        "time_to_first_feasible": 0.7369180070236325,
+        "time_to_first_feasible": 0.7405822309665382,
         "repair_attempts": 928,
         "repair_successes": 928
       }

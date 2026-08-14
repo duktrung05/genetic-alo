@@ -71,11 +71,8 @@ class GAOperators:
         day_period_to_ts_id: Optional[Dict[Tuple[str, int], int]] = None,
         day_available_periods: Optional[Dict[str, Set[int]]] = None
     ) -> Schedule:
-        """Mutate schedule genes with specified mutation probability.
+        """Đột biến các gen trong thời khóa biểu theo xác suất quy định."""
 
-        Creates an independent mutated Schedule copy with new Gene instances.
-        Parent schedule remains completely untouched.
-        """
         mutated = Schedule(genes=[
             Gene(section_id=g.section_id, room_id=g.room_id, timeslot_id=g.timeslot_id)
             for g in schedule.genes

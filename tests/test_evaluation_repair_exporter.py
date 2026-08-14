@@ -1,14 +1,3 @@
-"""Tests for Evaluation Consistency, RepairStats Correctness, and Excel Exporter.
-
-Verifies:
-1. Unified evaluation result soft_penalty == sum(item.weighted_penalty for item in soft_breakdown).
-2. Workbook VIOLATIONS sheet TOTAL SOFT PENALTY == SUMMARY.soft_penalty.
-3. Repair Engine direct repair execution on guaranteed hard conflict (Test A).
-4. Deterministic integration test for GA + Repair (Test B).
-5. Lexicographic non-worsening guarantee of Repair Engine.
-6. Export prohibition on infeasible schedules unless allow_infeasible_export=True.
-"""
-
 import random
 import pytest
 import openpyxl

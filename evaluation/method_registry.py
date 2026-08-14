@@ -1,4 +1,4 @@
-"""Method Registry Module — Canonical method IDs, runners, and CLI parsing for GA Timetable System."""
+"""Module đăng ký phương pháp — Quản lý mã định danh, hàm thực thi và phân tích CLI cho hệ thống thời khóa biểu GA."""
 
 from typing import List, Dict, Any, Callable, Optional, Tuple
 from domain import Schedule
@@ -24,16 +24,13 @@ METHOD_ROLES: Dict[str, str] = {
 
 
 def parse_methods(value: str) -> List[str]:
-    """Parse comma-separated CLI method string into canonical method IDs.
+    """Phân tích chuỗi phương pháp từ CLI thành danh sách các mã phương pháp chuẩn hóa.
 
-    Args:
-        value: Comma-separated string of methods (e.g. "hybrid,ga,greedy")
+    Tham số:
+        value: Chuỗi các phương pháp phân cách bằng dấu phẩy (ví dụ: "hybrid,ga,greedy")
 
-    Returns:
-        List of canonical method IDs in order of first appearance.
-
-    Raises:
-        ValueError: If input is empty, invalid, or contains unsupported methods.
+    Trả về:
+        Danh sách các mã phương pháp chuẩn hóa theo thứ tự xuất hiện.
     """
     if not value or not isinstance(value, str) or not value.strip():
         raise ValueError(
@@ -62,7 +59,7 @@ def parse_methods(value: str) -> List[str]:
 
 
 def run_hybrid_runner(dataset: dict, ga_config: dict, budget: int, seed: int) -> dict:
-    """Execute Hybrid GA + Repair runner for a single seed."""
+    """Chạy phương pháp Hybrid GA + Repair cho một seed."""
     from ga import GeneticAlgorithmEngine
     engine = GeneticAlgorithmEngine(
         dataset,
@@ -82,7 +79,7 @@ def run_hybrid_runner(dataset: dict, ga_config: dict, budget: int, seed: int) ->
 
 
 def run_ga_without_repair_runner(dataset: dict, ga_config: dict, budget: int, seed: int) -> dict:
-    """Execute GA without Repair runner for a single seed."""
+    """Chạy phương pháp GA không dùng Repair cho một seed."""
     from ga import GeneticAlgorithmEngine
     engine = GeneticAlgorithmEngine(
         dataset,
@@ -102,17 +99,18 @@ def run_ga_without_repair_runner(dataset: dict, ga_config: dict, budget: int, se
 
 
 def run_greedy_runner(dataset: dict, ga_config: dict, budget: int, seed: int) -> dict:
-    """Execute Greedy Search runner (deterministic 1-run baseline)."""
+    """Chạy phương pháp Greedy Search (baseline tham lam 1 lần chạy)."""
     from evaluation.baselines import GreedyScheduler
     scheduler = GreedyScheduler(dataset, seed=seed)
     return scheduler.run(seed=seed)
 
 
 def run_random_search_runner(dataset: dict, ga_config: dict, budget: int, seed: int) -> dict:
-    """Execute Random Search runner for a single seed."""
+    """Chạy phương pháp Tìm kiếm ngẫu nhiên (Random Search) cho một seed."""
     from evaluation.baselines import RandomSearchScheduler
     scheduler = RandomSearchScheduler(dataset, seed=seed)
     return scheduler.run(evaluation_budget=budget, seed=seed)
+
 
 
 

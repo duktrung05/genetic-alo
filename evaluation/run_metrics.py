@@ -1,7 +1,7 @@
-"""Run Metrics & Evaluation Counters Module.
+"""Module chỉ số đánh giá và bộ đếm số lần thực thi.
 
-Provides standard metric data structures for single-seed algorithm execution,
-ensuring fair, transparent, and reproducible performance reporting.
+Cung cấp các cấu trúc dữ liệu đo lường chuẩn hóa cho thuật toán theo từng seed,
+đảm bảo tính minh bạch, công bằng và khả năng tái lập kết quả.
 """
 
 from __future__ import annotations
@@ -13,7 +13,7 @@ from domain import RepairStatus
 
 @dataclass
 class EvaluationCounters:
-    """Tracks distinct evaluation and candidate-checking counter metrics per run."""
+    """Theo dõi các bộ đếm đánh giá và kiểm tra ứng viên theo từng lần chạy."""
     search_fitness_evaluations: int = 0
     hard_constraint_evaluations: int = 0
     soft_constraint_evaluations: int = 0
@@ -40,7 +40,7 @@ class EvaluationCounters:
 
 @dataclass
 class RunMetrics:
-    """Comprehensive performance & cost metrics for a single algorithm run."""
+    """Chỉ số hiệu năng và chi phí tính toán chi tiết cho một lần chạy thuật toán."""
     method: str
     seed: Optional[int]
 
@@ -130,7 +130,7 @@ class RunMetrics:
         self.validate()
 
     def validate(self) -> None:
-        """Strictly validate per-run metric invariants. Raises ValueError on violation."""
+        """Kiểm tra tính hợp lệ của các chỉ số trong lần chạy. Ném lỗi ValueError nếu vi phạm."""
         sum_statuses = self.repair_improved + self.repair_unchanged + self.repair_failed
         if self.repair_calls != sum_statuses:
             raise ValueError(
@@ -217,7 +217,7 @@ class RunMetrics:
 
 
 def validate_search_budget(metrics: RunMetrics, expected_budget: Optional[int]) -> None:
-    """Validate that search_fitness_evaluations matches expected_budget exactly for budget-constrained methods."""
+    """Kiểm tra search_fitness_evaluations có khớp chính xác với expected_budget hay không."""
     if expected_budget is None:
         return
     if metrics.method in ("GA without Repair", "Hybrid GA + Repair", "Random Search"):
@@ -230,7 +230,7 @@ def validate_search_budget(metrics: RunMetrics, expected_budget: Optional[int]) 
 
 @dataclass(frozen=True)
 class AggregateRunMetrics:
-    """Descriptive summary metrics aggregated across multiple seeds."""
+    """Chỉ số tổng hợp mô tả kết quả trung bình/trung vị qua nhiều seed."""
     method: str
     run_count: int
     is_deterministic: bool

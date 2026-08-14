@@ -1,7 +1,7 @@
-"""Schedule Query Data Exporter Module.
+"""Module xuất dữ liệu thời khóa biểu cho dịch vụ tra cứu.
 
-Exports the official production timetable into a JSON structure designed for
-fast, read-only querying by the Schedule Assistant interface.
+Xuất thời khóa biểu sản phẩm chính thức sang cấu trúc JSON phục vụ
+cho trợ lý tra cứu lịch học theo ngôn ngữ tự nhiên.
 """
 
 import json
@@ -33,19 +33,8 @@ def export_schedule_query_data(
     soft_penalty: int = 0,
     metadata: Optional[dict] = None,
 ) -> str:
-    """Export schedule assignments to JSON for natural language query assistant.
+    """Xuất danh sách phân công lịch học sang định dạng JSON cho trợ lý tra cứu."""
 
-    Args:
-        schedule: Best candidate Schedule.
-        dataset: Loaded dataset dictionary.
-        output_path: Target JSON file path.
-        hard_violations: Number of hard violations (must be 0 for official export).
-        soft_penalty: Weighted soft constraint penalty score.
-        metadata: Optional additional execution metadata dictionary.
-
-    Returns:
-        Absolute string path to exported JSON file.
-    """
     if hard_violations > 0:
         raise ValueError(f"Cannot export query data for infeasible schedule with {hard_violations} hard violations.")
 

@@ -4,7 +4,6 @@ from domain import Schedule, CourseSection, Room, Timeslot, Lecturer
 from dataset import get_occupied_periods
 
 class HardConstraintChecker:
-    """Evaluates mandatory hard constraint violations for a candidate schedule."""
     def __init__(
         self,
         section_map: Dict[str, CourseSection],
