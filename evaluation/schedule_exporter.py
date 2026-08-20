@@ -235,7 +235,7 @@ def export_schedule_to_excel(
         ("dataset_hash", meta.get("dataset_hash", "N/A")),
         ("input_file", meta.get("input_file", "data/01_data_timetable.xlsx")),
         ("normalized_json_path", meta.get("normalized_json_path", "outputs/datasets/01_data_timetable.normalized.json")),
-        ("algorithm", meta.get("method", "Hybrid GA + Repair")),
+        ("algorithm", meta.get("method", "GA + Repair")),
         ("seed", meta.get("seed", 0)),
         ("population_size", meta.get("pop_size", 60)),
         ("generations", meta.get("generations", meta.get("generations_run", 80))),
@@ -449,8 +449,8 @@ def export_schedule_to_excel(
     ws_cfg.append(["Parameter", "Value"])
     soft_cfg = evaluator.soft_checker.config
     cfg_rows = [
-        ("primary_method", meta.get("primary_method", "hybrid")),
-        ("selected_methods", meta.get("selected_methods", "hybrid")),
+        ("primary_method", meta.get("primary_method", "ga_repair")),
+        ("selected_methods", meta.get("selected_methods", "ga_repair")),
         ("search_evaluation_budget", meta.get("evaluation_budget", meta.get("search_evaluation_budget", 1000))),
         ("population_size", meta.get("pop_size", 60)),
         ("generations", meta.get("generations", 80)),

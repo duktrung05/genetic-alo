@@ -37,8 +37,11 @@ def parse_args():
     parser.add_argument(
         "--methods",
         type=str,
-        default="hybrid,ga,greedy",
-        help="Comma-separated methods to benchmark. Supported: hybrid, ga, greedy, random."
+        default="ga_repair_sls,ga_repair,ga,repair_only,greedy",
+        help=(
+            "Comma-separated methods: repair_only, ga, ga_repair, "
+            "ga_repair_sls, greedy, random. Deprecated alias: hybrid=ga_repair."
+        )
     )
     parser.add_argument(
         "--seeds",
@@ -78,7 +81,7 @@ def parse_args():
     )
     parser.add_argument(
         "--preset",
-        choices=["small", "medium", "large"],
+        choices=["small", "medium"],
         default="small",
         help="Mock dataset preset size (when --data-source=mock)"
     )
@@ -87,12 +90,6 @@ def parse_args():
         type=int,
         default=42,
         help="Random seed for mock dataset generation (when --data-source=mock)"
-    )
-    parser.add_argument(
-        "--workers",
-        type=int,
-        default=1,
-        help="Maximum parallel workers (default 1)"
     )
     return parser.parse_args()
 
@@ -123,6 +120,48 @@ def parse_seed_spec(seed_spec: str) -> list:
         else:
             seeds.append(int(part))
     return sorted(list(set(seeds)))
+
+
+def select_best_feasible_run(all_runs: list, dataset: dict):
+    """Re-evaluate schedules and return the best hard-feasible run for export.
+
+    Benchmark result dictionaries are reporting artifacts, not a source of
+    truth for export safety. This function independently verifies each stored
+    schedule before ranking feasible candidates by weighted soft penalty.
+    """
+    from constraints import ConstraintEvaluator
+
+    evaluator = ConstraintEvaluator(dataset)
+    candidates = []
+
+    for position, run in enumerate(all_runs):
+        schedule = run.get("best_schedule") if isinstance(run, dict) else None
+        genes = getattr(schedule, "genes", None)
+        if not isinstance(genes, list) or not genes:
+            continue
+
+        try:
+            evaluation = evaluator.evaluate_unified(schedule, category="reporting")
+        except (AttributeError, KeyError, TypeError, ValueError):
+            continue
+
+        if evaluation.hard_violations != 0:
+            continue
+
+        normalized_run = dict(run)
+        raw_soft = sum(item.raw_count for item in evaluation.soft_breakdown)
+        normalized_run.update({
+            "hard_violations": 0,
+            "soft_violations": evaluation.soft_penalty,
+            "soft_penalty": evaluation.soft_penalty,
+            "raw_soft_violations": raw_soft,
+            "score": float(evaluation.soft_penalty),
+        })
+        candidates.append((evaluation.soft_penalty, raw_soft, position, normalized_run))
+
+    if not candidates:
+        return None
+    return min(candidates, key=lambda item: item[:3])[3]
 
 
 def main():
@@ -194,14 +233,11 @@ def main():
         else:
             raise FileNotFoundError(f"Neither Excel input '{excel_path}' nor JSON snapshot '{json_norm_path}' exist!")
     else:
-        preset_map = {
-            "small": DatasetFactory.create_small_dataset,
-            "medium": DatasetFactory.create_medium_dataset,
-            "large": DatasetFactory.create_medium_dataset,
-        }
-        creator = preset_map.get(args.preset, DatasetFactory.create_small_dataset)
         print(f"\n[Phase 1] Đang tạo Mock Dataset preset '{args.preset}' (seed={args.dataset_seed})...")
-        dataset = creator(seed=args.dataset_seed)
+        if args.preset == "small":
+            dataset = DatasetFactory.create_small_dataset()
+        else:
+            dataset = DatasetFactory.create_medium_dataset(seed=args.dataset_seed)
         dataset_preset = f"MOCK_{args.preset.upper()}"
 
     dataset_snap_file = benchmark_run_dir / "dataset_snapshot.json"
@@ -228,7 +264,7 @@ def main():
         "num_runs": num_runs,
         "seeds": seeds,
         "selected_methods": selected_methods,
-        "primary_method": "hybrid",
+        "primary_method": "ga_repair_sls",
         "search_evaluation_budget": evaluation_budget,
         "ga_config": ga_config,
         "platform": sys.platform,
@@ -325,27 +361,25 @@ def main():
 
     # 7. Generate Convergence Charts (Only for methods with history)
     ga_no_rep_runs = runs_by_method.get("ga", [])
-    hybrid_ga_runs = runs_by_method.get("hybrid", [])
+    ga_repair_runs = runs_by_method.get("ga_repair", [])
+    if not ga_repair_runs:
+        ga_repair_runs = runs_by_method.get("ga_repair_sls", [])
     random_search_runs = runs_by_method.get("random", [])
 
-    if ga_no_rep_runs or hybrid_ga_runs or random_search_runs:
+    if ga_no_rep_runs or ga_repair_runs or random_search_runs:
         hard_chart_path = str(benchmark_run_dir / "convergence_hard.png")
         soft_chart_path = str(benchmark_run_dir / "convergence_soft.png")
         ConvergenceVisualizer.plot_convergence(
             ga_no_rep_runs,
-            hybrid_ga_runs,
+            ga_repair_runs,
             random_search_runs,
             hard_output_path=hard_chart_path,
             soft_output_path=soft_chart_path,
             evaluation_budget=evaluation_budget
         )
 
-    # 8. Find Best Hybrid Schedule or Best Overall Schedule among selected runs
-    best_overall_run = None
-    if "hybrid" in runs_by_method and runs_by_method["hybrid"]:
-        best_overall_run = min(runs_by_method["hybrid"], key=lambda r: (r["hard_violations"], r["soft_penalty"]))
-    else:
-        best_overall_run = min(all_runs_flat, key=lambda r: (r["hard_violations"], r["soft_penalty"]))
+    # 8. Independently verify feasibility, then export the best valid schedule.
+    best_overall_run = select_best_feasible_run(all_runs_flat, dataset)
 
     if best_overall_run and best_overall_run.get("best_schedule"):
         best_excel_path = str(benchmark_run_dir / "best_timetable.xlsx")
@@ -353,7 +387,7 @@ def main():
 
         meta_export = {
             "method": best_overall_run["method"],
-            "primary_method": "hybrid",
+            "primary_method": "ga_repair_sls",
             "selected_methods": ",".join(selected_methods),
             "dataset_preset": dataset_preset,
             "seed": best_overall_run.get("seed", 0),
@@ -396,6 +430,12 @@ def main():
         print(f"  Best Seed: {best_overall_run.get('seed', 0)}")
         print(f"  Hard Violations: {best_overall_run['hard_violations']}")
         print(f"  Soft Penalty Total: {best_overall_run['soft_penalty']}")
+        print("=" * 80)
+    else:
+        print("\n" + "=" * 80)
+        print("BENCHMARK ĐÃ HOÀN THÀNH NHƯNG CHƯA CÓ LỊCH HARD-FEASIBLE ĐỂ XUẤT.")
+        print(f"  Benchmark Directory: {benchmark_run_dir}")
+        print("  Raw runs và summary vẫn được lưu đầy đủ để phân tích.")
         print("=" * 80)
 
 

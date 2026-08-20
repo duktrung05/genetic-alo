@@ -46,12 +46,23 @@ def sample_query_json(sample_schedule, sample_dataset, tmp_path):
 
 
 @pytest.mark.unit
-def test_intent_parser_day_aliases():
+@pytest.mark.parametrize(
+    ("expected_day", "queries"),
+    [
+        ("Thứ 2", ["Lịch thứ 2", "Lịch t2", "Lịch thứ hai", "Lịch thu hai", "Monday schedule", "Lịch thu 2"]),
+        ("Thứ 3", ["Lịch thứ 3", "Lịch t3", "Lịch thứ ba", "Lịch thu ba", "Tuesday schedule", "Lịch thu 3"]),
+        ("Thứ 4", ["Lịch thứ 4", "Lịch t4", "Lịch thứ tư", "Lịch thu tu", "Wednesday schedule", "Lịch thu 4"]),
+        ("Thứ 5", ["Lịch thứ 5", "Lịch t5", "Lịch thứ năm", "Lịch thu nam", "Thursday schedule", "Lịch thu"]),
+        ("Thứ 6", ["Lịch thứ 6", "Lịch t6", "Lịch thứ sáu", "Lịch thu sau", "Friday schedule", "Lịch thu 6"]),
+        ("Thứ 7", ["Lịch thứ 7", "Lịch t7", "Lịch thứ bảy", "Lịch thu bay", "Saturday schedule", "Lịch thu 7"]),
+        ("Chủ nhật", ["Lịch chủ nhật", "Lịch chu nhat", "Lịch cn", "Sunday schedule", "Lịch sun"]),
+    ],
+)
+def test_intent_parser_day_aliases(expected_day, queries):
     parser = IntentParser()
-    queries = ["Lịch thứ 2", "Lịch t2", "Lịch thứ hai", "Monday schedule", "Lịch thu 2"]
     for q in queries:
         parsed = parser.parse(q)
-        assert parsed.day == "Thứ 2", f"Failed for query '{q}', got day='{parsed.day}'"
+        assert parsed.day == expected_day, f"Failed for query '{q}', got day='{parsed.day}'"
 
 
 @pytest.mark.unit

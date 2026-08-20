@@ -774,67 +774,78 @@
       "id": "206-A9-CS1",
       "name": "A9-206",
       "capacity": 70,
-      "room_type": "NORMAL"
+      "room_type": "NORMAL",
+      "campus_id": "CS1"
     },
     {
       "id": "207-A9-CS1",
       "name": "A9-207",
       "capacity": 60,
-      "room_type": "NORMAL"
+      "room_type": "NORMAL",
+      "campus_id": "CS1"
     },
     {
       "id": "601-A8-CS1",
       "name": "A8-601",
       "capacity": 120,
-      "room_type": "NORMAL"
+      "room_type": "NORMAL",
+      "campus_id": "CS1"
     },
     {
       "id": "602-A8-CS1",
       "name": "A8-602",
       "capacity": 100,
-      "room_type": "NORMAL"
+      "room_type": "NORMAL",
+      "campus_id": "CS1"
     },
     {
       "id": "LAB-A1-01-CS1",
       "name": "A1-LAB-01",
       "capacity": 72,
-      "room_type": "LAB"
+      "room_type": "LAB",
+      "campus_id": "CS1"
     },
     {
       "id": "LAB-A1-02-CS1",
       "name": "A1-LAB-02",
       "capacity": 60,
-      "room_type": "LAB"
+      "room_type": "LAB",
+      "campus_id": "CS1"
     },
     {
       "id": "302-A9-CS2",
       "name": "A9-302",
       "capacity": 70,
-      "room_type": "NORMAL"
+      "room_type": "NORMAL",
+      "campus_id": "CS2"
     },
     {
       "id": "303-A9-CS2",
       "name": "A9-303",
       "capacity": 60,
-      "room_type": "NORMAL"
+      "room_type": "NORMAL",
+      "campus_id": "CS2"
     },
     {
       "id": "401-A8-CS2",
       "name": "A8-401",
       "capacity": 120,
-      "room_type": "NORMAL"
+      "room_type": "NORMAL",
+      "campus_id": "CS2"
     },
     {
       "id": "402-A8-CS2",
       "name": "A8-402",
       "capacity": 100,
-      "room_type": "NORMAL"
+      "room_type": "NORMAL",
+      "campus_id": "CS2"
     },
     {
       "id": "LAB-A1-03-CS2",
       "name": "A1-LAB-03",
       "capacity": 72,
-      "room_type": "LAB"
+      "room_type": "LAB",
+      "campus_id": "CS2"
     }
   ],
   "lecturers": [
@@ -1353,62 +1364,74 @@
     {
       "id": "CNTT1-K18",
       "name": "CNTT1",
-      "student_count": 72
+      "student_count": 72,
+      "home_campus_id": "CS1"
     },
     {
       "id": "CNTT2-K18",
       "name": "CNTT2",
-      "student_count": 68
+      "student_count": 68,
+      "home_campus_id": "CS1"
     },
     {
       "id": "CNTT3-K18",
       "name": "CNTT3",
-      "student_count": 65
+      "student_count": 65,
+      "home_campus_id": "CS2"
     },
     {
       "id": "CNTT4-K18",
       "name": "CNTT4",
-      "student_count": 58
+      "student_count": 58,
+      "home_campus_id": "CS2"
     },
     {
       "id": "KHMT1-K18",
       "name": "KHMT1",
-      "student_count": 55
+      "student_count": 55,
+      "home_campus_id": "CS1"
     },
     {
       "id": "KHMT2-K18",
       "name": "KHMT2",
-      "student_count": 48
+      "student_count": 48,
+      "home_campus_id": "CS2"
     },
     {
       "id": "KTPM1-K18",
       "name": "KTPM1",
-      "student_count": 70
+      "student_count": 70,
+      "home_campus_id": "CS1"
     },
     {
       "id": "KTPM2-K18",
       "name": "KTPM2",
-      "student_count": 60
+      "student_count": 60,
+      "home_campus_id": "CS2"
     },
     {
       "id": "HTTT1-K18",
       "name": "HTTT1",
-      "student_count": 52
+      "student_count": 52,
+      "home_campus_id": "CS1"
     },
     {
       "id": "ATTT1-K18",
       "name": "ATTT1",
-      "student_count": 46
+      "student_count": 46,
+      "home_campus_id": "CS1"
     },
     {
       "id": "TTDPT1-K18",
       "name": "TTDPT1",
-      "student_count": 44
+      "student_count": 44,
+      "home_campus_id": "CS2"
     },
     {
       "id": "HTTT2-K18",
       "name": "HTTT2",
-      "student_count": 40
+      "student_count": 40,
+      "home_campus_id": "CS2"
     }
   ],
   "courses": [
@@ -1543,7 +1566,10 @@
       "student_count": 72,
       "is_difficult": false,
       "required_room_type": "NORMAL",
-      "duration_periods": 4
+      "duration_periods": 4,
+      "preferred_campus_id": "CS1",
+      "preferred_shift": "afternoon",
+      "meetings_per_week": 1
     },
     {
       "section_id": "SEC-CNTT1-C02",
@@ -1554,7 +1580,10 @@
       "student_count": 72,
       "is_difficult": true,
       "required_room_type": "NORMAL",
-      "duration_periods": 3
+      "duration_periods": 3,
+      "preferred_campus_id": "CS1",
+      "preferred_shift": "morning",
+      "meetings_per_week": 1
     },
     {
       "section_id": "SEC-CNTT1-C03",
@@ -1565,7 +1594,10 @@
       "student_count": 72,
       "is_difficult": false,
       "required_room_type": "NORMAL",
-      "duration_periods": 2
+      "duration_periods": 2,
+      "preferred_campus_id": "CS1",
+      "preferred_shift": "afternoon",
+      "meetings_per_week": 1
     },
     {
       "section_id": "SEC-CNTT1-C04",
@@ -1576,7 +1608,10 @@
       "student_count": 72,
       "is_difficult": false,
       "required_room_type": "NORMAL",
-      "duration_periods": 2
+      "duration_periods": 2,
+      "preferred_campus_id": "CS1",
+      "preferred_shift": "morning",
+      "meetings_per_week": 1
     },
     {
       "section_id": "SEC-CNTT1-C13",
@@ -1587,7 +1622,10 @@
       "student_count": 72,
       "is_difficult": false,
       "required_room_type": "NORMAL",
-      "duration_periods": 2
+      "duration_periods": 2,
+      "preferred_campus_id": "CS1",
+      "preferred_shift": "afternoon",
+      "meetings_per_week": 1
     },
     {
       "section_id": "SEC-CNTT2-C01",
@@ -1598,7 +1636,10 @@
       "student_count": 68,
       "is_difficult": false,
       "required_room_type": "NORMAL",
-      "duration_periods": 2
+      "duration_periods": 2,
+      "preferred_campus_id": "CS1",
+      "preferred_shift": "morning",
+      "meetings_per_week": 1
     },
     {
       "section_id": "SEC-CNTT2-C02",
@@ -1609,7 +1650,10 @@
       "student_count": 68,
       "is_difficult": true,
       "required_room_type": "NORMAL",
-      "duration_periods": 3
+      "duration_periods": 3,
+      "preferred_campus_id": "CS1",
+      "preferred_shift": "afternoon",
+      "meetings_per_week": 1
     },
     {
       "section_id": "SEC-CNTT2-C03",
@@ -1620,7 +1664,10 @@
       "student_count": 68,
       "is_difficult": false,
       "required_room_type": "NORMAL",
-      "duration_periods": 2
+      "duration_periods": 2,
+      "preferred_campus_id": "CS1",
+      "preferred_shift": "morning",
+      "meetings_per_week": 1
     },
     {
       "section_id": "SEC-CNTT2-C04",
@@ -1631,7 +1678,10 @@
       "student_count": 68,
       "is_difficult": false,
       "required_room_type": "NORMAL",
-      "duration_periods": 4
+      "duration_periods": 4,
+      "preferred_campus_id": "CS1",
+      "preferred_shift": "afternoon",
+      "meetings_per_week": 1
     },
     {
       "section_id": "SEC-CNTT2-C13",
@@ -1642,7 +1692,10 @@
       "student_count": 68,
       "is_difficult": false,
       "required_room_type": "LAB",
-      "duration_periods": 3
+      "duration_periods": 3,
+      "preferred_campus_id": "CS1",
+      "preferred_shift": "morning",
+      "meetings_per_week": 1
     },
     {
       "section_id": "SEC-CNTT3-C01",
@@ -1653,7 +1706,10 @@
       "student_count": 65,
       "is_difficult": false,
       "required_room_type": "LAB",
-      "duration_periods": 3
+      "duration_periods": 3,
+      "preferred_campus_id": "CS2",
+      "preferred_shift": "afternoon",
+      "meetings_per_week": 1
     },
     {
       "section_id": "SEC-CNTT3-C02",
@@ -1664,7 +1720,10 @@
       "student_count": 65,
       "is_difficult": true,
       "required_room_type": "NORMAL",
-      "duration_periods": 3
+      "duration_periods": 3,
+      "preferred_campus_id": "CS2",
+      "preferred_shift": "morning",
+      "meetings_per_week": 1
     },
     {
       "section_id": "SEC-CNTT3-C03",
@@ -1675,7 +1734,10 @@
       "student_count": 65,
       "is_difficult": false,
       "required_room_type": "NORMAL",
-      "duration_periods": 2
+      "duration_periods": 2,
+      "preferred_campus_id": "CS2",
+      "preferred_shift": "afternoon",
+      "meetings_per_week": 1
     },
     {
       "section_id": "SEC-CNTT3-C04",
@@ -1686,7 +1748,10 @@
       "student_count": 65,
       "is_difficult": false,
       "required_room_type": "NORMAL",
-      "duration_periods": 2
+      "duration_periods": 2,
+      "preferred_campus_id": "CS2",
+      "preferred_shift": "morning",
+      "meetings_per_week": 1
     },
     {
       "section_id": "SEC-CNTT3-C13",
@@ -1697,7 +1762,10 @@
       "student_count": 65,
       "is_difficult": false,
       "required_room_type": "NORMAL",
-      "duration_periods": 2
+      "duration_periods": 2,
+      "preferred_campus_id": "CS2",
+      "preferred_shift": "afternoon",
+      "meetings_per_week": 1
     },
     {
       "section_id": "SEC-CNTT4-C01",
@@ -1708,7 +1776,10 @@
       "student_count": 58,
       "is_difficult": false,
       "required_room_type": "NORMAL",
-      "duration_periods": 2
+      "duration_periods": 2,
+      "preferred_campus_id": "CS2",
+      "preferred_shift": "morning",
+      "meetings_per_week": 1
     },
     {
       "section_id": "SEC-CNTT4-C02",
@@ -1719,7 +1790,10 @@
       "student_count": 58,
       "is_difficult": true,
       "required_room_type": "NORMAL",
-      "duration_periods": 3
+      "duration_periods": 3,
+      "preferred_campus_id": "CS2",
+      "preferred_shift": "afternoon",
+      "meetings_per_week": 1
     },
     {
       "section_id": "SEC-CNTT4-C03",
@@ -1730,7 +1804,10 @@
       "student_count": 58,
       "is_difficult": false,
       "required_room_type": "NORMAL",
-      "duration_periods": 4
+      "duration_periods": 4,
+      "preferred_campus_id": "CS2",
+      "preferred_shift": "morning",
+      "meetings_per_week": 1
     },
     {
       "section_id": "SEC-CNTT4-C04",
@@ -1741,7 +1818,10 @@
       "student_count": 58,
       "is_difficult": false,
       "required_room_type": "NORMAL",
-      "duration_periods": 2
+      "duration_periods": 2,
+      "preferred_campus_id": "CS2",
+      "preferred_shift": "afternoon",
+      "meetings_per_week": 1
     },
     {
       "section_id": "SEC-CNTT4-C13",
@@ -1752,7 +1832,10 @@
       "student_count": 58,
       "is_difficult": false,
       "required_room_type": "NORMAL",
-      "duration_periods": 2
+      "duration_periods": 2,
+      "preferred_campus_id": "CS2",
+      "preferred_shift": "morning",
+      "meetings_per_week": 1
     },
     {
       "section_id": "SEC-KHMT1-C16",
@@ -1763,7 +1846,10 @@
       "student_count": 55,
       "is_difficult": true,
       "required_room_type": "NORMAL",
-      "duration_periods": 3
+      "duration_periods": 3,
+      "preferred_campus_id": "CS1",
+      "preferred_shift": "afternoon",
+      "meetings_per_week": 1
     },
     {
       "section_id": "SEC-KHMT1-C17",
@@ -1774,7 +1860,10 @@
       "student_count": 55,
       "is_difficult": true,
       "required_room_type": "NORMAL",
-      "duration_periods": 3
+      "duration_periods": 3,
+      "preferred_campus_id": "CS1",
+      "preferred_shift": "morning",
+      "meetings_per_week": 1
     },
     {
       "section_id": "SEC-KHMT1-C02",
@@ -1785,7 +1874,10 @@
       "student_count": 55,
       "is_difficult": true,
       "required_room_type": "NORMAL",
-      "duration_periods": 3
+      "duration_periods": 3,
+      "preferred_campus_id": "CS1",
+      "preferred_shift": "afternoon",
+      "meetings_per_week": 1
     },
     {
       "section_id": "SEC-KHMT1-C09",
@@ -1796,7 +1888,10 @@
       "student_count": 55,
       "is_difficult": true,
       "required_room_type": "NORMAL",
-      "duration_periods": 3
+      "duration_periods": 3,
+      "preferred_campus_id": "CS1",
+      "preferred_shift": "morning",
+      "meetings_per_week": 1
     },
     {
       "section_id": "SEC-KHMT1-C10",
@@ -1807,7 +1902,10 @@
       "student_count": 55,
       "is_difficult": true,
       "required_room_type": "LAB",
-      "duration_periods": 3
+      "duration_periods": 3,
+      "preferred_campus_id": "CS1",
+      "preferred_shift": "afternoon",
+      "meetings_per_week": 1
     },
     {
       "section_id": "SEC-KHMT2-C16",
@@ -1818,7 +1916,10 @@
       "student_count": 48,
       "is_difficult": true,
       "required_room_type": "NORMAL",
-      "duration_periods": 3
+      "duration_periods": 3,
+      "preferred_campus_id": "CS2",
+      "preferred_shift": "morning",
+      "meetings_per_week": 1
     },
     {
       "section_id": "SEC-KHMT2-C17",
@@ -1829,7 +1930,10 @@
       "student_count": 48,
       "is_difficult": true,
       "required_room_type": "NORMAL",
-      "duration_periods": 2
+      "duration_periods": 2,
+      "preferred_campus_id": "CS2",
+      "preferred_shift": "afternoon",
+      "meetings_per_week": 1
     },
     {
       "section_id": "SEC-KHMT2-C02",
@@ -1840,7 +1944,10 @@
       "student_count": 48,
       "is_difficult": true,
       "required_room_type": "NORMAL",
-      "duration_periods": 2
+      "duration_periods": 2,
+      "preferred_campus_id": "CS2",
+      "preferred_shift": "morning",
+      "meetings_per_week": 1
     },
     {
       "section_id": "SEC-KHMT2-C09",
@@ -1851,7 +1958,10 @@
       "student_count": 48,
       "is_difficult": true,
       "required_room_type": "NORMAL",
-      "duration_periods": 4
+      "duration_periods": 4,
+      "preferred_campus_id": "CS2",
+      "preferred_shift": "afternoon",
+      "meetings_per_week": 1
     },
     {
       "section_id": "SEC-KHMT2-C10",
@@ -1862,7 +1972,10 @@
       "student_count": 48,
       "is_difficult": true,
       "required_room_type": "NORMAL",
-      "duration_periods": 2
+      "duration_periods": 2,
+      "preferred_campus_id": "CS2",
+      "preferred_shift": "morning",
+      "meetings_per_week": 1
     },
     {
       "section_id": "SEC-KTPM1-C01",
@@ -1873,7 +1986,10 @@
       "student_count": 70,
       "is_difficult": false,
       "required_room_type": "NORMAL",
-      "duration_periods": 2
+      "duration_periods": 2,
+      "preferred_campus_id": "CS1",
+      "preferred_shift": "afternoon",
+      "meetings_per_week": 1
     },
     {
       "section_id": "SEC-KTPM1-C07",
@@ -1884,7 +2000,10 @@
       "student_count": 70,
       "is_difficult": false,
       "required_room_type": "NORMAL",
-      "duration_periods": 2
+      "duration_periods": 2,
+      "preferred_campus_id": "CS1",
+      "preferred_shift": "morning",
+      "meetings_per_week": 1
     },
     {
       "section_id": "SEC-KTPM1-C03",
@@ -1895,7 +2014,10 @@
       "student_count": 70,
       "is_difficult": false,
       "required_room_type": "NORMAL",
-      "duration_periods": 2
+      "duration_periods": 2,
+      "preferred_campus_id": "CS1",
+      "preferred_shift": "afternoon",
+      "meetings_per_week": 1
     },
     {
       "section_id": "SEC-KTPM1-C08",
@@ -1906,7 +2028,10 @@
       "student_count": 70,
       "is_difficult": true,
       "required_room_type": "NORMAL",
-      "duration_periods": 2
+      "duration_periods": 2,
+      "preferred_campus_id": "CS1",
+      "preferred_shift": "morning",
+      "meetings_per_week": 1
     },
     {
       "section_id": "SEC-KTPM1-C15",
@@ -1917,7 +2042,10 @@
       "student_count": 70,
       "is_difficult": false,
       "required_room_type": "NORMAL",
-      "duration_periods": 4
+      "duration_periods": 4,
+      "preferred_campus_id": "CS1",
+      "preferred_shift": "afternoon",
+      "meetings_per_week": 1
     },
     {
       "section_id": "SEC-KTPM2-C01",
@@ -1928,7 +2056,10 @@
       "student_count": 60,
       "is_difficult": false,
       "required_room_type": "NORMAL",
-      "duration_periods": 2
+      "duration_periods": 2,
+      "preferred_campus_id": "CS2",
+      "preferred_shift": "morning",
+      "meetings_per_week": 1
     },
     {
       "section_id": "SEC-KTPM2-C07",
@@ -1939,7 +2070,10 @@
       "student_count": 60,
       "is_difficult": false,
       "required_room_type": "NORMAL",
-      "duration_periods": 2
+      "duration_periods": 2,
+      "preferred_campus_id": "CS2",
+      "preferred_shift": "afternoon",
+      "meetings_per_week": 1
     },
     {
       "section_id": "SEC-KTPM2-C03",
@@ -1950,7 +2084,10 @@
       "student_count": 60,
       "is_difficult": false,
       "required_room_type": "NORMAL",
-      "duration_periods": 2
+      "duration_periods": 2,
+      "preferred_campus_id": "CS2",
+      "preferred_shift": "morning",
+      "meetings_per_week": 1
     },
     {
       "section_id": "SEC-KTPM2-C08",
@@ -1961,7 +2098,10 @@
       "student_count": 60,
       "is_difficult": true,
       "required_room_type": "NORMAL",
-      "duration_periods": 2
+      "duration_periods": 2,
+      "preferred_campus_id": "CS2",
+      "preferred_shift": "afternoon",
+      "meetings_per_week": 1
     },
     {
       "section_id": "SEC-KTPM2-C15",
@@ -1972,7 +2112,10 @@
       "student_count": 60,
       "is_difficult": false,
       "required_room_type": "NORMAL",
-      "duration_periods": 2
+      "duration_periods": 2,
+      "preferred_campus_id": "CS2",
+      "preferred_shift": "morning",
+      "meetings_per_week": 1
     },
     {
       "section_id": "SEC-HTTT1-C03",
@@ -1983,7 +2126,10 @@
       "student_count": 52,
       "is_difficult": false,
       "required_room_type": "NORMAL",
-      "duration_periods": 4
+      "duration_periods": 4,
+      "preferred_campus_id": "CS1",
+      "preferred_shift": "afternoon",
+      "meetings_per_week": 1
     },
     {
       "section_id": "SEC-HTTT1-C08",
@@ -1994,7 +2140,10 @@
       "student_count": 52,
       "is_difficult": true,
       "required_room_type": "NORMAL",
-      "duration_periods": 2
+      "duration_periods": 2,
+      "preferred_campus_id": "CS1",
+      "preferred_shift": "morning",
+      "meetings_per_week": 1
     },
     {
       "section_id": "SEC-HTTT1-C13",
@@ -2005,7 +2154,10 @@
       "student_count": 52,
       "is_difficult": false,
       "required_room_type": "NORMAL",
-      "duration_periods": 2
+      "duration_periods": 2,
+      "preferred_campus_id": "CS1",
+      "preferred_shift": "afternoon",
+      "meetings_per_week": 1
     },
     {
       "section_id": "SEC-HTTT1-C14",
@@ -2016,7 +2168,10 @@
       "student_count": 52,
       "is_difficult": true,
       "required_room_type": "LAB",
-      "duration_periods": 3
+      "duration_periods": 3,
+      "preferred_campus_id": "CS1",
+      "preferred_shift": "morning",
+      "meetings_per_week": 1
     },
     {
       "section_id": "SEC-HTTT1-C15",
@@ -2027,7 +2182,10 @@
       "student_count": 52,
       "is_difficult": false,
       "required_room_type": "NORMAL",
-      "duration_periods": 2
+      "duration_periods": 2,
+      "preferred_campus_id": "CS1",
+      "preferred_shift": "afternoon",
+      "meetings_per_week": 1
     },
     {
       "section_id": "SEC-ATTT1-C04",
@@ -2038,7 +2196,10 @@
       "student_count": 46,
       "is_difficult": false,
       "required_room_type": "NORMAL",
-      "duration_periods": 2
+      "duration_periods": 2,
+      "preferred_campus_id": "CS1",
+      "preferred_shift": "morning",
+      "meetings_per_week": 1
     },
     {
       "section_id": "SEC-ATTT1-C05",
@@ -2049,7 +2210,10 @@
       "student_count": 46,
       "is_difficult": true,
       "required_room_type": "NORMAL",
-      "duration_periods": 4
+      "duration_periods": 4,
+      "preferred_campus_id": "CS1",
+      "preferred_shift": "afternoon",
+      "meetings_per_week": 1
     },
     {
       "section_id": "SEC-ATTT1-C12",
@@ -2060,7 +2224,10 @@
       "student_count": 46,
       "is_difficult": true,
       "required_room_type": "NORMAL",
-      "duration_periods": 2
+      "duration_periods": 2,
+      "preferred_campus_id": "CS1",
+      "preferred_shift": "morning",
+      "meetings_per_week": 1
     },
     {
       "section_id": "SEC-ATTT1-C06",
@@ -2071,7 +2238,10 @@
       "student_count": 46,
       "is_difficult": false,
       "required_room_type": "NORMAL",
-      "duration_periods": 2
+      "duration_periods": 2,
+      "preferred_campus_id": "CS1",
+      "preferred_shift": "afternoon",
+      "meetings_per_week": 1
     },
     {
       "section_id": "SEC-ATTT1-C13",
@@ -2082,7 +2252,10 @@
       "student_count": 46,
       "is_difficult": false,
       "required_room_type": "NORMAL",
-      "duration_periods": 2
+      "duration_periods": 2,
+      "preferred_campus_id": "CS1",
+      "preferred_shift": "morning",
+      "meetings_per_week": 1
     },
     {
       "section_id": "SEC-TTDPT1-C19",
@@ -2093,7 +2266,10 @@
       "student_count": 44,
       "is_difficult": false,
       "required_room_type": "NORMAL",
-      "duration_periods": 2
+      "duration_periods": 2,
+      "preferred_campus_id": "CS2",
+      "preferred_shift": "afternoon",
+      "meetings_per_week": 1
     },
     {
       "section_id": "SEC-TTDPT1-C13",
@@ -2104,7 +2280,10 @@
       "student_count": 44,
       "is_difficult": false,
       "required_room_type": "LAB",
-      "duration_periods": 3
+      "duration_periods": 3,
+      "preferred_campus_id": "CS2",
+      "preferred_shift": "morning",
+      "meetings_per_week": 1
     },
     {
       "section_id": "SEC-TTDPT1-C01",
@@ -2115,7 +2294,10 @@
       "student_count": 44,
       "is_difficult": false,
       "required_room_type": "NORMAL",
-      "duration_periods": 4
+      "duration_periods": 4,
+      "preferred_campus_id": "CS2",
+      "preferred_shift": "afternoon",
+      "meetings_per_week": 1
     },
     {
       "section_id": "SEC-TTDPT1-C03",
@@ -2126,7 +2308,10 @@
       "student_count": 44,
       "is_difficult": false,
       "required_room_type": "NORMAL",
-      "duration_periods": 2
+      "duration_periods": 2,
+      "preferred_campus_id": "CS2",
+      "preferred_shift": "morning",
+      "meetings_per_week": 1
     },
     {
       "section_id": "SEC-TTDPT1-C18",
@@ -2137,7 +2322,10 @@
       "student_count": 44,
       "is_difficult": false,
       "required_room_type": "NORMAL",
-      "duration_periods": 2
+      "duration_periods": 2,
+      "preferred_campus_id": "CS2",
+      "preferred_shift": "afternoon",
+      "meetings_per_week": 1
     },
     {
       "section_id": "SEC-HTTT2-C04",
@@ -2148,7 +2336,10 @@
       "student_count": 40,
       "is_difficult": false,
       "required_room_type": "NORMAL",
-      "duration_periods": 2
+      "duration_periods": 2,
+      "preferred_campus_id": "CS2",
+      "preferred_shift": "morning",
+      "meetings_per_week": 1
     },
     {
       "section_id": "SEC-HTTT2-C05",
@@ -2159,7 +2350,10 @@
       "student_count": 40,
       "is_difficult": true,
       "required_room_type": "NORMAL",
-      "duration_periods": 2
+      "duration_periods": 2,
+      "preferred_campus_id": "CS2",
+      "preferred_shift": "afternoon",
+      "meetings_per_week": 1
     },
     {
       "section_id": "SEC-HTTT2-C06",
@@ -2170,7 +2364,10 @@
       "student_count": 40,
       "is_difficult": false,
       "required_room_type": "NORMAL",
-      "duration_periods": 2
+      "duration_periods": 2,
+      "preferred_campus_id": "CS2",
+      "preferred_shift": "morning",
+      "meetings_per_week": 1
     },
     {
       "section_id": "SEC-HTTT2-C14",
@@ -2181,7 +2378,10 @@
       "student_count": 40,
       "is_difficult": true,
       "required_room_type": "LAB",
-      "duration_periods": 3
+      "duration_periods": 3,
+      "preferred_campus_id": "CS2",
+      "preferred_shift": "afternoon",
+      "meetings_per_week": 1
     },
     {
       "section_id": "SEC-HTTT2-C01",
@@ -2192,7 +2392,10 @@
       "student_count": 40,
       "is_difficult": false,
       "required_room_type": "NORMAL",
-      "duration_periods": 4
+      "duration_periods": 4,
+      "preferred_campus_id": "CS2",
+      "preferred_shift": "morning",
+      "meetings_per_week": 1
     },
     {
       "section_id": "SEC-KHMT1-C11",
@@ -2203,7 +2406,10 @@
       "student_count": 55,
       "is_difficult": true,
       "required_room_type": "LAB",
-      "duration_periods": 3
+      "duration_periods": 3,
+      "preferred_campus_id": "CS1",
+      "preferred_shift": "afternoon",
+      "meetings_per_week": 1
     },
     {
       "section_id": "SEC-ATTT1-C20",
@@ -2214,7 +2420,103 @@
       "student_count": 46,
       "is_difficult": false,
       "required_room_type": "NORMAL",
-      "duration_periods": 2
+      "duration_periods": 2,
+      "preferred_campus_id": "CS1",
+      "preferred_shift": "evening",
+      "meetings_per_week": 1
+    }
+  ],
+  "constraints": [
+    {
+      "constraint_id": "H1",
+      "constraint_type": "HARD",
+      "constraint_name": "Mỗi lớp học phần phải được xếp đúng một lần",
+      "weight": 1000000,
+      "enabled": true
+    },
+    {
+      "constraint_id": "H2",
+      "constraint_type": "HARD",
+      "constraint_name": "Giảng viên không dạy hai lớp trùng bất kỳ tiết nào",
+      "weight": 1000000,
+      "enabled": true
+    },
+    {
+      "constraint_id": "H3",
+      "constraint_type": "HARD",
+      "constraint_name": "Nhóm sinh viên không học hai môn trùng bất kỳ tiết nào",
+      "weight": 1000000,
+      "enabled": true
+    },
+    {
+      "constraint_id": "H4",
+      "constraint_type": "HARD",
+      "constraint_name": "Phòng học không phục vụ hai lớp trùng bất kỳ tiết nào",
+      "weight": 1000000,
+      "enabled": true
+    },
+    {
+      "constraint_id": "H5",
+      "constraint_type": "HARD",
+      "constraint_name": "Phòng phải đủ sức chứa",
+      "weight": 1000000,
+      "enabled": true
+    },
+    {
+      "constraint_id": "H6",
+      "constraint_type": "HARD",
+      "constraint_name": "Đúng loại phòng NORMAL/LAB",
+      "weight": 1000000,
+      "enabled": true
+    },
+    {
+      "constraint_id": "H7",
+      "constraint_type": "HARD",
+      "constraint_name": "Giảng viên phải rảnh trong toàn bộ các tiết của lớp",
+      "weight": 1000000,
+      "enabled": true
+    },
+    {
+      "constraint_id": "H8",
+      "constraint_type": "HARD",
+      "constraint_name": "Các tiết của một lớp phải liên tiếp trong cùng ngày",
+      "weight": 1000000,
+      "enabled": true
+    },
+    {
+      "constraint_id": "S1",
+      "constraint_type": "SOFT",
+      "constraint_name": "Phân bố môn học của mỗi nhóm đều trong tuần",
+      "weight": 10,
+      "enabled": true
+    },
+    {
+      "constraint_id": "S2",
+      "constraint_type": "SOFT",
+      "constraint_name": "Hạn chế quá nhiều tiết cuối ngày",
+      "weight": 5,
+      "enabled": true
+    },
+    {
+      "constraint_id": "S3",
+      "constraint_type": "SOFT",
+      "constraint_name": "Ưu tiên ca học mong muốn của lớp học phần",
+      "weight": 4,
+      "enabled": true
+    },
+    {
+      "constraint_id": "S4",
+      "constraint_type": "SOFT",
+      "constraint_name": "Giảm số ghế trống trong phòng",
+      "weight": 2,
+      "enabled": true
+    },
+    {
+      "constraint_id": "S5",
+      "constraint_type": "SOFT",
+      "constraint_name": "Hạn chế giảng viên di chuyển liên tiếp giữa hai cơ sở",
+      "weight": 8,
+      "enabled": true
     }
   ]
 }

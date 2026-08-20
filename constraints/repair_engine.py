@@ -173,7 +173,6 @@ class ScheduleRepairEngine:
         self.stats.repair_calls += 1
 
         if not isinstance(schedule, Schedule) or not isinstance(getattr(schedule, "genes", None), list):
-            self.stats.repair_failures += 1
             self.stats.repair_failed += 1
             self.stats.repair_runtime_seconds += (time.perf_counter() - start_time)
             return RepairResult(
@@ -181,6 +180,47 @@ class ScheduleRepairEngine:
                 success=False,
                 remaining_hard_violations=len(self.section_map),
                 failed_section_ids=sorted(list(self.section_map.keys())),
+                status=RepairStatus.FAILED,
+            )
+
+        expected_section_ids = set(self.section_map)
+        genes_are_typed = all(isinstance(gene, Gene) for gene in schedule.genes)
+        gene_section_ids = [
+            gene.section_id for gene in schedule.genes
+            if isinstance(gene, Gene)
+        ]
+        structurally_valid = (
+            genes_are_typed
+            and len(schedule.genes) == len(expected_section_ids)
+            and len(set(gene_section_ids)) == len(gene_section_ids)
+            and set(gene_section_ids) == expected_section_ids
+        )
+
+        # Repair transforms assignments only. Missing, duplicate, unknown, or
+        # non-Gene chromosome entries violate the representation contract and
+        # are rejected instead of being silently invented or discarded.
+        if not structurally_valid:
+            input_hard, _ = self.evaluator.evaluate_hard(
+                schedule, category="internal"
+            )
+            input_soft, _ = self.evaluator.evaluate_soft(
+                schedule, category="internal"
+            )
+            failed_section_ids = sorted(expected_section_ids)
+
+            self.stats.repair_failed += 1
+            self.stats.sections_failed += len(failed_section_ids)
+            self.stats.hard_before_repair += input_hard
+            self.stats.hard_after_repair += input_hard
+            self.stats.soft_before_repair += input_soft
+            self.stats.soft_after_repair += input_soft
+            self.stats.repair_runtime_seconds += (time.perf_counter() - start_time)
+
+            return RepairResult(
+                schedule=schedule,
+                success=False,
+                remaining_hard_violations=input_hard,
+                failed_section_ids=failed_section_ids,
                 status=RepairStatus.FAILED,
             )
 
@@ -375,4 +415,3 @@ class ScheduleRepairEngine:
             failed_section_ids=best_failed_sections,
             status=status,
         )
-

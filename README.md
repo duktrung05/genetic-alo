@@ -1,6 +1,6 @@
 # Timetable Optimization & Benchmarking System (Genetic Algorithm)
 
-Hệ thống tối ưu hóa và xếp lịch thời khóa biểu trường đại học dựa trên **Thuật giải Di truyền (Genetic Algorithm)** kết hợp cơ chế sửa lỗi **Heuristic Repair Engine**. Dự án tích hợp bộ so sánh hiệu năng (Benchmark Suite) đa phương pháp trên cùng ngân sách đánh giá (fitness evaluation budget) cho bộ dữ liệu quy mô đại học, hỗ trợ các lớp học phần kéo dài nhiều tiết (`duration_periods`) và xuất thời khóa biểu chính thức dưới dạng Excel workbook 7 sheets (kèm CSV / JSON metadata).
+Hệ thống tối ưu hóa và xếp lịch thời khóa biểu trường đại học dựa trên **Thuật giải Di truyền (Genetic Algorithm)**, **Heuristic Repair Engine** và tùy chọn **Soft Local Search (SLS)**. Dự án tích hợp bộ so sánh đa phương pháp trên cùng ngân sách đánh giá, hỗ trợ lớp học phần kéo dài nhiều tiết (`duration_periods`) và xuất thời khóa biểu chính thức dưới dạng Excel workbook 7 sheets kèm CSV/JSON metadata.
 
 ---
 
@@ -27,7 +27,7 @@ Hệ thống tối ưu hóa và xếp lịch thời khóa biểu trường đạ
 
 - **Heuristic Repair Engine:** Tự động phát hiện và sửa chữa các gen vi phạm cứng sau bước lai ghép/đột biến với chiến lược tìm kiếm ưu tiên 3 tầng (3-tier candidate search).
 
-- **Multi-Seed Benchmark Suite:** So sánh 4 phương pháp (`Hybrid GA + Repair`, `GA without Repair`, `Greedy Search`, `Random Search`) trên cùng ngân sách evaluations với cờ `--methods` tùy chọn.
+- **Multi-Seed Benchmark Suite:** So sánh 6 flow độc lập (`repair_only`, `ga`, `ga_repair`, `ga_repair_sls`, `greedy`, `random`) trên cùng ngân sách search evaluations.
 
 - **Xuất thời khóa biểu tự động (Excel Workbook 7 Sheets & Metadata JSON):** Tự động tổng hợp thời khóa biểu tổng quan, theo giảng viên, theo lớp sinh viên, theo phòng học và chi tiết vi phạm.
 
@@ -90,10 +90,10 @@ pip install -r requirements.txt
 
 ## 🧪 Kiểm Thử Hệ Thống (Pytest Suite)
 
-Dự án đi kèm bộ test tự động toàn diện: **`309 tests passed / 0 failed`** (bao gồm 10 unit tests thử nghiệm Soft-Guided Mutation và 18 unit tests cho Soft Local Search), kiểm thử toàn bộ domain, dataset, constraints, repair engine, GA operators, exporter và benchmark metrics.
+Dự án đi kèm bộ test tự động kiểm tra domain, dataset, constraints, repair engine, GA operators, exporter, production workflow và benchmark metrics. Số lượng test được lấy trực tiếp bằng lệnh collection để tài liệu không bị lệch khi bổ sung regression test.
 
 ```bash
-# Chạy toàn bộ 309 test cases
+# Chạy toàn bộ test suite
 pytest -q
 
 # Kiểm tra collection
@@ -106,13 +106,16 @@ pytest --collect-only -q
 ## 🚀 Hướng Dẫn Chạy Hệ Thống
 
 ### 1. Tạo Thời Khóa Biểu Production (`main.py`)
-Sử dụng phương pháp đề xuất chính **Hybrid GA + Repair** để tạo thời khóa biểu chính thức:
+Mặc định production sử dụng **GA + Repair**. Có thể bật thêm post-search SLS để tối ưu soft penalty sau khi đã tìm được lịch hard-feasible.
 
 ```bash
-# Chạy tạo thời khóa biểu sản phẩm bằng Hybrid GA + Repair
+# Chạy production bằng GA + Repair
 python main.py
 
-# Chỉ định file Excel đầu vào và đường dẫn xuất workbook:
+# Bật thêm Soft Local Search
+python main.py --soft-local-search
+
+# Chỉ định input, output, seed và evaluation budget
 python main.py --input data/01_data_timetable.xlsx --output outputs/production/best_timetable.xlsx --seed 42
 ```
 
@@ -120,21 +123,24 @@ python main.py --input data/01_data_timetable.xlsx --output outputs/production/b
 So sánh hiệu năng các phương pháp với cờ `--methods` và số lượng seed tùy chọn:
 
 ```bash
-# Benchmark chính thức phục vụ đồ án (Hybrid, Ablation GA, Greedy Baseline):
-python main_benchmark.py --methods hybrid,ga,greedy --seeds 0-9 --experiment-name graduation_experiment
+# Benchmark production flow và các ablation chính
+python main_benchmark.py --methods ga_repair_sls,ga_repair,ga,repair_only,greedy --seeds 0-9 --experiment-name graduation_experiment
 
-# Benchmark thử nghiệm nhanh (chế độ Fast):
-python main_benchmark.py --methods hybrid,ga,greedy --seeds 0-2 --mode fast
+# Benchmark nhanh trên mock dataset nhỏ
+python main_benchmark.py --methods ga_repair_sls,ga_repair,ga --seeds 0-2 --mode fast --data-source mock --preset small
 
-# Benchmark mở rộng toàn bộ phương pháp (bao gồm Random Search):
-python main_benchmark.py --methods hybrid,ga,greedy,random --seeds 0-9 --experiment-name full_baseline_experiment
+# Benchmark đầy đủ cả 6 flow
+python main_benchmark.py --methods repair_only,ga,ga_repair,ga_repair_sls,greedy,random --seeds 0-9 --experiment-name full_baseline_experiment
 ```
 
 > **Phân định vai trò phương pháp:**
-> - **`hybrid` (Hybrid GA + Repair):** Phương pháp đề xuất chính duy nhất dùng trong production (`main.py`).
-> - **`ga` (GA without Repair):** Thuật toán GA tiêu chuẩn dùng làm thí nghiệm Ablation Study nhằm chứng minh đóng góp của Repair Engine.
-> - **`greedy` (Greedy Search):** Baseline Heuristic định hướng (deterministic), không tham gia vào luồng sản phẩm của Hybrid GA.
-> - **`random` (Random Search):** Baseline Lower Bound lấy mẫu ngẫu nhiên (chỉ dùng cho benchmark đánh giá).
+> - **`ga_repair_sls`:** GA + Repair + SLS, biến thể production đầy đủ.
+> - **`ga_repair`:** GA + Repair, cũng là flow mặc định của `main.py` khi không bật SLS.
+> - **`ga`:** GA không Repair và không SLS, dùng để đo đóng góp của Repair Engine.
+> - **`repair_only`:** Random Restart + Repair, không chạy selection/crossover/mutation.
+> - **`greedy`:** Baseline heuristic deterministic, chạy một lần.
+> - **`random`:** Baseline lower-bound lấy mẫu ngẫu nhiên.
+> - **`hybrid`:** Alias cũ, được tự động chuẩn hóa thành `ga_repair`; không nên dùng trong thí nghiệm mới.
 > - *Hệ thống đánh giá các phương pháp bằng feasible rate, hard violations, soft penalty, runtime và thống kê mô tả trên nhiều random seeds.*
 
 ### 3. Web Demo — Trợ Lý Tra Cứu Thời Khóa Biểu (`ui_app.py`)
@@ -172,7 +178,7 @@ outputs/
 ├── production/
 │   ├── best_timetable.xlsx             # Workbook thời khóa biểu chính thức (7 sheets)
 │   ├── schedule_query_data.json        # Dữ liệu JSON tra cứu cho Trợ lý tra cứu thời khóa biểu
-│   └── convergence_hybrid.png          # Biểu đồ hội tụ vi phạm cứng & mềm của Hybrid GA
+│   └── convergence_<method>.png        # Ví dụ: convergence_ga_repair_sls.png
 ├── datasets/
 │   └── 01_data_timetable.normalized.json # Snapshot dữ liệu đã chuẩn hóa (fast loader)
 └── benchmark/
@@ -194,7 +200,7 @@ outputs/
 
 ```text
 GA/
-├── main.py                        # Entry point tạo thời khóa biểu sản phẩm (Hybrid GA + Repair)
+├── main.py                        # Entry point production (GA + Repair, optional SLS)
 ├── main_benchmark.py              # Entry point chạy benchmark so sánh đa phương pháp
 ├── ui_app.py                      # Giao diện Web UI Trợ lý tra cứu thời khóa biểu (Read-only)
 ├── README.md                      # Tài liệu hướng dẫn sử dụng và báo cáo dự án
@@ -210,7 +216,6 @@ GA/
 ├── constraints/                   # HardConstraintChecker, SoftConstraintChecker (S1-S5) & ScheduleRepairEngine
 ├── ga/                            # GeneticAlgorithmEngine & GAOperators (selection, crossover, mutation)
 ├── evaluation/                    # Baselines (Greedy, Random), metrics, query_data_exporter, visualizer
-├── docs/                          # Tài liệu kỹ thuật ERD schema & phân tích thuật toán
 ├── scripts/                       # Script demo chạy GA
 ├── data/                          # Dữ liệu Excel đầu vào (01_data_timetable.xlsx)
 ├── outputs/                       # Thư mục chứa kết quả sản phẩm & benchmark

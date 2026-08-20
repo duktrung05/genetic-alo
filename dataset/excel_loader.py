@@ -704,6 +704,7 @@ class ExcelDatasetLoader:
                     "name": r.name,
                     "capacity": r.capacity,
                     "room_type": getattr(r, "room_type", "NORMAL"),
+                    "campus_id": getattr(r, "campus_id", None),
                 }
                 for r in dataset["rooms"]
             ],
@@ -724,6 +725,7 @@ class ExcelDatasetLoader:
                     "id": g.id,
                     "name": g.name,
                     "student_count": g.student_count,
+                    "home_campus_id": getattr(g, "home_campus_id", None),
                 }
                 for g in dataset.get("student_groups", [])
             ],
@@ -747,8 +749,21 @@ class ExcelDatasetLoader:
                     "is_difficult": getattr(s, "is_difficult", False),
                     "required_room_type": getattr(s, "required_room_type", "NORMAL"),
                     "duration_periods": getattr(s, "duration_periods", 1),
+                    "preferred_campus_id": getattr(s, "preferred_campus_id", None),
+                    "preferred_shift": getattr(s, "preferred_shift", None),
+                    "meetings_per_week": getattr(s, "meetings_per_week", 1),
                 }
                 for s in dataset["course_sections"]
+            ],
+            "constraints": [
+                {
+                    "constraint_id": c.constraint_id,
+                    "constraint_type": c.constraint_type,
+                    "constraint_name": c.constraint_name,
+                    "weight": c.weight,
+                    "enabled": c.enabled,
+                }
+                for c in dataset.get("constraints", [])
             ],
         }
 
@@ -783,6 +798,10 @@ class ExcelDatasetLoader:
         student_groups = [StudentGroup(**g) for g in data["student_groups"]]
         courses = [Course(**c) for c in data.get("courses", [])]
         course_sections = [CourseSection(**s) for s in data["course_sections"]]
+        constraints = [
+            ConstraintDefinition(**c)
+            for c in data.get("constraints", [])
+        ]
 
         dataset = {
             "timeslots": timeslots,
@@ -791,6 +810,7 @@ class ExcelDatasetLoader:
             "student_groups": student_groups,
             "courses": courses,
             "course_sections": course_sections,
+            "constraints": constraints,
         }
         DatasetValidator.validate(dataset)
         return dataset

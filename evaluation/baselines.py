@@ -7,6 +7,170 @@ from dataset import get_occupied_periods, is_valid_period_block, DatasetValidato
 
 from evaluation.run_metrics import RunMetrics
 
+
+class RepairOnlyScheduler:
+    """Random-restart baseline that applies Repair without any GA operators."""
+
+    def __init__(
+        self,
+        dataset: dict,
+        hard_weight: int = 1000,
+        soft_weight: int = 1,
+        seed: Optional[int] = None,
+    ):
+        DatasetValidator.validate(dataset)
+        self.dataset = dataset
+        self.hard_weight = hard_weight
+        self.soft_weight = soft_weight
+        self.seed = seed
+
+    @staticmethod
+    def _clone(schedule: Schedule) -> Schedule:
+        return Schedule(
+            genes=[
+                Gene(g.section_id, g.room_id, g.timeslot_id)
+                for g in schedule.genes
+            ]
+        )
+
+    def run(
+        self,
+        iterations: int = 1000,
+        evaluation_budget: Optional[int] = None,
+        seed: Optional[int] = None,
+    ) -> dict:
+        """Run exactly one random-restart + Repair attempt per search evaluation."""
+        max_evals = evaluation_budget if evaluation_budget is not None else iterations
+        if not isinstance(max_evals, int) or max_evals < 1:
+            raise ValueError(f"evaluation_budget must be an integer >= 1, got {max_evals}")
+
+        run_seed = seed if seed is not None else self.seed
+        if run_seed is not None:
+            random.seed(run_seed)
+
+        # Runtime import avoids an evaluation -> ga -> evaluation import cycle.
+        from ga.engine import GeneticAlgorithmEngine
+
+        engine = GeneticAlgorithmEngine(
+            self.dataset,
+            pop_size=2,
+            hard_weight=self.hard_weight,
+            soft_weight=self.soft_weight,
+            elite_count=1,
+            seed=run_seed,
+        )
+        evaluator = engine.evaluator
+        repairer = engine.repairer
+        evaluator.counters.reset()
+        repairer.stats.reset()
+        repairer.evaluator = evaluator
+
+        start_time = time.perf_counter()
+        best_schedule = None
+        best_key = None
+        best_score = None
+        best_hard = None
+        best_soft = None
+        history = []
+        first_feasible_time = None
+        first_feasible_search_eval = None
+        first_feasible_total_eval = None
+        first_feasible_iteration = None
+
+        for iteration in range(max_evals):
+            candidate = engine.create_random_schedule()
+            candidate = repairer.repair(candidate).schedule
+            score, hard, soft = evaluator.calculate_fitness(
+                candidate,
+                self.hard_weight,
+                self.soft_weight,
+                is_search_eval=True,
+            )
+            evaluation_count = evaluator.counters.search_fitness_evaluations
+
+            if hard == 0 and first_feasible_time is None:
+                first_feasible_time = time.perf_counter() - start_time
+                first_feasible_search_eval = evaluation_count
+                first_feasible_total_eval = evaluator.counters.total_constraint_evaluations
+                first_feasible_iteration = iteration
+
+            is_new_best = best_key is None or (hard, soft) < best_key
+            if is_new_best:
+                best_key = (hard, soft)
+                best_schedule = self._clone(candidate)
+                best_score = score
+                best_hard = hard
+                best_soft = soft
+
+            if is_new_best or evaluation_count % 100 == 0 or evaluation_count == max_evals:
+                history.append({
+                    "iteration": iteration,
+                    "elapsed_seconds": round(time.perf_counter() - start_time, 4),
+                    "fitness_evaluations": evaluation_count,
+                    "best_score": best_score,
+                    "best_hard": best_hard,
+                    "best_soft_penalty": best_soft,
+                })
+
+        runtime_seconds = time.perf_counter() - start_time
+        _, soft_details = evaluator.evaluate_soft(best_schedule, category="reporting")
+        raw_soft = sum(soft_details.values())
+        counters = evaluator.counters
+        repair_stats = repairer.stats
+
+        metrics = RunMetrics(
+            method="Repair-only Random Restart",
+            seed=run_seed,
+            runtime_seconds=runtime_seconds,
+            time_to_first_feasible_seconds=first_feasible_time,
+            search_fitness_evaluations=counters.search_fitness_evaluations,
+            hard_constraint_evaluations=counters.hard_constraint_evaluations,
+            soft_constraint_evaluations=counters.soft_constraint_evaluations,
+            total_constraint_evaluations=counters.total_constraint_evaluations,
+            candidate_checks=counters.candidate_checks + repair_stats.candidate_checks,
+            repair_calls=repair_stats.repair_calls,
+            repair_improved=repair_stats.repair_improved,
+            repair_unchanged=repair_stats.repair_unchanged,
+            repair_failed=repair_stats.repair_failed,
+            first_feasible_search_evaluation=first_feasible_search_eval,
+            first_feasible_total_constraint_evaluation=first_feasible_total_eval,
+            first_feasible_generation=first_feasible_iteration,
+            final_hard_violations=best_hard,
+            final_soft_penalty=best_soft,
+            feasible=(best_hard == 0),
+            score=best_score,
+            raw_soft_violations=raw_soft,
+            search_hard_constraint_evaluations=counters.search_hard_constraint_evaluations,
+            search_soft_constraint_evaluations=counters.search_soft_constraint_evaluations,
+            search_constraint_evaluations=counters.search_constraint_evaluations,
+            internal_hard_constraint_evaluations=counters.internal_hard_constraint_evaluations,
+            internal_soft_constraint_evaluations=counters.internal_soft_constraint_evaluations,
+            internal_constraint_evaluations=counters.internal_constraint_evaluations,
+            reporting_hard_constraint_evaluations=counters.reporting_hard_constraint_evaluations,
+            reporting_soft_constraint_evaluations=counters.reporting_soft_constraint_evaluations,
+            reporting_constraint_evaluations=counters.reporting_constraint_evaluations,
+            total_hard_constraint_evaluations=counters.hard_constraint_evaluations,
+            total_soft_constraint_evaluations=counters.soft_constraint_evaluations,
+        )
+
+        result = metrics.to_dict()
+        result.update({
+            "best_schedule": best_schedule,
+            "best_score": best_score,
+            "hard_violations": best_hard,
+            "soft_violations": best_soft,
+            "soft_penalty": best_soft,
+            "raw_soft_violations": raw_soft,
+            "fitness_evaluations": counters.search_fitness_evaluations,
+            "history": history,
+            "repair_stats": repair_stats.to_dict(),
+            "uses_ga_operators": False,
+            "use_repair": True,
+            "use_soft_local_search": False,
+            "run_metrics": metrics,
+        })
+        return result
+
 class RandomSearchScheduler:
     """Bộ lập lịch Random Search dùng làm baseline lấy mẫu lịch ngẫu nhiên."""
 
@@ -300,4 +464,3 @@ class GreedyScheduler:
             "run_metrics": metrics,
         })
         return res_dict
-

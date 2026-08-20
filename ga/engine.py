@@ -146,7 +146,17 @@ class GeneticAlgorithmEngine:
             "guided_mutation_fallbacks": 0,
         }
 
-        for gen in range(generations):
+        # When a search budget is supplied it is the authoritative stopping
+        # contract. Ensure the generation loop has enough iterations to spend
+        # it even when the caller configured fewer generations than required.
+        generation_limit = generations
+        if evaluation_budget is not None:
+            generations_for_budget = (
+                evaluation_budget + self.pop_size - 1
+            ) // self.pop_size
+            generation_limit = max(generations, generations_for_budget)
+
+        for gen in range(generation_limit):
             if evaluation_budget is not None and evaluation_count >= evaluation_budget:
                 break
 
@@ -197,7 +207,10 @@ class GeneticAlgorithmEngine:
                 "avg_score": sum(scores) / len(scores)
             })
 
-            if best_hard == 0 and best_soft == 0:
+            # An unbudgeted production run may stop at a perfect solution. A
+            # benchmark run must still consume its declared budget so methods
+            # remain comparable and validate_search_budget() cannot fail.
+            if best_hard == 0 and best_soft == 0 and evaluation_budget is None:
                 break
 
             if evaluation_budget is not None and evaluation_count >= evaluation_budget:
@@ -380,7 +393,6 @@ class GeneticAlgorithmEngine:
             "run_metrics": metrics,
         })
         return res_dict
-
 
 
 

@@ -1,5 +1,5 @@
 import pytest
-from domain import Schedule, Gene, CourseSection, Room, Lecturer, StudentGroup
+from domain import Schedule, Gene, CourseSection, Room, Lecturer, StudentGroup, RepairStatus
 from constraints import ConstraintEvaluator, ScheduleRepairEngine, RepairStats
 from dataset import create_theory_timeslots
 
@@ -468,3 +468,66 @@ def test_ga_engine_shares_evaluator_object():
     # Must be the EXACT same evaluator instance in memory
     assert engine.repairer.evaluator is engine.evaluator
 
+
+@pytest.mark.unit
+def test_repair_rejects_non_schedule_without_crashing(repair_dataset):
+    repairer = ScheduleRepairEngine(repair_dataset)
+
+    result = repairer.repair(None)
+
+    assert result.success is False
+    assert result.status is RepairStatus.FAILED
+    assert result.schedule is None
+    assert result.remaining_hard_violations == len(repair_dataset["course_sections"])
+    assert repairer.stats.repair_calls == 1
+    assert repairer.stats.repair_failed == 1
+    assert repairer.stats.repair_failures == 1
+    assert repairer.stats.repair_attempts == 0
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize(
+    "bad_schedule",
+    [
+        pytest.param(
+            Schedule(genes=[
+                Gene("SEC_1", "P101", 0),
+                Gene("SEC_2", "LAB01", 16),
+            ]),
+            id="missing-section",
+        ),
+        pytest.param(
+            Schedule(genes=[
+                Gene("SEC_1", "P101", 0),
+                Gene("SEC_1", "P102", 1),
+                Gene("SEC_3", "P102", 2),
+            ]),
+            id="duplicate-section",
+        ),
+        pytest.param(
+            Schedule(genes=[
+                Gene("UNKNOWN", "P101", 0),
+                Gene("SEC_2", "LAB01", 16),
+                Gene("SEC_3", "P102", 2),
+            ]),
+            id="unknown-section",
+        ),
+    ],
+)
+def test_repair_rejects_structurally_invalid_chromosome(
+    repair_dataset, bad_schedule
+):
+    repairer = ScheduleRepairEngine(repair_dataset)
+
+    result = repairer.repair(bad_schedule)
+
+    assert result.success is False
+    assert result.status is RepairStatus.FAILED
+    assert result.schedule is bad_schedule
+    assert result.remaining_hard_violations > 0
+    assert result.failed_section_ids == sorted(
+        section.section_id for section in repair_dataset["course_sections"]
+    )
+    assert repairer.stats.repair_calls == 1
+    assert repairer.stats.repair_failed == 1
+    assert repairer.stats.repair_attempts == 0

@@ -90,6 +90,41 @@ def test_ga_budget_enforcement_exact(small_dataset):
     assert res["run_metrics"].search_fitness_evaluations == 20
 
 
+@pytest.mark.unit
+def test_ga_budget_overrides_too_small_generation_limit(small_dataset):
+    engine = GeneticAlgorithmEngine(small_dataset, pop_size=5, elite_count=1, seed=42)
+
+    result = engine.run(
+        generations=1,
+        use_repair=False,
+        evaluation_budget=12,
+    )
+
+    assert result["run_metrics"].search_fitness_evaluations == 12
+    assert result["history"][-1]["fitness_evaluations"] == 12
+
+
+@pytest.mark.unit
+def test_ga_budget_is_not_shortened_by_perfect_solution(small_dataset, monkeypatch):
+    engine = GeneticAlgorithmEngine(small_dataset, pop_size=5, elite_count=1, seed=42)
+    calculate_fitness = engine.evaluator.calculate_fitness
+
+    def report_perfect_solution(*args, **kwargs):
+        calculate_fitness(*args, **kwargs)
+        return 0.0, 0, 0
+
+    monkeypatch.setattr(engine.evaluator, "calculate_fitness", report_perfect_solution)
+
+    result = engine.run(
+        generations=100,
+        use_repair=False,
+        evaluation_budget=12,
+    )
+
+    assert result["run_metrics"].search_fitness_evaluations == 12
+    assert result["history"][-1]["fitness_evaluations"] == 12
+
+
 # ============================================================
 # 3. Random Search Budget Enforcement Tests
 # ============================================================

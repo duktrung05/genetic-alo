@@ -36,7 +36,18 @@ class GAOperators:
 
     @staticmethod
     def tournament_selection(population: List[Schedule], fitness_keys: List[Tuple[int, int]], k: int = 3) -> Schedule:
-        selected_indices = random.sample(range(len(population)), k)
+        if not population:
+            raise ValueError("population must not be empty")
+        if len(fitness_keys) != len(population):
+            raise ValueError(
+                "fitness_keys length must match population length: "
+                f"{len(fitness_keys)} != {len(population)}"
+            )
+        if not isinstance(k, int) or k < 1:
+            raise ValueError(f"tournament size k must be an integer >= 1, got {k}")
+
+        effective_k = min(k, len(population))
+        selected_indices = random.sample(range(len(population)), effective_k)
         best_idx = selected_indices[0]
         for idx in selected_indices[1:]:
             if fitness_keys[idx] < fitness_keys[best_idx]:
@@ -45,6 +56,26 @@ class GAOperators:
 
     @staticmethod
     def crossover(parent1: Schedule, parent2: Schedule) -> Tuple[Schedule, Schedule]:
+        if not isinstance(parent1, Schedule) or not isinstance(parent2, Schedule):
+            raise TypeError("crossover parents must be Schedule instances")
+        if not isinstance(parent1.genes, list) or not isinstance(parent2.genes, list):
+            raise TypeError("crossover parent genes must be lists")
+        if len(parent1.genes) != len(parent2.genes):
+            raise ValueError(
+                "crossover parents must have the same chromosome length: "
+                f"{len(parent1.genes)} != {len(parent2.genes)}"
+            )
+
+        def clone(parent: Schedule) -> Schedule:
+            return Schedule(genes=[
+                Gene(g.section_id, g.room_id, g.timeslot_id)
+                for g in parent.genes
+            ])
+
+        # There is no valid one-point crossover boundary for 0 or 1 gene.
+        if len(parent1.genes) < 2:
+            return clone(parent1), clone(parent2)
+
         c1_genes = []
         c2_genes = []
         point = random.randint(1, len(parent1.genes) - 1)

@@ -220,7 +220,15 @@ def validate_search_budget(metrics: RunMetrics, expected_budget: Optional[int]) 
     """Kiểm tra search_fitness_evaluations có khớp chính xác với expected_budget hay không."""
     if expected_budget is None:
         return
-    if metrics.method in ("GA without Repair", "Hybrid GA + Repair", "Random Search"):
+    exact_budget_methods = (
+        "GA without Repair",
+        "GA + Repair",
+        "GA + Repair + SLS (Production)",
+        "Repair-only Random Restart",
+        "Hybrid GA + Repair",  # Legacy result compatibility.
+        "Random Search",
+    )
+    if metrics.method in exact_budget_methods:
         if metrics.search_fitness_evaluations != expected_budget:
             raise ValueError(
                 f"Search budget violation for method='{metrics.method}', seed={metrics.seed}: "
@@ -289,5 +297,4 @@ class AggregateRunMetrics:
         d["time_to_first_feasible_median"] = self.median_time_to_first_feasible_seconds
         d["time_to_first_feasible_mean"] = self.mean_time_to_first_feasible_seconds
         return d
-
 

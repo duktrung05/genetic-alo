@@ -1,5 +1,8 @@
 import os
 from typing import Dict, List, Any, Optional, Union
+import matplotlib
+
+matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -179,4 +182,3 @@ class ConvergenceVisualizer:
             plt.tight_layout()
             plt.savefig(compat_path, dpi=300)
             plt.close()
-

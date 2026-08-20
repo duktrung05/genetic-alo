@@ -1,5 +1,5 @@
 from .run_metrics import RunMetrics, EvaluationCounters
-from .baselines import RandomSearchScheduler, GreedyScheduler
+from .baselines import RepairOnlyScheduler, RandomSearchScheduler, GreedyScheduler
 from .metrics import BenchmarkEvaluator
 from .visualizer import ConvergenceVisualizer
 from .schedule_exporter import export_schedule_to_csv, export_schedule_to_excel, export_metadata_to_json
@@ -15,6 +15,7 @@ from .method_registry import (
 __all__ = [
     "RunMetrics",
     "EvaluationCounters",
+    "RepairOnlyScheduler",
     "RandomSearchScheduler",
     "GreedyScheduler",
     "BenchmarkEvaluator",

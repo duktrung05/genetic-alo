@@ -4,6 +4,8 @@ import openpyxl
 from unittest.mock import patch, MagicMock
 from dataset import ExcelDatasetLoader, DatasetValidator, DatasetFactory, find_feasible_schedule
 from dataset.excel_loader import ExcelValidationError
+from domain import Gene, Schedule
+from constraints import ConstraintEvaluator
 from ga import GeneticAlgorithmEngine
 
 EXCEL_PATH = "data/01_data_timetable.xlsx"
@@ -58,10 +60,37 @@ def test_json_snapshot_roundtrip_no_data_loss(tmp_path):
     report = DatasetValidator.validate_report(ds_reconstructed)
     assert report["valid"] is True
 
-    # Assert entity counts match exactly
-    assert len(ds_reconstructed["course_sections"]) == len(ds_orig["course_sections"])
-    assert len(ds_reconstructed["rooms"]) == len(ds_orig["rooms"])
-    assert len(ds_reconstructed["timeslots"]) == len(ds_orig["timeslots"])
+    # Every scheduling-relevant entity and field must survive the round trip.
+    entity_keys = (
+        "timeslots",
+        "rooms",
+        "lecturers",
+        "student_groups",
+        "courses",
+        "course_sections",
+        "constraints",
+    )
+    assert set(ds_reconstructed) == set(ds_orig) == set(entity_keys)
+    for key in entity_keys:
+        assert ds_reconstructed[key] == ds_orig[key], f"Round-trip data loss in '{key}'"
+
+    # The same chromosome must represent and score the exact same problem after
+    # loading the snapshot. It does not need to be feasible for this invariant.
+    room_id = ds_orig["rooms"][0].id
+    timeslot_id = ds_orig["timeslots"][0].id
+    schedule = Schedule(
+        genes=[
+            Gene(section_id=section.section_id, room_id=room_id, timeslot_id=timeslot_id)
+            for section in ds_orig["course_sections"]
+        ]
+    )
+    original_result = ConstraintEvaluator(ds_orig).evaluate_unified(schedule)
+    reconstructed_result = ConstraintEvaluator(ds_reconstructed).evaluate_unified(schedule)
+
+    assert reconstructed_result.hard_violations == original_result.hard_violations
+    assert reconstructed_result.hard_details == original_result.hard_details
+    assert reconstructed_result.soft_penalty == original_result.soft_penalty
+    assert reconstructed_result.soft_breakdown == original_result.soft_breakdown
 
 @pytest.mark.unit
 def test_single_load_workbook_call():

@@ -21,29 +21,36 @@ from evaluation.baselines import RandomSearchScheduler, GreedyScheduler
 
 @pytest.mark.unit
 def test_parse_methods_single():
-    assert parse_methods("hybrid") == ["hybrid"]
+    assert parse_methods("ga_repair_sls") == ["ga_repair_sls"]
+    assert parse_methods("hybrid") == ["ga_repair"]
 
 
 @pytest.mark.unit
 def test_parse_methods_multiple():
-    assert parse_methods("hybrid,ga") == ["hybrid", "ga"]
-    assert parse_methods("hybrid, ga, greedy") == ["hybrid", "ga", "greedy"]
+    assert parse_methods("ga_repair_sls,ga_repair,ga") == [
+        "ga_repair_sls", "ga_repair", "ga"
+    ]
+    assert parse_methods("repair_only, greedy, random") == [
+        "repair_only", "greedy", "random"
+    ]
 
 
 @pytest.mark.unit
 def test_parse_methods_case_insensitive_and_whitespace():
-    assert parse_methods("  Hybrid ,  GA  ") == ["hybrid", "ga"]
+    assert parse_methods("  GA_Repair_SLS ,  GA  ") == ["ga_repair_sls", "ga"]
 
 
 @pytest.mark.unit
 def test_parse_methods_deduplication_preserves_first_occurrence():
-    assert parse_methods("hybrid, greedy, hybrid, ga, greedy") == ["hybrid", "greedy", "ga"]
+    assert parse_methods("hybrid, greedy, ga_repair, ga, greedy") == [
+        "ga_repair", "greedy", "ga"
+    ]
 
 
 @pytest.mark.unit
 def test_parse_methods_unsupported_raises():
     with pytest.raises(ValueError, match="Unsupported method 'gready'"):
-        parse_methods("hybrid,gready")
+        parse_methods("ga_repair,gready")
 
 
 @pytest.mark.unit
@@ -62,8 +69,8 @@ def test_parse_methods_empty_raises():
 def test_selected_runner_isolation(small_dataset):
     ga_config = {"pop_size": 10, "generations": 5, "crossover_rate": 0.8, "mutation_rate": 0.2}
 
-    # Execute only hybrid and ga runners
-    selected = parse_methods("hybrid,ga")
+    # Execute only GA + Repair and plain GA runners.
+    selected = parse_methods("ga_repair,ga")
 
     executed_methods = []
     for m in selected:
@@ -71,7 +78,9 @@ def test_selected_runner_isolation(small_dataset):
         executed_methods.append(m)
         assert res["run_metrics"].search_fitness_evaluations == 10
 
-    assert executed_methods == ["hybrid", "ga"]
+    assert executed_methods == ["ga_repair", "ga"]
+    assert "repair_only" not in executed_methods
+    assert "ga_repair_sls" not in executed_methods
     assert "greedy" not in executed_methods
     assert "random" not in executed_methods
 
@@ -81,16 +90,18 @@ def test_selected_runner_isolation(small_dataset):
 # ============================================================
 
 @pytest.mark.integration
-def test_hybrid_only_benchmark_execution(small_dataset):
+def test_ga_repair_sls_matches_production_flow(small_dataset):
     ga_config = {"pop_size": 10, "generations": 5, "crossover_rate": 0.8, "mutation_rate": 0.2}
-    selected = parse_methods("hybrid")
+    selected = parse_methods("ga_repair_sls")
 
-    runs = [METHOD_RUNNERS["hybrid"](small_dataset, ga_config, budget=10, seed=s) for s in [0, 1]]
+    runs = [METHOD_RUNNERS["ga_repair_sls"](small_dataset, ga_config, budget=20, seed=0)]
 
-    assert len(runs) == 2
+    assert selected == ["ga_repair_sls"]
     for r in runs:
-        assert r["run_metrics"].method == "Hybrid GA + Repair"
-        assert r["run_metrics"].search_fitness_evaluations == 10
+        assert r["run_metrics"].method == "GA + Repair + SLS (Production)"
+        assert r["run_metrics"].search_fitness_evaluations == 20
+        assert r["use_repair"] is True
+        assert r["use_soft_local_search"] is True
 
 
 # ============================================================
@@ -98,15 +109,133 @@ def test_hybrid_only_benchmark_execution(small_dataset):
 # ============================================================
 
 @pytest.mark.integration
-def test_hybrid_plus_ga_benchmark_execution(small_dataset):
+def test_ga_repair_and_plain_ga_benchmark_execution(small_dataset):
     ga_config = {"pop_size": 10, "generations": 5, "crossover_rate": 0.8, "mutation_rate": 0.2}
-    selected = parse_methods("hybrid,ga")
+    selected = parse_methods("ga_repair,ga")
 
-    hybrid_runs = [METHOD_RUNNERS["hybrid"](small_dataset, ga_config, budget=10, seed=0)]
+    repair_runs = [METHOD_RUNNERS["ga_repair"](small_dataset, ga_config, budget=10, seed=0)]
     ga_runs = [METHOD_RUNNERS["ga"](small_dataset, ga_config, budget=10, seed=0)]
 
-    assert hybrid_runs[0]["run_metrics"].method == "Hybrid GA + Repair"
+    assert selected == ["ga_repair", "ga"]
+    assert repair_runs[0]["run_metrics"].method == "GA + Repair"
     assert ga_runs[0]["run_metrics"].method == "GA without Repair"
+
+
+@pytest.mark.unit
+def test_repair_only_baseline_uses_budget_without_ga_operators(small_dataset):
+    ga_config = {"hard_weight": 1000, "soft_weight": 1}
+
+    result = METHOD_RUNNERS["repair_only"](
+        small_dataset, ga_config, budget=5, seed=0
+    )
+
+    metrics = result["run_metrics"]
+    assert metrics.method == "Repair-only Random Restart"
+    assert metrics.search_fitness_evaluations == 5
+    assert metrics.repair_calls == 5
+    assert result["uses_ga_operators"] is False
+
+
+@pytest.mark.unit
+def test_best_timetable_selection_rechecks_feasibility(small_dataset):
+    from dataset import find_feasible_schedule
+    from main_benchmark import select_best_feasible_run
+
+    feasible_schedule = find_feasible_schedule(small_dataset)
+    assert feasible_schedule is not None
+
+    room_id = small_dataset["rooms"][0].id
+    timeslot_id = small_dataset["timeslots"][0].id
+    infeasible_schedule = Schedule(genes=[
+        Gene(section.section_id, room_id, timeslot_id)
+        for section in small_dataset["course_sections"]
+    ])
+
+    selected = select_best_feasible_run(
+        [
+            {
+                "method": "GA + Repair + SLS (Production)",
+                "best_schedule": infeasible_schedule,
+                "hard_violations": 0,  # Deliberately stale metric.
+                "soft_penalty": 0,
+            },
+            {
+                "method": "GA without Repair",
+                "best_schedule": feasible_schedule,
+                "hard_violations": 99,  # Must be replaced by re-evaluation.
+                "soft_penalty": 9999,
+            },
+        ],
+        small_dataset,
+    )
+
+    assert selected is not None
+    assert selected["method"] == "GA without Repair"
+    assert selected["hard_violations"] == 0
+
+
+@pytest.mark.unit
+def test_best_timetable_selection_returns_none_when_all_runs_are_infeasible(small_dataset):
+    from main_benchmark import select_best_feasible_run
+
+    room_id = small_dataset["rooms"][0].id
+    timeslot_id = small_dataset["timeslots"][0].id
+    infeasible_schedule = Schedule(genes=[
+        Gene(section.section_id, room_id, timeslot_id)
+        for section in small_dataset["course_sections"]
+    ])
+
+    selected = select_best_feasible_run(
+        [{
+            "method": "GA + Repair + SLS (Production)",
+            "best_schedule": infeasible_schedule,
+            "hard_violations": 0,
+            "soft_penalty": 0,
+        }],
+        small_dataset,
+    )
+
+    assert selected is None
+
+
+@pytest.mark.integration
+def test_benchmark_completes_without_export_when_no_run_is_feasible(
+    tmp_path, small_dataset, capsys
+):
+    from main_benchmark import main as benchmark_main
+
+    infeasible_result = RandomSearchScheduler(small_dataset, seed=0).run(
+        evaluation_budget=1,
+        seed=0,
+    )
+    assert infeasible_result["hard_violations"] > 0
+
+    def return_infeasible_result(dataset, ga_config, budget, seed):
+        return infeasible_result
+
+    argv = [
+        "main_benchmark.py",
+        "--mode", "quick",
+        "--methods", "random",
+        "--seeds", "0",
+        "--search-evaluation-budget", "1",
+        "--data-source", "mock",
+        "--preset", "small",
+        "--output-dir", str(tmp_path),
+    ]
+
+    with patch("sys.argv", argv), \
+         patch("main_benchmark.DatasetFactory.create_small_dataset", return_value=small_dataset), \
+         patch.dict("main_benchmark.METHOD_RUNNERS", {"random": return_infeasible_result}), \
+         patch("main_benchmark.ConvergenceVisualizer.plot_convergence"), \
+         patch("main_benchmark.export_schedule_to_excel") as export_mock:
+        benchmark_main()
+
+    export_mock.assert_not_called()
+    assert (tmp_path / "raw_runs.json").exists()
+    assert (tmp_path / "summary.json").exists()
+    assert not (tmp_path / "best_timetable.xlsx").exists()
+    assert "CHƯA CÓ LỊCH HARD-FEASIBLE" in capsys.readouterr().out
 
 
 # ============================================================
@@ -141,6 +270,19 @@ def test_random_search_optional_execution(small_dataset):
 # 7. Production Main Test (Requirement 19.7)
 # ============================================================
 
+@pytest.mark.unit
+def test_production_method_identity_matches_sls_flag():
+    from main import get_production_method_identity
+
+    assert get_production_method_identity(False) == (
+        "ga_repair",
+        "GA + Repair",
+    )
+    assert get_production_method_identity(True) == (
+        "ga_repair_sls",
+        "GA + Repair + SLS (Production)",
+    )
+
 @pytest.mark.integration
 def test_production_main_execution(tmp_path, small_dataset):
     from dataset import ExcelDatasetLoader
@@ -163,8 +305,14 @@ def test_production_main_execution(tmp_path, small_dataset):
     # Check RUN_CONFIG metadata
     ws_cfg = wb["RUN_CONFIG"]
     rows = dict(list(ws_cfg.iter_rows(values_only=True))[1:])
-    assert rows.get("primary_method") == "hybrid"
-    assert rows.get("selected_methods") == "hybrid"
+    assert rows.get("primary_method") == "ga_repair"
+    assert rows.get("selected_methods") == "ga_repair"
+
+    ws_metrics = wb["RUN_METRICS"]
+    metric_rows = list(ws_metrics.iter_rows(values_only=True))
+    metric_header = metric_rows[0]
+    metric_data = metric_rows[1]
+    assert metric_data[metric_header.index("method")] == "GA + Repair"
 
 
 # ============================================================

@@ -24,8 +24,36 @@ DAY_ALIASES: Dict[str, str] = {
 def strip_accents(text: str) -> str:
     """Bỏ dấu tiếng Việt để so khớp regex chuẩn xác."""
     text = unicodedata.normalize("NFD", text)
-    text = "".join(c for c in text if unicodedata.category(c) != "MN")
+    text = "".join(c for c in text if unicodedata.category(c) != "Mn")
     return text.lower()
+
+
+# English abbreviations must be matched against the original lowercase text,
+# not accent-stripped Vietnamese (where "môn" would otherwise become "mon").
+_ENGLISH_DAY_ALIAS_KEYS = frozenset({
+    "monday", "mon", "tuesday", "tue", "wednesday", "wed",
+    "thursday", "thu", "friday", "fri", "saturday", "sat",
+    "sunday", "sun",
+})
+
+# Normalize Vietnamese aliases once. Longer phrases must be matched first so
+# "thu hai" is resolved before the English Thursday abbreviation "thu".
+_NORMALIZED_VIETNAMESE_DAY_ALIASES = tuple(sorted(
+    {
+        strip_accents(alias): canonical_day
+        for alias, canonical_day in DAY_ALIASES.items()
+        if alias not in _ENGLISH_DAY_ALIAS_KEYS
+    }.items(),
+    key=lambda item: (-len(item[0]), item[0]),
+))
+
+_ENGLISH_DAY_ALIASES = tuple(sorted(
+    (
+        (alias, DAY_ALIASES[alias])
+        for alias in _ENGLISH_DAY_ALIAS_KEYS
+    ),
+    key=lambda item: (-len(item[0]), item[0]),
+))
 
 
 class IntentParser:
@@ -131,74 +159,18 @@ class IntentParser:
         )
 
     def _extract_day(self, lower_q: str, no_accent_q: str) -> Optional[str]:
-        """
-        Trích xuất ngày trong tuần từ câu query.
+        """Extract a canonical weekday from accented or unaccented aliases."""
+        for alias, canonical_day in _NORMALIZED_VIETNAMESE_DAY_ALIASES:
+            # Allow flexible whitespace inside multi-word aliases while
+            # requiring real token boundaries around short forms such as t2.
+            alias_pattern = r"\s+".join(
+                re.escape(part) for part in alias.split()
+            )
+            if re.search(rf"(?<!\w){alias_pattern}(?!\w)", no_accent_q):
+                return canonical_day
 
-        Ví dụ:
-            "Lịch Thứ 2" -> "Thứ 2"
-            "lịch thứ 6" -> "Thứ 6"
-            "thu 7"      -> "Thứ 7"
-            "Friday"     -> "Thứ 6"
-        """
-
-        # ------------------------------------------------------------
-        # 1. Ưu tiên bắt trực tiếp tiếng Việt: Thứ 2 ... Thứ 7
-        # ------------------------------------------------------------
-        match = re.search(r"\bthứ\s*([2-7])\b", lower_q)
-
-        if match:
-            return f"Thứ {match.group(1)}"
-
-        # ------------------------------------------------------------
-        # 2. Bắt bản không dấu: thu 2 ... thu 7
-        # ------------------------------------------------------------
-        match = re.search(r"\bthu\s*([2-7])\b", no_accent_q)
-
-        if match:
-            return f"Thứ {match.group(1)}"
-
-        # ------------------------------------------------------------
-        # 3. Chủ nhật
-        # ------------------------------------------------------------
-        if (
-            "chủ nhật" in lower_q
-            or "chu nhat" in no_accent_q
-            or "sunday" in lower_q
-            or re.search(r"\bcn\b", no_accent_q)
-        ):
-            return "Chủ nhật"
-
-        # ------------------------------------------------------------
-        # 4. English day names
-        # ------------------------------------------------------------
-        english_days = {
-            "monday": "Thứ 2",
-            "mon": "Thứ 2",
-
-            "tuesday": "Thứ 3",
-            "tue": "Thứ 3",
-
-            "wednesday": "Thứ 4",
-            "wed": "Thứ 4",
-
-            "thursday": "Thứ 5",
-            "thu": "Thứ 5",
-
-            "friday": "Thứ 6",
-            "fri": "Thứ 6",
-
-            "saturday": "Thứ 7",
-            "sat": "Thứ 7",
-
-            "sunday": "Chủ nhật",
-            "sun": "Chủ nhật",
-        }
-
-        for alias, canonical_day in english_days.items():
-            if re.search(
-                rf"\b{re.escape(alias)}\b",
-                no_accent_q,
-            ):
+        for alias, canonical_day in _ENGLISH_DAY_ALIASES:
+            if re.search(rf"(?<!\w){re.escape(alias)}(?!\w)", lower_q):
                 return canonical_day
 
         return None
@@ -287,4 +259,3 @@ class IntentParser:
                 return crs
 
         return None
-

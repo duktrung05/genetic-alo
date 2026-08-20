@@ -1,6 +1,7 @@
 import os
 import json
 from pathlib import Path
+from typing import Optional
 import pandas as pd
 import streamlit as st
 
@@ -25,6 +26,15 @@ DAY_ORDER = {
     "Thứ 6": 5, "Friday": 5,
     "Thứ 7": 6, "Saturday": 6,
     "Chủ nhật": 7, "Sunday": 7,
+}
+
+METHOD_DISPLAY_NAMES = {
+    "repair_only": "Repair-only Random Restart",
+    "ga": "GA without Repair",
+    "ga_repair": "GA + Repair",
+    "ga_repair_sls": "GA + Repair + SLS (Production)",
+    "greedy": "Greedy Search",
+    "random": "Random Search",
 }
 
 
@@ -54,6 +64,28 @@ def load_production_data():
         return query_data, meta
     except Exception:
         return None, None
+
+
+def get_method_display_name(metadata: Optional[dict]) -> str:
+    """Resolve canonical UI wording from current or legacy production metadata."""
+    metadata = metadata or {}
+    method_id = str(metadata.get("primary_method", "")).strip().lower()
+
+    if method_id in METHOD_DISPLAY_NAMES:
+        return METHOD_DISPLAY_NAMES[method_id]
+
+    raw_method = str(metadata.get("method", "")).strip()
+    uses_sls = bool(metadata.get("soft_local_search_enabled"))
+    if uses_sls or "sls" in raw_method.lower():
+        return METHOD_DISPLAY_NAMES["ga_repair_sls"]
+    if method_id == "hybrid" or "hybrid" in raw_method.lower():
+        return METHOD_DISPLAY_NAMES["ga_repair"]
+    return raw_method or METHOD_DISPLAY_NAMES["ga_repair"]
+
+
+def should_run_text_query(submitted: bool, query: str) -> bool:
+    """A text query is executed only after an explicit form submission."""
+    return bool(submitted and query.strip())
 
 
 def sort_assignments(assignments: list) -> list:
@@ -95,12 +127,13 @@ def format_dataframe(assignments: list) -> pd.DataFrame:
 
 
 def main():
+    query_data, meta = load_production_data()
+    method_display_name = get_method_display_name(meta)
+
     # 1. Header
     st.title("Hệ thống xếp thời khóa biểu tự động")
-    st.subheader("Hybrid Genetic Algorithm + Repair Engine")
+    st.subheader(method_display_name)
     st.markdown("---")
-
-    query_data, meta = load_production_data()
 
     # Data missing check
     if query_data is None or "assignments" not in query_data:
@@ -185,13 +218,13 @@ def main():
             if st.button(day_name, use_container_width=True):
                 quick_selected_day = day_name
 
-    query_input = st.text_input(
-        label="Nhập câu hỏi tra cứu thời khóa biểu:",
-        placeholder="VD: Lịch thứ 2, Lịch thứ 3 của lớp CNTT1, Giảng viên GV01 dạy khi nào?, Lịch phòng A9-205...",
-        key="query_input_text"
-    )
-
-    btn_search = st.button("Tra cứu", type="primary")
+    with st.form("schedule_query_form", clear_on_submit=False):
+        query_input = st.text_input(
+            label="Nhập câu hỏi tra cứu thời khóa biểu:",
+            placeholder="VD: Lịch thứ 2, Lịch thứ 3 của lớp CNTT1, Giảng viên GV01 dạy khi nào?, Lịch phòng A9-205...",
+            key="query_input_text"
+        )
+        btn_search = st.form_submit_button("Tra cứu", type="primary")
 
     # Determine resulting assignments
     display_assignments = []
@@ -201,7 +234,7 @@ def main():
         res = service.query(f"Lịch {quick_selected_day}")
         display_assignments = res.assignments
         text_response = ResponseFormatter.format_text(res)
-    elif (btn_search or query_input.strip()) and query_input.strip():
+    elif should_run_text_query(btn_search, query_input):
         res = service.query(query_input.strip())
         display_assignments = res.assignments
         text_response = ResponseFormatter.format_text(res)

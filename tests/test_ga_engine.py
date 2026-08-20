@@ -1,4 +1,5 @@
 import pytest
+from domain import Gene, Schedule
 from ga import GeneticAlgorithmEngine, GAOperators
 from evaluation import RandomSearchScheduler, BenchmarkEvaluator
 
@@ -174,3 +175,54 @@ def test_greedy_scheduler_same_seed_reproducibility(medium_dataset):
     assert genes1 == genes2
     assert g1["best_score"] == g2["best_score"]
 
+
+@pytest.mark.unit
+def test_ga_supports_population_two_and_single_section(small_dataset):
+    one_section_dataset = dict(small_dataset)
+    one_section_dataset["course_sections"] = small_dataset["course_sections"][:1]
+
+    engine = GeneticAlgorithmEngine(
+        one_section_dataset,
+        pop_size=2,
+        elite_count=1,
+        seed=7,
+    )
+    result = engine.run(
+        generations=2,
+        evaluation_budget=4,
+        crossover_rate=1.0,
+        mutation_rate=0.0,
+        use_repair=False,
+        seed=7,
+    )
+
+    assert result["fitness_evaluations"] == 4
+    assert len(result["best_schedule"].genes) == 1
+    assert GAOperators.validate_chromosome(
+        result["best_schedule"], one_section_dataset
+    )
+
+
+@pytest.mark.unit
+def test_crossover_single_gene_returns_independent_parent_clones():
+    parent1 = Schedule(genes=[Gene("SEC1", "R1", 1)])
+    parent2 = Schedule(genes=[Gene("SEC1", "R2", 2)])
+
+    child1, child2 = GAOperators.crossover(parent1, parent2)
+
+    assert child1.genes == parent1.genes
+    assert child2.genes == parent2.genes
+    assert child1.genes is not parent1.genes
+    assert child2.genes is not parent2.genes
+    assert child1.genes[0] is not parent1.genes[0]
+    assert child2.genes[0] is not parent2.genes[0]
+
+
+@pytest.mark.unit
+def test_tournament_selection_rejects_empty_or_misaligned_inputs():
+    with pytest.raises(ValueError, match="population must not be empty"):
+        GAOperators.tournament_selection([], [])
+
+    schedule = Schedule(genes=[])
+    with pytest.raises(ValueError, match="fitness_keys length"):
+        GAOperators.tournament_selection([schedule], [])

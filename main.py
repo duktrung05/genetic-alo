@@ -4,6 +4,9 @@ import argparse
 from datetime import datetime
 from pathlib import Path
 
+import matplotlib
+
+matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
 sys.stdout.reconfigure(encoding="utf-8")
@@ -20,7 +23,7 @@ from evaluation import (
 
 def parse_args():
     parser = argparse.ArgumentParser(
-        description="Production Timetable Generator (Hybrid GA + Repair)"
+        description="Production Timetable Generator (GA + Repair, optional SLS)"
     )
 
     parser.add_argument(
@@ -70,13 +73,23 @@ def parse_args():
     return parser.parse_args()
 
 
+def get_production_method_identity(use_soft_local_search: bool):
+    """Return the canonical method id and display name for this production run."""
+    if use_soft_local_search:
+        return "ga_repair_sls", "GA + Repair + SLS (Production)"
+    return "ga_repair", "GA + Repair"
+
+
 def main():
     args = parse_args()
+    method_id, method_name = get_production_method_identity(
+        args.soft_local_search
+    )
 
     print("=" * 80)
     print(
         "PRODUCTION TIMETABLE GENERATOR — "
-        "HYBRID GA + REPAIR + OPTIONAL POST-SEARCH SLS"
+        "GA + REPAIR + OPTIONAL POST-SEARCH SLS"
     )
     print("=" * 80)
 
@@ -110,10 +123,10 @@ def main():
         )
 
     # ==================================================================
-    # 2. RUN HYBRID GA + REPAIR
+    # 2. RUN GA + REPAIR
     # ==================================================================
 
-    print("\n[Phase 2] Đang chạy thuật toán chính: Hybrid GA + Repair...")
+    print(f"\n[Phase 2] Đang chạy thuật toán chính: {method_name}...")
 
     if args.soft_local_search:
         print(
@@ -199,12 +212,6 @@ def main():
     # ==================================================================
     # 4. PRINT FINAL PRODUCTION RESULT
     # ==================================================================
-
-    method_name = (
-        "Hybrid GA + Repair + Post-Search SLS"
-        if args.soft_local_search
-        else "Hybrid GA + Repair"
-    )
 
     print("\n" + "=" * 80)
     print("KẾT QUẢ TẠO THỜI KHÓA BIỂU — FINAL PRODUCTION RESULT")
@@ -308,6 +315,7 @@ def main():
 
     metrics_dict = metrics.to_dict()
 
+    metrics_dict["method"] = method_name
     metrics_dict["hard_violations"] = hard_violations
     metrics_dict["soft_penalty"] = soft_penalty
 
@@ -335,8 +343,8 @@ def main():
 
     meta_export = {
         "method": method_name,
-        "primary_method": "hybrid",
-        "selected_methods": "hybrid",
+        "primary_method": method_id,
+        "selected_methods": method_id,
 
         "seed": args.seed,
 
@@ -515,7 +523,7 @@ def main():
 
     if history:
         chart_dir = output_path.parent
-        chart_path = chart_dir / "convergence_hybrid.png"
+        chart_path = chart_dir / f"convergence_{method_id}.png"
 
         gens = [
             h["generation"]
@@ -546,7 +554,7 @@ def main():
         )
 
         ax1.set_title(
-            "Hybrid GA + Repair — Hard Violations Convergence"
+            f"{method_name} — Hard Violations Convergence"
         )
 
         ax1.set_xlabel("Generation")
@@ -566,7 +574,7 @@ def main():
         )
 
         ax2.set_title(
-            "Hybrid GA Search — Soft Penalty Convergence"
+            f"{method_name} — Soft Penalty Convergence"
         )
 
         ax2.set_xlabel("Generation")
@@ -588,7 +596,7 @@ def main():
         plt.close()
 
         print(
-            f"--> Đã lưu biểu đồ hội tụ Hybrid tại: "
+            f"--> Đã lưu biểu đồ hội tụ tại: "
             f"{chart_path}"
         )
 
