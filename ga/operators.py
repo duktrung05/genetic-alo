@@ -1,7 +1,9 @@
 import random
 from typing import List, Tuple, Optional, Dict, Set
 from collections import defaultdict
-from domain import Schedule, Gene, Room, Timeslot, CourseSection, Lecturer
+from domain import (
+    Schedule, Gene, Room, Timeslot, Lecturer, expand_scheduling_activities,
+)
 from dataset import get_occupied_periods, is_valid_period_block
 
 
@@ -11,14 +13,14 @@ class GAOperators:
         if not isinstance(schedule, Schedule) or not isinstance(schedule.genes, list):
             return False
 
-        sections = dataset.get("course_sections", [])
+        sections = expand_scheduling_activities(dataset.get("course_sections", []))
         rooms = dataset.get("rooms", [])
         timeslots = dataset.get("timeslots", [])
 
         if len(schedule.genes) != len(sections):
             return False
 
-        valid_section_ids = {s.section_id for s in sections}
+        valid_section_ids = {s.activity_id for s in sections}
         valid_room_ids = {r.id for r in rooms}
         valid_timeslot_ids = {t.id for t in timeslots}
 
@@ -65,6 +67,10 @@ class GAOperators:
                 "crossover parents must have the same chromosome length: "
                 f"{len(parent1.genes)} != {len(parent2.genes)}"
             )
+        if [g.activity_id for g in parent1.genes] != [
+            g.activity_id for g in parent2.genes
+        ]:
+            raise ValueError("crossover parents must use identical activity ordering")
 
         def clone(parent: Schedule) -> Schedule:
             return Schedule(genes=[
@@ -108,7 +114,10 @@ class GAOperators:
             Gene(section_id=g.section_id, room_id=g.room_id, timeslot_id=g.timeslot_id)
             for g in schedule.genes
         ])
-        sections_map = {s.section_id: s for s in dataset.get("course_sections", [])} if dataset else {}
+        sections_map = {
+            s.activity_id: s
+            for s in expand_scheduling_activities(dataset.get("course_sections", []))
+        } if dataset else {}
         lecturer_map = {l.id: l for l in dataset.get("lecturers", [])} if dataset else {}
 
         if day_period_to_ts_id is None:
@@ -119,6 +128,8 @@ class GAOperators:
             day_available_periods = defaultdict(set)
             for ts in timeslots:
                 day_available_periods[ts.day].add(ts.period)
+
+        timeslot_map = {ts.id: ts for ts in timeslots}
 
         for gene in mutated.genes:
             if random.random() < mutation_rate:
@@ -147,6 +158,22 @@ class GAOperators:
                         t for t in timeslots
                         if is_valid_period_block(t.period, duration, day_available_periods.get(t.day))
                     ]
+
+                    if sec is not None and sec.meeting_count > 1:
+                        sibling_days = {
+                            timeslot_map[g.timeslot_id].day
+                            for g in mutated.genes
+                            if g.activity_id != gene.activity_id
+                            and sections_map.get(g.activity_id) is not None
+                            and sections_map[g.activity_id].section_id == sec.section_id
+                            and g.timeslot_id in timeslot_map
+                        }
+                        separated = [t for t in preferred_ts if t.day not in sibling_days]
+                        if separated:
+                            preferred_ts = separated
+                        separated_blocks = [t for t in block_valid_ts if t.day not in sibling_days]
+                        if separated_blocks:
+                            block_valid_ts = separated_blocks
 
                     if preferred_ts:
                         gene.timeslot_id = random.choice(preferred_ts).id

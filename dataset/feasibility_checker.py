@@ -1,6 +1,9 @@
 from collections import defaultdict
 from typing import Dict, List, Set, Tuple, Optional
-from domain import Schedule, Gene, CourseSection, Room, Timeslot, Lecturer
+from domain import (
+    Schedule, Gene, SchedulingActivity, Room, Timeslot, Lecturer,
+    expand_scheduling_activities,
+)
 from .timeslot_factory import get_occupied_periods, is_valid_period_block
 
 
@@ -9,7 +12,9 @@ class FeasibilityChecker:
 
     def __init__(self, dataset: dict):
         self.dataset = dataset
-        self.sections: List[CourseSection] = dataset["course_sections"]
+        self.sections: List[SchedulingActivity] = expand_scheduling_activities(
+            dataset["course_sections"]
+        )
         self.rooms: List[Room] = dataset["rooms"]
         self.timeslots: List[Timeslot] = dataset["timeslots"]
         self.lecturers: List[Lecturer] = dataset.get("lecturers", [])
@@ -22,7 +27,7 @@ class FeasibilityChecker:
         for ts in self.timeslots:
             self.day_available_periods[ts.day].add(ts.period)
 
-    def _get_priority_key(self, sec: CourseSection) -> Tuple[int, int, int, int]:
+    def _get_priority_key(self, sec: SchedulingActivity) -> Tuple[int, int, int, int]:
         is_lab = 0 if getattr(sec, "required_room_type", "NORMAL") == "LAB" else 1
         dur = -getattr(sec, "duration_periods", 1)
         lec = self.lecturer_map.get(sec.lecturer_id)
@@ -60,11 +65,12 @@ class FeasibilityChecker:
 
             if not candidates:
                 return None
-            sec_candidates[sec.section_id] = candidates
+            sec_candidates[sec.activity_id] = candidates
 
         used_lec_time: Set[Tuple[str, str, int]] = set()
         used_grp_time: Set[Tuple[str, str, int]] = set()
         used_rm_time: Set[Tuple[str, str, int]] = set()
+        used_section_days: Set[Tuple[str, str]] = set()
         assigned_genes: List[Gene] = []
 
         def backtrack(index: int) -> bool:
@@ -73,11 +79,13 @@ class FeasibilityChecker:
 
             sec = sorted_sections[index]
             duration = getattr(sec, "duration_periods", 1)
-            candidates = sec_candidates[sec.section_id]
+            candidates = sec_candidates[sec.activity_id]
 
             for ts, rm in candidates:
                 occupied = get_occupied_periods(ts.period, duration)
                 day = ts.day
+                if (sec.section_id, day) in used_section_days:
+                    continue
 
                 # Check overlaps
                 lec_conflict = False
@@ -115,8 +123,9 @@ class FeasibilityChecker:
                         used_grp_time.add((sec.group_id, day, p))
                 for p in occupied:
                     used_rm_time.add((rm.id, day, p))
+                used_section_days.add((sec.section_id, day))
 
-                assigned_genes.append(Gene(sec.section_id, rm.id, ts.id))
+                assigned_genes.append(Gene(sec.activity_id, rm.id, ts.id))
 
                 if backtrack(index + 1):
                     return True
@@ -131,12 +140,13 @@ class FeasibilityChecker:
                         used_grp_time.remove((sec.group_id, day, p))
                 for p in occupied:
                     used_rm_time.remove((rm.id, day, p))
+                used_section_days.remove((sec.section_id, day))
 
             return False
 
         if backtrack(0):
             # Maintain original section ordering
-            sec_order = {s.section_id: i for i, s in enumerate(self.sections)}
+            sec_order = {s.activity_id: i for i, s in enumerate(self.sections)}
             assigned_genes.sort(key=lambda g: sec_order[g.section_id])
             return Schedule(genes=assigned_genes)
 

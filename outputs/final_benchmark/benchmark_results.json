@@ -1,0 +1,2586 @@
+{
+  "metadata": {
+    "git_commit": "71bd7ab9a8ff1c12d44dfde8add893106445abf1",
+    "dataset_hashes_sha256": {
+      "EASY": "dfbff415600ff0a1a2cba8b55c90ab52dbcd7b3db3b090f16f1b49cee2bc6e6d",
+      "MEDIUM": "409c375ed82490cedaeac258b90c6bae7d9e26ad9c50fd01aafc763b324b9d1b"
+    },
+    "python_version": "3.11.9",
+    "timestamp_utc": "2026-08-26T17:11:02.759958+00:00",
+    "algorithm_configuration": {
+      "pop_size": 60,
+      "generations": 100,
+      "crossover_rate": 0.8,
+      "mutation_rate": 0.2,
+      "hard_weight": 1000,
+      "soft_weight": 1,
+      "soft_local_search_max_passes": 2,
+      "soft_local_search_max_candidate_checks": 5000
+    },
+    "soft_constraint_configuration": {
+      "EASY": {
+        "S1": {
+          "key": "compact_student_schedule",
+          "name": "Giảm số ngày sinh viên phải đến trường",
+          "weight": 10,
+          "enabled": true
+        },
+        "S2": {
+          "key": "late_day_periods",
+          "name": "Hạn chế quá nhiều tiết cuối ngày",
+          "weight": 5,
+          "enabled": true
+        },
+        "S3": {
+          "key": "preferred_shift_mismatch",
+          "name": "Ưu tiên ca học mong muốn của lớp học phần",
+          "weight": 4,
+          "enabled": true
+        },
+        "S4": {
+          "key": "room_seat_waste",
+          "name": "Giảm số ghế trống trong phòng",
+          "weight": 2,
+          "enabled": true
+        },
+        "S5": {
+          "key": "consecutive_cross_campus",
+          "name": "Hạn chế giảng viên di chuyển liên tiếp giữa hai cơ sở",
+          "weight": 8,
+          "enabled": true
+        },
+        "S6": {
+          "key": "preferred_campus_mismatch",
+          "name": "Ưu tiên cơ sở mong muốn của lớp học phần",
+          "weight": 3,
+          "enabled": true
+        },
+        "S7": {
+          "key": "student_home_campus_mismatch",
+          "name": "Ưu tiên cơ sở chính của nhóm sinh viên",
+          "weight": 4,
+          "enabled": true
+        }
+      },
+      "MEDIUM": {
+        "S1": {
+          "key": "compact_student_schedule",
+          "name": "Giảm số ngày sinh viên phải đến trường",
+          "weight": 10,
+          "enabled": true
+        },
+        "S2": {
+          "key": "late_day_periods",
+          "name": "Hạn chế quá nhiều tiết cuối ngày",
+          "weight": 5,
+          "enabled": true
+        },
+        "S3": {
+          "key": "preferred_shift_mismatch",
+          "name": "Ưu tiên ca học mong muốn của lớp học phần",
+          "weight": 4,
+          "enabled": true
+        },
+        "S4": {
+          "key": "room_seat_waste",
+          "name": "Giảm số ghế trống trong phòng",
+          "weight": 2,
+          "enabled": true
+        },
+        "S5": {
+          "key": "consecutive_cross_campus",
+          "name": "Hạn chế giảng viên di chuyển liên tiếp giữa hai cơ sở",
+          "weight": 8,
+          "enabled": true
+        },
+        "S6": {
+          "key": "preferred_campus_mismatch",
+          "name": "Ưu tiên cơ sở mong muốn của lớp học phần",
+          "weight": 3,
+          "enabled": true
+        },
+        "S7": {
+          "key": "student_home_campus_mismatch",
+          "name": "Ưu tiên cơ sở chính của nhóm sinh viên",
+          "weight": 4,
+          "enabled": true
+        }
+      }
+    },
+    "seeds": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9
+    ],
+    "evaluation_budget": 1000,
+    "evaluation_accounting": {
+      "ga_evaluations": "Search objective evaluations under the fixed budget.",
+      "repair_evaluations": "Repair candidate assignments checked.",
+      "sls_evaluations": "SLS candidate moves checked.",
+      "total_evaluations": "ga_evaluations + repair_evaluations + sls_evaluations."
+    }
+  },
+  "dataset_structural_metrics": {
+    "EASY": {
+      "dataset_counts": {
+        "sections": 62,
+        "activities": 62,
+        "courses": 20,
+        "lecturers": 15,
+        "student_groups": 12,
+        "rooms": 11,
+        "timeslots": 96,
+        "teaching_days": 6
+      },
+      "resource_pressure": {
+        "total_activity_period_demand": 158,
+        "total_room_period_capacity": 1056,
+        "room_utilization_ratio": 0.14962121212121213,
+        "lab_activity_period_demand": 21,
+        "lab_room_period_supply": 288,
+        "lab_utilization_ratio": 0.07291666666666667
+      },
+      "lecturer_pressure": {
+        "summary": {
+          "mean": 0.11281964159871136,
+          "median": 0.10416666666666667,
+          "max": 0.2604166666666667,
+          "min": 0.020833333333333332
+        },
+        "unrestricted_count": 10,
+        "restricted_count": 5,
+        "per_lecturer": [
+          {
+            "lecturer_id": "GV01",
+            "demand_periods": 25,
+            "available_periods": 96,
+            "load_ratio": 0.2604166666666667
+          },
+          {
+            "lecturer_id": "GV02",
+            "demand_periods": 10,
+            "available_periods": 96,
+            "load_ratio": 0.10416666666666667
+          },
+          {
+            "lecturer_id": "GV03",
+            "demand_periods": 8,
+            "available_periods": 88,
+            "load_ratio": 0.09090909090909091
+          },
+          {
+            "lecturer_id": "GV04",
+            "demand_periods": 10,
+            "available_periods": 96,
+            "load_ratio": 0.10416666666666667
+          },
+          {
+            "lecturer_id": "GV05",
+            "demand_periods": 8,
+            "available_periods": 96,
+            "load_ratio": 0.08333333333333333
+          },
+          {
+            "lecturer_id": "GV06",
+            "demand_periods": 12,
+            "available_periods": 86,
+            "load_ratio": 0.13953488372093023
+          },
+          {
+            "lecturer_id": "GV07",
+            "demand_periods": 17,
+            "available_periods": 96,
+            "load_ratio": 0.17708333333333334
+          },
+          {
+            "lecturer_id": "GV08",
+            "demand_periods": 10,
+            "available_periods": 96,
+            "load_ratio": 0.10416666666666667
+          },
+          {
+            "lecturer_id": "GV09",
+            "demand_periods": 8,
+            "available_periods": 84,
+            "load_ratio": 0.09523809523809523
+          },
+          {
+            "lecturer_id": "GV10",
+            "demand_periods": 11,
+            "available_periods": 96,
+            "load_ratio": 0.11458333333333333
+          },
+          {
+            "lecturer_id": "GV11",
+            "demand_periods": 6,
+            "available_periods": 96,
+            "load_ratio": 0.0625
+          },
+          {
+            "lecturer_id": "GV12",
+            "demand_periods": 2,
+            "available_periods": 84,
+            "load_ratio": 0.023809523809523808
+          },
+          {
+            "lecturer_id": "GV13",
+            "demand_periods": 19,
+            "available_periods": 96,
+            "load_ratio": 0.19791666666666666
+          },
+          {
+            "lecturer_id": "GV14",
+            "demand_periods": 10,
+            "available_periods": 88,
+            "load_ratio": 0.11363636363636363
+          },
+          {
+            "lecturer_id": "GV15",
+            "demand_periods": 2,
+            "available_periods": 96,
+            "load_ratio": 0.020833333333333332
+          }
+        ]
+      },
+      "student_group_pressure": {
+        "summary": {
+          "mean": 0.13715277777777776,
+          "median": 0.13541666666666666,
+          "max": 0.1875
+        },
+        "per_group": [
+          {
+            "group_id": "CNTT1-K18",
+            "required_activity_periods": 13,
+            "available_teaching_periods": 96,
+            "load_ratio": 0.13541666666666666
+          },
+          {
+            "group_id": "CNTT2-K18",
+            "required_activity_periods": 14,
+            "available_teaching_periods": 96,
+            "load_ratio": 0.14583333333333334
+          },
+          {
+            "group_id": "CNTT3-K18",
+            "required_activity_periods": 12,
+            "available_teaching_periods": 96,
+            "load_ratio": 0.125
+          },
+          {
+            "group_id": "CNTT4-K18",
+            "required_activity_periods": 13,
+            "available_teaching_periods": 96,
+            "load_ratio": 0.13541666666666666
+          },
+          {
+            "group_id": "KHMT1-K18",
+            "required_activity_periods": 18,
+            "available_teaching_periods": 96,
+            "load_ratio": 0.1875
+          },
+          {
+            "group_id": "KHMT2-K18",
+            "required_activity_periods": 13,
+            "available_teaching_periods": 96,
+            "load_ratio": 0.13541666666666666
+          },
+          {
+            "group_id": "KTPM1-K18",
+            "required_activity_periods": 12,
+            "available_teaching_periods": 96,
+            "load_ratio": 0.125
+          },
+          {
+            "group_id": "KTPM2-K18",
+            "required_activity_periods": 10,
+            "available_teaching_periods": 96,
+            "load_ratio": 0.10416666666666667
+          },
+          {
+            "group_id": "HTTT1-K18",
+            "required_activity_periods": 13,
+            "available_teaching_periods": 96,
+            "load_ratio": 0.13541666666666666
+          },
+          {
+            "group_id": "ATTT1-K18",
+            "required_activity_periods": 14,
+            "available_teaching_periods": 96,
+            "load_ratio": 0.14583333333333334
+          },
+          {
+            "group_id": "TTDPT1-K18",
+            "required_activity_periods": 13,
+            "available_teaching_periods": 96,
+            "load_ratio": 0.13541666666666666
+          },
+          {
+            "group_id": "HTTT2-K18",
+            "required_activity_periods": 13,
+            "available_teaching_periods": 96,
+            "load_ratio": 0.13541666666666666
+          }
+        ]
+      },
+      "candidate_domains": {
+        "summary": {
+          "min": 120,
+          "p25": 336.0,
+          "median": 468.0,
+          "p75": 610.0,
+          "max": 624,
+          "mean": 444.8709677419355
+        },
+        "activities_below_20": 0,
+        "activities_below_50": 0,
+        "activities_below_100": 0,
+        "per_activity": [
+          {
+            "activity_id": "SEC-CNTT1-C01",
+            "section_id": "SEC-CNTT1-C01",
+            "candidate_count": 168
+          },
+          {
+            "activity_id": "SEC-CNTT1-C02",
+            "section_id": "SEC-CNTT1-C02",
+            "candidate_count": 240
+          },
+          {
+            "activity_id": "SEC-CNTT1-C03",
+            "section_id": "SEC-CNTT1-C03",
+            "candidate_count": 312
+          },
+          {
+            "activity_id": "SEC-CNTT1-C04",
+            "section_id": "SEC-CNTT1-C04",
+            "candidate_count": 284
+          },
+          {
+            "activity_id": "SEC-CNTT1-C13",
+            "section_id": "SEC-CNTT1-C13",
+            "candidate_count": 312
+          },
+          {
+            "activity_id": "SEC-CNTT2-C01",
+            "section_id": "SEC-CNTT2-C01",
+            "candidate_count": 468
+          },
+          {
+            "activity_id": "SEC-CNTT2-C02",
+            "section_id": "SEC-CNTT2-C02",
+            "candidate_count": 360
+          },
+          {
+            "activity_id": "SEC-CNTT2-C03",
+            "section_id": "SEC-CNTT2-C03",
+            "candidate_count": 468
+          },
+          {
+            "activity_id": "SEC-CNTT2-C04",
+            "section_id": "SEC-CNTT2-C04",
+            "candidate_count": 210
+          },
+          {
+            "activity_id": "SEC-CNTT2-C13",
+            "section_id": "SEC-CNTT2-C13",
+            "candidate_count": 120
+          },
+          {
+            "activity_id": "SEC-CNTT3-C01",
+            "section_id": "SEC-CNTT3-C01",
+            "candidate_count": 120
+          },
+          {
+            "activity_id": "SEC-CNTT3-C02",
+            "section_id": "SEC-CNTT3-C02",
+            "candidate_count": 360
+          },
+          {
+            "activity_id": "SEC-CNTT3-C03",
+            "section_id": "SEC-CNTT3-C03",
+            "candidate_count": 468
+          },
+          {
+            "activity_id": "SEC-CNTT3-C04",
+            "section_id": "SEC-CNTT3-C04",
+            "candidate_count": 426
+          },
+          {
+            "activity_id": "SEC-CNTT3-C13",
+            "section_id": "SEC-CNTT3-C13",
+            "candidate_count": 468
+          },
+          {
+            "activity_id": "SEC-CNTT4-C01",
+            "section_id": "SEC-CNTT4-C01",
+            "candidate_count": 624
+          },
+          {
+            "activity_id": "SEC-CNTT4-C02",
+            "section_id": "SEC-CNTT4-C02",
+            "candidate_count": 480
+          },
+          {
+            "activity_id": "SEC-CNTT4-C03",
+            "section_id": "SEC-CNTT4-C03",
+            "candidate_count": 336
+          },
+          {
+            "activity_id": "SEC-CNTT4-C04",
+            "section_id": "SEC-CNTT4-C04",
+            "candidate_count": 536
+          },
+          {
+            "activity_id": "SEC-CNTT4-C13",
+            "section_id": "SEC-CNTT4-C13",
+            "candidate_count": 624
+          },
+          {
+            "activity_id": "SEC-KHMT1-C16",
+            "section_id": "SEC-KHMT1-C16",
+            "candidate_count": 480
+          },
+          {
+            "activity_id": "SEC-KHMT1-C17",
+            "section_id": "SEC-KHMT1-C17",
+            "candidate_count": 480
+          },
+          {
+            "activity_id": "SEC-KHMT1-C02",
+            "section_id": "SEC-KHMT1-C02",
+            "candidate_count": 480
+          },
+          {
+            "activity_id": "SEC-KHMT1-C09",
+            "section_id": "SEC-KHMT1-C09",
+            "candidate_count": 432
+          },
+          {
+            "activity_id": "SEC-KHMT1-C10",
+            "section_id": "SEC-KHMT1-C10",
+            "candidate_count": 162
+          },
+          {
+            "activity_id": "SEC-KHMT2-C16",
+            "section_id": "SEC-KHMT2-C16",
+            "candidate_count": 480
+          },
+          {
+            "activity_id": "SEC-KHMT2-C17",
+            "section_id": "SEC-KHMT2-C17",
+            "candidate_count": 624
+          },
+          {
+            "activity_id": "SEC-KHMT2-C02",
+            "section_id": "SEC-KHMT2-C02",
+            "candidate_count": 624
+          },
+          {
+            "activity_id": "SEC-KHMT2-C09",
+            "section_id": "SEC-KHMT2-C09",
+            "candidate_count": 304
+          },
+          {
+            "activity_id": "SEC-KHMT2-C10",
+            "section_id": "SEC-KHMT2-C10",
+            "candidate_count": 560
+          },
+          {
+            "activity_id": "SEC-KTPM1-C01",
+            "section_id": "SEC-KTPM1-C01",
+            "candidate_count": 468
+          },
+          {
+            "activity_id": "SEC-KTPM1-C07",
+            "section_id": "SEC-KTPM1-C07",
+            "candidate_count": 468
+          },
+          {
+            "activity_id": "SEC-KTPM1-C03",
+            "section_id": "SEC-KTPM1-C03",
+            "candidate_count": 468
+          },
+          {
+            "activity_id": "SEC-KTPM1-C08",
+            "section_id": "SEC-KTPM1-C08",
+            "candidate_count": 468
+          },
+          {
+            "activity_id": "SEC-KTPM1-C15",
+            "section_id": "SEC-KTPM1-C15",
+            "candidate_count": 228
+          },
+          {
+            "activity_id": "SEC-KTPM2-C01",
+            "section_id": "SEC-KTPM2-C01",
+            "candidate_count": 624
+          },
+          {
+            "activity_id": "SEC-KTPM2-C07",
+            "section_id": "SEC-KTPM2-C07",
+            "candidate_count": 568
+          },
+          {
+            "activity_id": "SEC-KTPM2-C03",
+            "section_id": "SEC-KTPM2-C03",
+            "candidate_count": 624
+          },
+          {
+            "activity_id": "SEC-KTPM2-C08",
+            "section_id": "SEC-KTPM2-C08",
+            "candidate_count": 624
+          },
+          {
+            "activity_id": "SEC-KTPM2-C15",
+            "section_id": "SEC-KTPM2-C15",
+            "candidate_count": 568
+          },
+          {
+            "activity_id": "SEC-HTTT1-C03",
+            "section_id": "SEC-HTTT1-C03",
+            "candidate_count": 336
+          },
+          {
+            "activity_id": "SEC-HTTT1-C08",
+            "section_id": "SEC-HTTT1-C08",
+            "candidate_count": 624
+          },
+          {
+            "activity_id": "SEC-HTTT1-C13",
+            "section_id": "SEC-HTTT1-C13",
+            "candidate_count": 624
+          },
+          {
+            "activity_id": "SEC-HTTT1-C14",
+            "section_id": "SEC-HTTT1-C14",
+            "candidate_count": 180
+          },
+          {
+            "activity_id": "SEC-HTTT1-C15",
+            "section_id": "SEC-HTTT1-C15",
+            "candidate_count": 568
+          },
+          {
+            "activity_id": "SEC-ATTT1-C04",
+            "section_id": "SEC-ATTT1-C04",
+            "candidate_count": 568
+          },
+          {
+            "activity_id": "SEC-ATTT1-C05",
+            "section_id": "SEC-ATTT1-C05",
+            "candidate_count": 336
+          },
+          {
+            "activity_id": "SEC-ATTT1-C12",
+            "section_id": "SEC-ATTT1-C12",
+            "candidate_count": 536
+          },
+          {
+            "activity_id": "SEC-ATTT1-C06",
+            "section_id": "SEC-ATTT1-C06",
+            "candidate_count": 624
+          },
+          {
+            "activity_id": "SEC-ATTT1-C13",
+            "section_id": "SEC-ATTT1-C13",
+            "candidate_count": 624
+          },
+          {
+            "activity_id": "SEC-TTDPT1-C19",
+            "section_id": "SEC-TTDPT1-C19",
+            "candidate_count": 624
+          },
+          {
+            "activity_id": "SEC-TTDPT1-C13",
+            "section_id": "SEC-TTDPT1-C13",
+            "candidate_count": 180
+          },
+          {
+            "activity_id": "SEC-TTDPT1-C01",
+            "section_id": "SEC-TTDPT1-C01",
+            "candidate_count": 336
+          },
+          {
+            "activity_id": "SEC-TTDPT1-C03",
+            "section_id": "SEC-TTDPT1-C03",
+            "candidate_count": 624
+          },
+          {
+            "activity_id": "SEC-TTDPT1-C18",
+            "section_id": "SEC-TTDPT1-C18",
+            "candidate_count": 544
+          },
+          {
+            "activity_id": "SEC-HTTT2-C04",
+            "section_id": "SEC-HTTT2-C04",
+            "candidate_count": 568
+          },
+          {
+            "activity_id": "SEC-HTTT2-C05",
+            "section_id": "SEC-HTTT2-C05",
+            "candidate_count": 624
+          },
+          {
+            "activity_id": "SEC-HTTT2-C06",
+            "section_id": "SEC-HTTT2-C06",
+            "candidate_count": 624
+          },
+          {
+            "activity_id": "SEC-HTTT2-C14",
+            "section_id": "SEC-HTTT2-C14",
+            "candidate_count": 180
+          },
+          {
+            "activity_id": "SEC-HTTT2-C01",
+            "section_id": "SEC-HTTT2-C01",
+            "candidate_count": 336
+          },
+          {
+            "activity_id": "SEC-KHMT1-C11",
+            "section_id": "SEC-KHMT1-C11",
+            "candidate_count": 180
+          },
+          {
+            "activity_id": "SEC-ATTT1-C20",
+            "section_id": "SEC-ATTT1-C20",
+            "candidate_count": 624
+          }
+        ]
+      },
+      "conflict_pressure": {
+        "activities_per_lecturer": {
+          "mean": 4.133333333333334,
+          "median": 4,
+          "max": 9,
+          "min": 1
+        },
+        "activities_per_student_group": {
+          "mean": 5.166666666666667,
+          "median": 5.0,
+          "max": 6,
+          "min": 5
+        },
+        "activity_pairs_sharing_lecturer": 131,
+        "activity_pairs_sharing_student_group": 130
+      }
+    },
+    "MEDIUM": {
+      "dataset_counts": {
+        "sections": 62,
+        "activities": 62,
+        "courses": 20,
+        "lecturers": 15,
+        "student_groups": 12,
+        "rooms": 11,
+        "timeslots": 96,
+        "teaching_days": 6
+      },
+      "resource_pressure": {
+        "total_activity_period_demand": 158,
+        "total_room_period_capacity": 1056,
+        "room_utilization_ratio": 0.14962121212121213,
+        "lab_activity_period_demand": 64,
+        "lab_room_period_supply": 288,
+        "lab_utilization_ratio": 0.2222222222222222
+      },
+      "lecturer_pressure": {
+        "summary": {
+          "mean": 0.1311066786357484,
+          "median": 0.1111111111111111,
+          "max": 0.3472222222222222,
+          "min": 0.020833333333333332
+        },
+        "unrestricted_count": 5,
+        "restricted_count": 10,
+        "per_lecturer": [
+          {
+            "lecturer_id": "GV01",
+            "demand_periods": 25,
+            "available_periods": 72,
+            "load_ratio": 0.3472222222222222
+          },
+          {
+            "lecturer_id": "GV02",
+            "demand_periods": 10,
+            "available_periods": 72,
+            "load_ratio": 0.1388888888888889
+          },
+          {
+            "lecturer_id": "GV03",
+            "demand_periods": 8,
+            "available_periods": 88,
+            "load_ratio": 0.09090909090909091
+          },
+          {
+            "lecturer_id": "GV04",
+            "demand_periods": 10,
+            "available_periods": 96,
+            "load_ratio": 0.10416666666666667
+          },
+          {
+            "lecturer_id": "GV05",
+            "demand_periods": 8,
+            "available_periods": 72,
+            "load_ratio": 0.1111111111111111
+          },
+          {
+            "lecturer_id": "GV06",
+            "demand_periods": 12,
+            "available_periods": 86,
+            "load_ratio": 0.13953488372093023
+          },
+          {
+            "lecturer_id": "GV07",
+            "demand_periods": 17,
+            "available_periods": 72,
+            "load_ratio": 0.2361111111111111
+          },
+          {
+            "lecturer_id": "GV08",
+            "demand_periods": 10,
+            "available_periods": 96,
+            "load_ratio": 0.10416666666666667
+          },
+          {
+            "lecturer_id": "GV09",
+            "demand_periods": 8,
+            "available_periods": 84,
+            "load_ratio": 0.09523809523809523
+          },
+          {
+            "lecturer_id": "GV10",
+            "demand_periods": 11,
+            "available_periods": 96,
+            "load_ratio": 0.11458333333333333
+          },
+          {
+            "lecturer_id": "GV11",
+            "demand_periods": 6,
+            "available_periods": 96,
+            "load_ratio": 0.0625
+          },
+          {
+            "lecturer_id": "GV12",
+            "demand_periods": 2,
+            "available_periods": 84,
+            "load_ratio": 0.023809523809523808
+          },
+          {
+            "lecturer_id": "GV13",
+            "demand_periods": 19,
+            "available_periods": 72,
+            "load_ratio": 0.2638888888888889
+          },
+          {
+            "lecturer_id": "GV14",
+            "demand_periods": 10,
+            "available_periods": 88,
+            "load_ratio": 0.11363636363636363
+          },
+          {
+            "lecturer_id": "GV15",
+            "demand_periods": 2,
+            "available_periods": 96,
+            "load_ratio": 0.020833333333333332
+          }
+        ]
+      },
+      "student_group_pressure": {
+        "summary": {
+          "mean": 0.13715277777777776,
+          "median": 0.13541666666666666,
+          "max": 0.1875
+        },
+        "per_group": [
+          {
+            "group_id": "CNTT1-K18",
+            "required_activity_periods": 13,
+            "available_teaching_periods": 96,
+            "load_ratio": 0.13541666666666666
+          },
+          {
+            "group_id": "CNTT2-K18",
+            "required_activity_periods": 14,
+            "available_teaching_periods": 96,
+            "load_ratio": 0.14583333333333334
+          },
+          {
+            "group_id": "CNTT3-K18",
+            "required_activity_periods": 12,
+            "available_teaching_periods": 96,
+            "load_ratio": 0.125
+          },
+          {
+            "group_id": "CNTT4-K18",
+            "required_activity_periods": 13,
+            "available_teaching_periods": 96,
+            "load_ratio": 0.13541666666666666
+          },
+          {
+            "group_id": "KHMT1-K18",
+            "required_activity_periods": 18,
+            "available_teaching_periods": 96,
+            "load_ratio": 0.1875
+          },
+          {
+            "group_id": "KHMT2-K18",
+            "required_activity_periods": 13,
+            "available_teaching_periods": 96,
+            "load_ratio": 0.13541666666666666
+          },
+          {
+            "group_id": "KTPM1-K18",
+            "required_activity_periods": 12,
+            "available_teaching_periods": 96,
+            "load_ratio": 0.125
+          },
+          {
+            "group_id": "KTPM2-K18",
+            "required_activity_periods": 10,
+            "available_teaching_periods": 96,
+            "load_ratio": 0.10416666666666667
+          },
+          {
+            "group_id": "HTTT1-K18",
+            "required_activity_periods": 13,
+            "available_teaching_periods": 96,
+            "load_ratio": 0.13541666666666666
+          },
+          {
+            "group_id": "ATTT1-K18",
+            "required_activity_periods": 14,
+            "available_teaching_periods": 96,
+            "load_ratio": 0.14583333333333334
+          },
+          {
+            "group_id": "TTDPT1-K18",
+            "required_activity_periods": 13,
+            "available_teaching_periods": 96,
+            "load_ratio": 0.13541666666666666
+          },
+          {
+            "group_id": "HTTT2-K18",
+            "required_activity_periods": 13,
+            "available_teaching_periods": 96,
+            "load_ratio": 0.13541666666666666
+          }
+        ]
+      },
+      "candidate_domains": {
+        "summary": {
+          "min": 62,
+          "p25": 174.0,
+          "median": 274.0,
+          "p75": 480.0,
+          "max": 624,
+          "mean": 324.69354838709677
+        },
+        "activities_below_20": 0,
+        "activities_below_50": 0,
+        "activities_below_100": 5,
+        "per_activity": [
+          {
+            "activity_id": "SEC-CNTT1-C01",
+            "section_id": "SEC-CNTT1-C01",
+            "candidate_count": 62
+          },
+          {
+            "activity_id": "SEC-CNTT1-C02",
+            "section_id": "SEC-CNTT1-C02",
+            "candidate_count": 176
+          },
+          {
+            "activity_id": "SEC-CNTT1-C03",
+            "section_id": "SEC-CNTT1-C03",
+            "candidate_count": 232
+          },
+          {
+            "activity_id": "SEC-CNTT1-C04",
+            "section_id": "SEC-CNTT1-C04",
+            "candidate_count": 284
+          },
+          {
+            "activity_id": "SEC-CNTT1-C13",
+            "section_id": "SEC-CNTT1-C13",
+            "candidate_count": 116
+          },
+          {
+            "activity_id": "SEC-CNTT2-C01",
+            "section_id": "SEC-CNTT2-C01",
+            "candidate_count": 116
+          },
+          {
+            "activity_id": "SEC-CNTT2-C02",
+            "section_id": "SEC-CNTT2-C02",
+            "candidate_count": 264
+          },
+          {
+            "activity_id": "SEC-CNTT2-C03",
+            "section_id": "SEC-CNTT2-C03",
+            "candidate_count": 468
+          },
+          {
+            "activity_id": "SEC-CNTT2-C04",
+            "section_id": "SEC-CNTT2-C04",
+            "candidate_count": 210
+          },
+          {
+            "activity_id": "SEC-CNTT2-C13",
+            "section_id": "SEC-CNTT2-C13",
+            "candidate_count": 88
+          },
+          {
+            "activity_id": "SEC-CNTT3-C01",
+            "section_id": "SEC-CNTT3-C01",
+            "candidate_count": 88
+          },
+          {
+            "activity_id": "SEC-CNTT3-C02",
+            "section_id": "SEC-CNTT3-C02",
+            "candidate_count": 264
+          },
+          {
+            "activity_id": "SEC-CNTT3-C03",
+            "section_id": "SEC-CNTT3-C03",
+            "candidate_count": 348
+          },
+          {
+            "activity_id": "SEC-CNTT3-C04",
+            "section_id": "SEC-CNTT3-C04",
+            "candidate_count": 426
+          },
+          {
+            "activity_id": "SEC-CNTT3-C13",
+            "section_id": "SEC-CNTT3-C13",
+            "candidate_count": 116
+          },
+          {
+            "activity_id": "SEC-CNTT4-C01",
+            "section_id": "SEC-CNTT4-C01",
+            "candidate_count": 174
+          },
+          {
+            "activity_id": "SEC-CNTT4-C02",
+            "section_id": "SEC-CNTT4-C02",
+            "candidate_count": 352
+          },
+          {
+            "activity_id": "SEC-CNTT4-C03",
+            "section_id": "SEC-CNTT4-C03",
+            "candidate_count": 336
+          },
+          {
+            "activity_id": "SEC-CNTT4-C04",
+            "section_id": "SEC-CNTT4-C04",
+            "candidate_count": 536
+          },
+          {
+            "activity_id": "SEC-CNTT4-C13",
+            "section_id": "SEC-CNTT4-C13",
+            "candidate_count": 174
+          },
+          {
+            "activity_id": "SEC-KHMT1-C16",
+            "section_id": "SEC-KHMT1-C16",
+            "candidate_count": 480
+          },
+          {
+            "activity_id": "SEC-KHMT1-C17",
+            "section_id": "SEC-KHMT1-C17",
+            "candidate_count": 480
+          },
+          {
+            "activity_id": "SEC-KHMT1-C02",
+            "section_id": "SEC-KHMT1-C02",
+            "candidate_count": 352
+          },
+          {
+            "activity_id": "SEC-KHMT1-C09",
+            "section_id": "SEC-KHMT1-C09",
+            "candidate_count": 162
+          },
+          {
+            "activity_id": "SEC-KHMT1-C10",
+            "section_id": "SEC-KHMT1-C10",
+            "candidate_count": 162
+          },
+          {
+            "activity_id": "SEC-KHMT2-C16",
+            "section_id": "SEC-KHMT2-C16",
+            "candidate_count": 480
+          },
+          {
+            "activity_id": "SEC-KHMT2-C17",
+            "section_id": "SEC-KHMT2-C17",
+            "candidate_count": 624
+          },
+          {
+            "activity_id": "SEC-KHMT2-C02",
+            "section_id": "SEC-KHMT2-C02",
+            "candidate_count": 464
+          },
+          {
+            "activity_id": "SEC-KHMT2-C09",
+            "section_id": "SEC-KHMT2-C09",
+            "candidate_count": 114
+          },
+          {
+            "activity_id": "SEC-KHMT2-C10",
+            "section_id": "SEC-KHMT2-C10",
+            "candidate_count": 210
+          },
+          {
+            "activity_id": "SEC-KTPM1-C01",
+            "section_id": "SEC-KTPM1-C01",
+            "candidate_count": 116
+          },
+          {
+            "activity_id": "SEC-KTPM1-C07",
+            "section_id": "SEC-KTPM1-C07",
+            "candidate_count": 116
+          },
+          {
+            "activity_id": "SEC-KTPM1-C03",
+            "section_id": "SEC-KTPM1-C03",
+            "candidate_count": 348
+          },
+          {
+            "activity_id": "SEC-KTPM1-C08",
+            "section_id": "SEC-KTPM1-C08",
+            "candidate_count": 348
+          },
+          {
+            "activity_id": "SEC-KTPM1-C15",
+            "section_id": "SEC-KTPM1-C15",
+            "candidate_count": 228
+          },
+          {
+            "activity_id": "SEC-KTPM2-C01",
+            "section_id": "SEC-KTPM2-C01",
+            "candidate_count": 174
+          },
+          {
+            "activity_id": "SEC-KTPM2-C07",
+            "section_id": "SEC-KTPM2-C07",
+            "candidate_count": 213
+          },
+          {
+            "activity_id": "SEC-KTPM2-C03",
+            "section_id": "SEC-KTPM2-C03",
+            "candidate_count": 624
+          },
+          {
+            "activity_id": "SEC-KTPM2-C08",
+            "section_id": "SEC-KTPM2-C08",
+            "candidate_count": 464
+          },
+          {
+            "activity_id": "SEC-KTPM2-C15",
+            "section_id": "SEC-KTPM2-C15",
+            "candidate_count": 568
+          },
+          {
+            "activity_id": "SEC-HTTT1-C03",
+            "section_id": "SEC-HTTT1-C03",
+            "candidate_count": 248
+          },
+          {
+            "activity_id": "SEC-HTTT1-C08",
+            "section_id": "SEC-HTTT1-C08",
+            "candidate_count": 464
+          },
+          {
+            "activity_id": "SEC-HTTT1-C13",
+            "section_id": "SEC-HTTT1-C13",
+            "candidate_count": 174
+          },
+          {
+            "activity_id": "SEC-HTTT1-C14",
+            "section_id": "SEC-HTTT1-C14",
+            "candidate_count": 180
+          },
+          {
+            "activity_id": "SEC-HTTT1-C15",
+            "section_id": "SEC-HTTT1-C15",
+            "candidate_count": 568
+          },
+          {
+            "activity_id": "SEC-ATTT1-C04",
+            "section_id": "SEC-ATTT1-C04",
+            "candidate_count": 568
+          },
+          {
+            "activity_id": "SEC-ATTT1-C05",
+            "section_id": "SEC-ATTT1-C05",
+            "candidate_count": 336
+          },
+          {
+            "activity_id": "SEC-ATTT1-C12",
+            "section_id": "SEC-ATTT1-C12",
+            "candidate_count": 536
+          },
+          {
+            "activity_id": "SEC-ATTT1-C06",
+            "section_id": "SEC-ATTT1-C06",
+            "candidate_count": 624
+          },
+          {
+            "activity_id": "SEC-ATTT1-C13",
+            "section_id": "SEC-ATTT1-C13",
+            "candidate_count": 174
+          },
+          {
+            "activity_id": "SEC-TTDPT1-C19",
+            "section_id": "SEC-TTDPT1-C19",
+            "candidate_count": 464
+          },
+          {
+            "activity_id": "SEC-TTDPT1-C13",
+            "section_id": "SEC-TTDPT1-C13",
+            "candidate_count": 132
+          },
+          {
+            "activity_id": "SEC-TTDPT1-C01",
+            "section_id": "SEC-TTDPT1-C01",
+            "candidate_count": 93
+          },
+          {
+            "activity_id": "SEC-TTDPT1-C03",
+            "section_id": "SEC-TTDPT1-C03",
+            "candidate_count": 624
+          },
+          {
+            "activity_id": "SEC-TTDPT1-C18",
+            "section_id": "SEC-TTDPT1-C18",
+            "candidate_count": 544
+          },
+          {
+            "activity_id": "SEC-HTTT2-C04",
+            "section_id": "SEC-HTTT2-C04",
+            "candidate_count": 568
+          },
+          {
+            "activity_id": "SEC-HTTT2-C05",
+            "section_id": "SEC-HTTT2-C05",
+            "candidate_count": 624
+          },
+          {
+            "activity_id": "SEC-HTTT2-C06",
+            "section_id": "SEC-HTTT2-C06",
+            "candidate_count": 624
+          },
+          {
+            "activity_id": "SEC-HTTT2-C14",
+            "section_id": "SEC-HTTT2-C14",
+            "candidate_count": 180
+          },
+          {
+            "activity_id": "SEC-HTTT2-C01",
+            "section_id": "SEC-HTTT2-C01",
+            "candidate_count": 93
+          },
+          {
+            "activity_id": "SEC-KHMT1-C11",
+            "section_id": "SEC-KHMT1-C11",
+            "candidate_count": 132
+          },
+          {
+            "activity_id": "SEC-ATTT1-C20",
+            "section_id": "SEC-ATTT1-C20",
+            "candidate_count": 624
+          }
+        ]
+      },
+      "conflict_pressure": {
+        "activities_per_lecturer": {
+          "mean": 4.133333333333334,
+          "median": 4,
+          "max": 9,
+          "min": 1
+        },
+        "activities_per_student_group": {
+          "mean": 5.166666666666667,
+          "median": 5.0,
+          "max": 6,
+          "min": 5
+        },
+        "activity_pairs_sharing_lecturer": 131,
+        "activity_pairs_sharing_student_group": 130
+      }
+    }
+  },
+  "runs": [
+    {
+      "dataset": "EASY",
+      "method": "ga",
+      "method_name": "GA without Repair",
+      "seed": 0,
+      "feasible": false,
+      "final_hard_violations": 6,
+      "final_soft_score": 13.595233331388906,
+      "soft_score_comparable": false,
+      "first_feasible_generation": null,
+      "first_feasible_ga_evaluation": null,
+      "runtime_seconds": 6.602963700075634,
+      "ga_evaluations": 1000,
+      "repair_evaluations": 0,
+      "sls_evaluations": 0,
+      "total_evaluations": 1000
+    },
+    {
+      "dataset": "EASY",
+      "method": "ga_repair",
+      "method_name": "GA + Repair",
+      "seed": 0,
+      "feasible": true,
+      "final_hard_violations": 0,
+      "final_soft_score": 9.829668993499128,
+      "soft_score_comparable": true,
+      "first_feasible_generation": 1,
+      "first_feasible_ga_evaluation": 63,
+      "runtime_seconds": 14.65263899997808,
+      "ga_evaluations": 1000,
+      "repair_evaluations": 34059,
+      "sls_evaluations": 0,
+      "total_evaluations": 35059
+    },
+    {
+      "dataset": "EASY",
+      "method": "ga_repair_sls",
+      "method_name": "GA + Repair + SLS (Production)",
+      "seed": 0,
+      "feasible": true,
+      "final_hard_violations": 0,
+      "final_soft_score": 6.3029432486210775,
+      "soft_score_comparable": true,
+      "first_feasible_generation": 1,
+      "first_feasible_ga_evaluation": 63,
+      "runtime_seconds": 25.56571580003947,
+      "ga_evaluations": 1000,
+      "repair_evaluations": 34059,
+      "sls_evaluations": 5000,
+      "total_evaluations": 40059
+    },
+    {
+      "dataset": "EASY",
+      "method": "ga",
+      "method_name": "GA without Repair",
+      "seed": 1,
+      "feasible": false,
+      "final_hard_violations": 5,
+      "final_soft_score": 13.5565267326476,
+      "soft_score_comparable": false,
+      "first_feasible_generation": null,
+      "first_feasible_ga_evaluation": null,
+      "runtime_seconds": 6.5086345000891015,
+      "ga_evaluations": 1000,
+      "repair_evaluations": 0,
+      "sls_evaluations": 0,
+      "total_evaluations": 1000
+    },
+    {
+      "dataset": "EASY",
+      "method": "ga_repair",
+      "method_name": "GA + Repair",
+      "seed": 1,
+      "feasible": true,
+      "final_hard_violations": 0,
+      "final_soft_score": 9.559138326625057,
+      "soft_score_comparable": true,
+      "first_feasible_generation": 1,
+      "first_feasible_ga_evaluation": 63,
+      "runtime_seconds": 14.369869599933736,
+      "ga_evaluations": 1000,
+      "repair_evaluations": 29980,
+      "sls_evaluations": 0,
+      "total_evaluations": 30980
+    },
+    {
+      "dataset": "EASY",
+      "method": "ga_repair_sls",
+      "method_name": "GA + Repair + SLS (Production)",
+      "seed": 1,
+      "feasible": true,
+      "final_hard_violations": 0,
+      "final_soft_score": 5.637603265343159,
+      "soft_score_comparable": true,
+      "first_feasible_generation": 1,
+      "first_feasible_ga_evaluation": 63,
+      "runtime_seconds": 25.133849399979226,
+      "ga_evaluations": 1000,
+      "repair_evaluations": 29980,
+      "sls_evaluations": 5000,
+      "total_evaluations": 35980
+    },
+    {
+      "dataset": "EASY",
+      "method": "ga",
+      "method_name": "GA without Repair",
+      "seed": 2,
+      "feasible": false,
+      "final_hard_violations": 4,
+      "final_soft_score": 13.165174363743049,
+      "soft_score_comparable": false,
+      "first_feasible_generation": null,
+      "first_feasible_ga_evaluation": null,
+      "runtime_seconds": 6.40069320006296,
+      "ga_evaluations": 1000,
+      "repair_evaluations": 0,
+      "sls_evaluations": 0,
+      "total_evaluations": 1000
+    },
+    {
+      "dataset": "EASY",
+      "method": "ga_repair",
+      "method_name": "GA + Repair",
+      "seed": 2,
+      "feasible": true,
+      "final_hard_violations": 0,
+      "final_soft_score": 9.416314984412168,
+      "soft_score_comparable": true,
+      "first_feasible_generation": 1,
+      "first_feasible_ga_evaluation": 63,
+      "runtime_seconds": 14.571213099989109,
+      "ga_evaluations": 1000,
+      "repair_evaluations": 31350,
+      "sls_evaluations": 0,
+      "total_evaluations": 32350
+    },
+    {
+      "dataset": "EASY",
+      "method": "ga_repair_sls",
+      "method_name": "GA + Repair + SLS (Production)",
+      "seed": 2,
+      "feasible": true,
+      "final_hard_violations": 0,
+      "final_soft_score": 7.0141056602306096,
+      "soft_score_comparable": true,
+      "first_feasible_generation": 1,
+      "first_feasible_ga_evaluation": 63,
+      "runtime_seconds": 25.419860300025903,
+      "ga_evaluations": 1000,
+      "repair_evaluations": 31350,
+      "sls_evaluations": 5000,
+      "total_evaluations": 37350
+    },
+    {
+      "dataset": "EASY",
+      "method": "ga",
+      "method_name": "GA without Repair",
+      "seed": 3,
+      "feasible": false,
+      "final_hard_violations": 4,
+      "final_soft_score": 15.798669221874132,
+      "soft_score_comparable": false,
+      "first_feasible_generation": null,
+      "first_feasible_ga_evaluation": null,
+      "runtime_seconds": 6.57355109998025,
+      "ga_evaluations": 1000,
+      "repair_evaluations": 0,
+      "sls_evaluations": 0,
+      "total_evaluations": 1000
+    },
+    {
+      "dataset": "EASY",
+      "method": "ga_repair",
+      "method_name": "GA + Repair",
+      "seed": 3,
+      "feasible": true,
+      "final_hard_violations": 0,
+      "final_soft_score": 9.273025984042725,
+      "soft_score_comparable": true,
+      "first_feasible_generation": 1,
+      "first_feasible_ga_evaluation": 63,
+      "runtime_seconds": 14.67574620002415,
+      "ga_evaluations": 1000,
+      "repair_evaluations": 29599,
+      "sls_evaluations": 0,
+      "total_evaluations": 30599
+    },
+    {
+      "dataset": "EASY",
+      "method": "ga_repair_sls",
+      "method_name": "GA + Repair + SLS (Production)",
+      "seed": 3,
+      "feasible": true,
+      "final_hard_violations": 0,
+      "final_soft_score": 5.7890491421830745,
+      "soft_score_comparable": true,
+      "first_feasible_generation": 1,
+      "first_feasible_ga_evaluation": 63,
+      "runtime_seconds": 25.314338300027885,
+      "ga_evaluations": 1000,
+      "repair_evaluations": 29599,
+      "sls_evaluations": 5000,
+      "total_evaluations": 35599
+    },
+    {
+      "dataset": "EASY",
+      "method": "ga",
+      "method_name": "GA without Repair",
+      "seed": 4,
+      "feasible": false,
+      "final_hard_violations": 5,
+      "final_soft_score": 13.952788472133102,
+      "soft_score_comparable": false,
+      "first_feasible_generation": null,
+      "first_feasible_ga_evaluation": null,
+      "runtime_seconds": 6.395264099934138,
+      "ga_evaluations": 1000,
+      "repair_evaluations": 0,
+      "sls_evaluations": 0,
+      "total_evaluations": 1000
+    },
+    {
+      "dataset": "EASY",
+      "method": "ga_repair",
+      "method_name": "GA + Repair",
+      "seed": 4,
+      "feasible": true,
+      "final_hard_violations": 0,
+      "final_soft_score": 9.346219318542715,
+      "soft_score_comparable": true,
+      "first_feasible_generation": 1,
+      "first_feasible_ga_evaluation": 63,
+      "runtime_seconds": 9.962119699921459,
+      "ga_evaluations": 1000,
+      "repair_evaluations": 29668,
+      "sls_evaluations": 0,
+      "total_evaluations": 30668
+    },
+    {
+      "dataset": "EASY",
+      "method": "ga_repair_sls",
+      "method_name": "GA + Repair + SLS (Production)",
+      "seed": 4,
+      "feasible": true,
+      "final_hard_violations": 0,
+      "final_soft_score": 6.335902182296629,
+      "soft_score_comparable": true,
+      "first_feasible_generation": 1,
+      "first_feasible_ga_evaluation": 63,
+      "runtime_seconds": 22.75484349997714,
+      "ga_evaluations": 1000,
+      "repair_evaluations": 29668,
+      "sls_evaluations": 5000,
+      "total_evaluations": 35668
+    },
+    {
+      "dataset": "EASY",
+      "method": "ga",
+      "method_name": "GA without Repair",
+      "seed": 5,
+      "feasible": false,
+      "final_hard_violations": 4,
+      "final_soft_score": 12.606600167220828,
+      "soft_score_comparable": false,
+      "first_feasible_generation": null,
+      "first_feasible_ga_evaluation": null,
+      "runtime_seconds": 6.856088800006546,
+      "ga_evaluations": 1000,
+      "repair_evaluations": 0,
+      "sls_evaluations": 0,
+      "total_evaluations": 1000
+    },
+    {
+      "dataset": "EASY",
+      "method": "ga_repair",
+      "method_name": "GA + Repair",
+      "seed": 5,
+      "feasible": true,
+      "final_hard_violations": 0,
+      "final_soft_score": 9.765993844411565,
+      "soft_score_comparable": true,
+      "first_feasible_generation": 1,
+      "first_feasible_ga_evaluation": 63,
+      "runtime_seconds": 14.888932800036855,
+      "ga_evaluations": 1000,
+      "repair_evaluations": 29095,
+      "sls_evaluations": 0,
+      "total_evaluations": 30095
+    },
+    {
+      "dataset": "EASY",
+      "method": "ga_repair_sls",
+      "method_name": "GA + Repair + SLS (Production)",
+      "seed": 5,
+      "feasible": true,
+      "final_hard_violations": 0,
+      "final_soft_score": 6.110447380531088,
+      "soft_score_comparable": true,
+      "first_feasible_generation": 1,
+      "first_feasible_ga_evaluation": 63,
+      "runtime_seconds": 25.613764200010337,
+      "ga_evaluations": 1000,
+      "repair_evaluations": 29095,
+      "sls_evaluations": 5000,
+      "total_evaluations": 35095
+    },
+    {
+      "dataset": "EASY",
+      "method": "ga",
+      "method_name": "GA without Repair",
+      "seed": 6,
+      "feasible": false,
+      "final_hard_violations": 7,
+      "final_soft_score": 13.633975156688509,
+      "soft_score_comparable": false,
+      "first_feasible_generation": null,
+      "first_feasible_ga_evaluation": null,
+      "runtime_seconds": 6.326493900036439,
+      "ga_evaluations": 1000,
+      "repair_evaluations": 0,
+      "sls_evaluations": 0,
+      "total_evaluations": 1000
+    },
+    {
+      "dataset": "EASY",
+      "method": "ga_repair",
+      "method_name": "GA + Repair",
+      "seed": 6,
+      "feasible": true,
+      "final_hard_violations": 0,
+      "final_soft_score": 9.433485679286004,
+      "soft_score_comparable": true,
+      "first_feasible_generation": 1,
+      "first_feasible_ga_evaluation": 63,
+      "runtime_seconds": 14.150634599965997,
+      "ga_evaluations": 1000,
+      "repair_evaluations": 30741,
+      "sls_evaluations": 0,
+      "total_evaluations": 31741
+    },
+    {
+      "dataset": "EASY",
+      "method": "ga_repair_sls",
+      "method_name": "GA + Repair + SLS (Production)",
+      "seed": 6,
+      "feasible": true,
+      "final_hard_violations": 0,
+      "final_soft_score": 6.852970276173625,
+      "soft_score_comparable": true,
+      "first_feasible_generation": 1,
+      "first_feasible_ga_evaluation": 63,
+      "runtime_seconds": 25.84627699991688,
+      "ga_evaluations": 1000,
+      "repair_evaluations": 30741,
+      "sls_evaluations": 5000,
+      "total_evaluations": 36741
+    },
+    {
+      "dataset": "EASY",
+      "method": "ga",
+      "method_name": "GA without Repair",
+      "seed": 7,
+      "feasible": false,
+      "final_hard_violations": 5,
+      "final_soft_score": 12.570689883139861,
+      "soft_score_comparable": false,
+      "first_feasible_generation": null,
+      "first_feasible_ga_evaluation": null,
+      "runtime_seconds": 6.408977899933234,
+      "ga_evaluations": 1000,
+      "repair_evaluations": 0,
+      "sls_evaluations": 0,
+      "total_evaluations": 1000
+    },
+    {
+      "dataset": "EASY",
+      "method": "ga_repair",
+      "method_name": "GA + Repair",
+      "seed": 7,
+      "feasible": true,
+      "final_hard_violations": 0,
+      "final_soft_score": 9.967063677668007,
+      "soft_score_comparable": true,
+      "first_feasible_generation": 1,
+      "first_feasible_ga_evaluation": 63,
+      "runtime_seconds": 15.124604200012982,
+      "ga_evaluations": 1000,
+      "repair_evaluations": 31711,
+      "sls_evaluations": 0,
+      "total_evaluations": 32711
+    },
+    {
+      "dataset": "EASY",
+      "method": "ga_repair_sls",
+      "method_name": "GA + Repair + SLS (Production)",
+      "seed": 7,
+      "feasible": true,
+      "final_hard_violations": 0,
+      "final_soft_score": 7.072156662583368,
+      "soft_score_comparable": true,
+      "first_feasible_generation": 1,
+      "first_feasible_ga_evaluation": 63,
+      "runtime_seconds": 26.5927538999822,
+      "ga_evaluations": 1000,
+      "repair_evaluations": 31711,
+      "sls_evaluations": 5000,
+      "total_evaluations": 37711
+    },
+    {
+      "dataset": "EASY",
+      "method": "ga",
+      "method_name": "GA without Repair",
+      "seed": 8,
+      "feasible": false,
+      "final_hard_violations": 6,
+      "final_soft_score": 14.958703437798988,
+      "soft_score_comparable": false,
+      "first_feasible_generation": null,
+      "first_feasible_ga_evaluation": null,
+      "runtime_seconds": 6.652698699967004,
+      "ga_evaluations": 1000,
+      "repair_evaluations": 0,
+      "sls_evaluations": 0,
+      "total_evaluations": 1000
+    },
+    {
+      "dataset": "EASY",
+      "method": "ga_repair",
+      "method_name": "GA + Repair",
+      "seed": 8,
+      "feasible": true,
+      "final_hard_violations": 0,
+      "final_soft_score": 10.099119692521082,
+      "soft_score_comparable": true,
+      "first_feasible_generation": 1,
+      "first_feasible_ga_evaluation": 63,
+      "runtime_seconds": 14.74626389995683,
+      "ga_evaluations": 1000,
+      "repair_evaluations": 32217,
+      "sls_evaluations": 0,
+      "total_evaluations": 33217
+    },
+    {
+      "dataset": "EASY",
+      "method": "ga_repair_sls",
+      "method_name": "GA + Repair + SLS (Production)",
+      "seed": 8,
+      "feasible": true,
+      "final_hard_violations": 0,
+      "final_soft_score": 5.8746535352946125,
+      "soft_score_comparable": true,
+      "first_feasible_generation": 1,
+      "first_feasible_ga_evaluation": 63,
+      "runtime_seconds": 25.48350480000954,
+      "ga_evaluations": 1000,
+      "repair_evaluations": 32217,
+      "sls_evaluations": 5000,
+      "total_evaluations": 38217
+    },
+    {
+      "dataset": "EASY",
+      "method": "ga",
+      "method_name": "GA without Repair",
+      "seed": 9,
+      "feasible": false,
+      "final_hard_violations": 5,
+      "final_soft_score": 15.943174370605737,
+      "soft_score_comparable": false,
+      "first_feasible_generation": null,
+      "first_feasible_ga_evaluation": null,
+      "runtime_seconds": 6.595206000027247,
+      "ga_evaluations": 1000,
+      "repair_evaluations": 0,
+      "sls_evaluations": 0,
+      "total_evaluations": 1000
+    },
+    {
+      "dataset": "EASY",
+      "method": "ga_repair",
+      "method_name": "GA + Repair",
+      "seed": 9,
+      "feasible": true,
+      "final_hard_violations": 0,
+      "final_soft_score": 9.760163105122272,
+      "soft_score_comparable": true,
+      "first_feasible_generation": 1,
+      "first_feasible_ga_evaluation": 63,
+      "runtime_seconds": 14.646288799936883,
+      "ga_evaluations": 1000,
+      "repair_evaluations": 31577,
+      "sls_evaluations": 0,
+      "total_evaluations": 32577
+    },
+    {
+      "dataset": "EASY",
+      "method": "ga_repair_sls",
+      "method_name": "GA + Repair + SLS (Production)",
+      "seed": 9,
+      "feasible": true,
+      "final_hard_violations": 0,
+      "final_soft_score": 6.5148999267598695,
+      "soft_score_comparable": true,
+      "first_feasible_generation": 1,
+      "first_feasible_ga_evaluation": 63,
+      "runtime_seconds": 25.908490099944174,
+      "ga_evaluations": 1000,
+      "repair_evaluations": 31577,
+      "sls_evaluations": 5000,
+      "total_evaluations": 37577
+    },
+    {
+      "dataset": "MEDIUM",
+      "method": "ga",
+      "method_name": "GA without Repair",
+      "seed": 0,
+      "feasible": false,
+      "final_hard_violations": 7,
+      "final_soft_score": 14.753928684853554,
+      "soft_score_comparable": false,
+      "first_feasible_generation": null,
+      "first_feasible_ga_evaluation": null,
+      "runtime_seconds": 6.914384200004861,
+      "ga_evaluations": 1000,
+      "repair_evaluations": 0,
+      "sls_evaluations": 0,
+      "total_evaluations": 1000
+    },
+    {
+      "dataset": "MEDIUM",
+      "method": "ga_repair",
+      "method_name": "GA + Repair",
+      "seed": 0,
+      "feasible": true,
+      "final_hard_violations": 0,
+      "final_soft_score": 9.612357068320728,
+      "soft_score_comparable": true,
+      "first_feasible_generation": 1,
+      "first_feasible_ga_evaluation": 63,
+      "runtime_seconds": 15.660638499888591,
+      "ga_evaluations": 1000,
+      "repair_evaluations": 34662,
+      "sls_evaluations": 0,
+      "total_evaluations": 35662
+    },
+    {
+      "dataset": "MEDIUM",
+      "method": "ga_repair_sls",
+      "method_name": "GA + Repair + SLS (Production)",
+      "seed": 0,
+      "feasible": true,
+      "final_hard_violations": 0,
+      "final_soft_score": 5.796871868660354,
+      "soft_score_comparable": true,
+      "first_feasible_generation": 1,
+      "first_feasible_ga_evaluation": 63,
+      "runtime_seconds": 26.336751300026663,
+      "ga_evaluations": 1000,
+      "repair_evaluations": 34662,
+      "sls_evaluations": 5000,
+      "total_evaluations": 40662
+    },
+    {
+      "dataset": "MEDIUM",
+      "method": "ga",
+      "method_name": "GA without Repair",
+      "seed": 1,
+      "feasible": false,
+      "final_hard_violations": 5,
+      "final_soft_score": 14.082170468023879,
+      "soft_score_comparable": false,
+      "first_feasible_generation": null,
+      "first_feasible_ga_evaluation": null,
+      "runtime_seconds": 6.954201499931514,
+      "ga_evaluations": 1000,
+      "repair_evaluations": 0,
+      "sls_evaluations": 0,
+      "total_evaluations": 1000
+    },
+    {
+      "dataset": "MEDIUM",
+      "method": "ga_repair",
+      "method_name": "GA + Repair",
+      "seed": 1,
+      "feasible": true,
+      "final_hard_violations": 0,
+      "final_soft_score": 9.93593125149883,
+      "soft_score_comparable": true,
+      "first_feasible_generation": 1,
+      "first_feasible_ga_evaluation": 63,
+      "runtime_seconds": 16.700767899979837,
+      "ga_evaluations": 1000,
+      "repair_evaluations": 34636,
+      "sls_evaluations": 0,
+      "total_evaluations": 35636
+    },
+    {
+      "dataset": "MEDIUM",
+      "method": "ga_repair_sls",
+      "method_name": "GA + Repair + SLS (Production)",
+      "seed": 1,
+      "feasible": true,
+      "final_hard_violations": 0,
+      "final_soft_score": 5.356803359972,
+      "soft_score_comparable": true,
+      "first_feasible_generation": 1,
+      "first_feasible_ga_evaluation": 63,
+      "runtime_seconds": 27.0327673999127,
+      "ga_evaluations": 1000,
+      "repair_evaluations": 34636,
+      "sls_evaluations": 5000,
+      "total_evaluations": 40636
+    },
+    {
+      "dataset": "MEDIUM",
+      "method": "ga",
+      "method_name": "GA without Repair",
+      "seed": 2,
+      "feasible": false,
+      "final_hard_violations": 5,
+      "final_soft_score": 15.421158595192535,
+      "soft_score_comparable": false,
+      "first_feasible_generation": null,
+      "first_feasible_ga_evaluation": null,
+      "runtime_seconds": 7.435035599977709,
+      "ga_evaluations": 1000,
+      "repair_evaluations": 0,
+      "sls_evaluations": 0,
+      "total_evaluations": 1000
+    },
+    {
+      "dataset": "MEDIUM",
+      "method": "ga_repair",
+      "method_name": "GA + Repair",
+      "seed": 2,
+      "feasible": true,
+      "final_hard_violations": 0,
+      "final_soft_score": 10.188429258459886,
+      "soft_score_comparable": true,
+      "first_feasible_generation": 1,
+      "first_feasible_ga_evaluation": 63,
+      "runtime_seconds": 16.611409100005403,
+      "ga_evaluations": 1000,
+      "repair_evaluations": 35373,
+      "sls_evaluations": 0,
+      "total_evaluations": 36373
+    },
+    {
+      "dataset": "MEDIUM",
+      "method": "ga_repair_sls",
+      "method_name": "GA + Repair + SLS (Production)",
+      "seed": 2,
+      "feasible": true,
+      "final_hard_violations": 0,
+      "final_soft_score": 6.665101466747037,
+      "soft_score_comparable": true,
+      "first_feasible_generation": 1,
+      "first_feasible_ga_evaluation": 63,
+      "runtime_seconds": 27.27034339995589,
+      "ga_evaluations": 1000,
+      "repair_evaluations": 35373,
+      "sls_evaluations": 5000,
+      "total_evaluations": 41373
+    },
+    {
+      "dataset": "MEDIUM",
+      "method": "ga",
+      "method_name": "GA without Repair",
+      "seed": 3,
+      "feasible": false,
+      "final_hard_violations": 7,
+      "final_soft_score": 13.04281686078542,
+      "soft_score_comparable": false,
+      "first_feasible_generation": null,
+      "first_feasible_ga_evaluation": null,
+      "runtime_seconds": 7.291351899970323,
+      "ga_evaluations": 1000,
+      "repair_evaluations": 0,
+      "sls_evaluations": 0,
+      "total_evaluations": 1000
+    },
+    {
+      "dataset": "MEDIUM",
+      "method": "ga_repair",
+      "method_name": "GA + Repair",
+      "seed": 3,
+      "feasible": true,
+      "final_hard_violations": 0,
+      "final_soft_score": 9.714948235938616,
+      "soft_score_comparable": true,
+      "first_feasible_generation": 1,
+      "first_feasible_ga_evaluation": 63,
+      "runtime_seconds": 16.156009200029075,
+      "ga_evaluations": 1000,
+      "repair_evaluations": 38575,
+      "sls_evaluations": 0,
+      "total_evaluations": 39575
+    },
+    {
+      "dataset": "MEDIUM",
+      "method": "ga_repair_sls",
+      "method_name": "GA + Repair + SLS (Production)",
+      "seed": 3,
+      "feasible": true,
+      "final_hard_violations": 0,
+      "final_soft_score": 4.709969472476619,
+      "soft_score_comparable": true,
+      "first_feasible_generation": 1,
+      "first_feasible_ga_evaluation": 63,
+      "runtime_seconds": 26.777192300069146,
+      "ga_evaluations": 1000,
+      "repair_evaluations": 38575,
+      "sls_evaluations": 5000,
+      "total_evaluations": 44575
+    },
+    {
+      "dataset": "MEDIUM",
+      "method": "ga",
+      "method_name": "GA without Repair",
+      "seed": 4,
+      "feasible": false,
+      "final_hard_violations": 5,
+      "final_soft_score": 14.112740989957981,
+      "soft_score_comparable": false,
+      "first_feasible_generation": null,
+      "first_feasible_ga_evaluation": null,
+      "runtime_seconds": 7.0992895000381395,
+      "ga_evaluations": 1000,
+      "repair_evaluations": 0,
+      "sls_evaluations": 0,
+      "total_evaluations": 1000
+    },
+    {
+      "dataset": "MEDIUM",
+      "method": "ga_repair",
+      "method_name": "GA + Repair",
+      "seed": 4,
+      "feasible": true,
+      "final_hard_violations": 0,
+      "final_soft_score": 9.469698668573896,
+      "soft_score_comparable": true,
+      "first_feasible_generation": 1,
+      "first_feasible_ga_evaluation": 63,
+      "runtime_seconds": 15.554446299909614,
+      "ga_evaluations": 1000,
+      "repair_evaluations": 35404,
+      "sls_evaluations": 0,
+      "total_evaluations": 36404
+    },
+    {
+      "dataset": "MEDIUM",
+      "method": "ga_repair_sls",
+      "method_name": "GA + Repair + SLS (Production)",
+      "seed": 4,
+      "feasible": true,
+      "final_hard_violations": 0,
+      "final_soft_score": 6.380415751165036,
+      "soft_score_comparable": true,
+      "first_feasible_generation": 1,
+      "first_feasible_ga_evaluation": 63,
+      "runtime_seconds": 27.203388900030404,
+      "ga_evaluations": 1000,
+      "repair_evaluations": 35404,
+      "sls_evaluations": 5000,
+      "total_evaluations": 41404
+    },
+    {
+      "dataset": "MEDIUM",
+      "method": "ga",
+      "method_name": "GA without Repair",
+      "seed": 5,
+      "feasible": false,
+      "final_hard_violations": 7,
+      "final_soft_score": 13.231202933875334,
+      "soft_score_comparable": false,
+      "first_feasible_generation": null,
+      "first_feasible_ga_evaluation": null,
+      "runtime_seconds": 7.229376200004481,
+      "ga_evaluations": 1000,
+      "repair_evaluations": 0,
+      "sls_evaluations": 0,
+      "total_evaluations": 1000
+    },
+    {
+      "dataset": "MEDIUM",
+      "method": "ga_repair",
+      "method_name": "GA + Repair",
+      "seed": 5,
+      "feasible": true,
+      "final_hard_violations": 0,
+      "final_soft_score": 9.092803249787734,
+      "soft_score_comparable": true,
+      "first_feasible_generation": 1,
+      "first_feasible_ga_evaluation": 63,
+      "runtime_seconds": 15.47245910007041,
+      "ga_evaluations": 1000,
+      "repair_evaluations": 34786,
+      "sls_evaluations": 0,
+      "total_evaluations": 35786
+    },
+    {
+      "dataset": "MEDIUM",
+      "method": "ga_repair_sls",
+      "method_name": "GA + Repair + SLS (Production)",
+      "seed": 5,
+      "feasible": true,
+      "final_hard_violations": 0,
+      "final_soft_score": 7.3172776060199505,
+      "soft_score_comparable": true,
+      "first_feasible_generation": 1,
+      "first_feasible_ga_evaluation": 63,
+      "runtime_seconds": 27.873771099955775,
+      "ga_evaluations": 1000,
+      "repair_evaluations": 34786,
+      "sls_evaluations": 5000,
+      "total_evaluations": 40786
+    },
+    {
+      "dataset": "MEDIUM",
+      "method": "ga",
+      "method_name": "GA without Repair",
+      "seed": 6,
+      "feasible": false,
+      "final_hard_violations": 5,
+      "final_soft_score": 13.175619105951895,
+      "soft_score_comparable": false,
+      "first_feasible_generation": null,
+      "first_feasible_ga_evaluation": null,
+      "runtime_seconds": 7.111717800027691,
+      "ga_evaluations": 1000,
+      "repair_evaluations": 0,
+      "sls_evaluations": 0,
+      "total_evaluations": 1000
+    },
+    {
+      "dataset": "MEDIUM",
+      "method": "ga_repair",
+      "method_name": "GA + Repair",
+      "seed": 6,
+      "feasible": true,
+      "final_hard_violations": 0,
+      "final_soft_score": 9.62962229481421,
+      "soft_score_comparable": true,
+      "first_feasible_generation": 1,
+      "first_feasible_ga_evaluation": 63,
+      "runtime_seconds": 15.67970239999704,
+      "ga_evaluations": 1000,
+      "repair_evaluations": 30515,
+      "sls_evaluations": 0,
+      "total_evaluations": 31515
+    },
+    {
+      "dataset": "MEDIUM",
+      "method": "ga_repair_sls",
+      "method_name": "GA + Repair + SLS (Production)",
+      "seed": 6,
+      "feasible": true,
+      "final_hard_violations": 0,
+      "final_soft_score": 5.289123581377562,
+      "soft_score_comparable": true,
+      "first_feasible_generation": 1,
+      "first_feasible_ga_evaluation": 63,
+      "runtime_seconds": 27.387736800010316,
+      "ga_evaluations": 1000,
+      "repair_evaluations": 30515,
+      "sls_evaluations": 5000,
+      "total_evaluations": 36515
+    },
+    {
+      "dataset": "MEDIUM",
+      "method": "ga",
+      "method_name": "GA without Repair",
+      "seed": 7,
+      "feasible": false,
+      "final_hard_violations": 3,
+      "final_soft_score": 13.41649744993955,
+      "soft_score_comparable": false,
+      "first_feasible_generation": null,
+      "first_feasible_ga_evaluation": null,
+      "runtime_seconds": 7.084671500022523,
+      "ga_evaluations": 1000,
+      "repair_evaluations": 0,
+      "sls_evaluations": 0,
+      "total_evaluations": 1000
+    },
+    {
+      "dataset": "MEDIUM",
+      "method": "ga_repair",
+      "method_name": "GA + Repair",
+      "seed": 7,
+      "feasible": true,
+      "final_hard_violations": 0,
+      "final_soft_score": 9.523959828112543,
+      "soft_score_comparable": true,
+      "first_feasible_generation": 1,
+      "first_feasible_ga_evaluation": 63,
+      "runtime_seconds": 15.840073599945754,
+      "ga_evaluations": 1000,
+      "repair_evaluations": 36643,
+      "sls_evaluations": 0,
+      "total_evaluations": 37643
+    },
+    {
+      "dataset": "MEDIUM",
+      "method": "ga_repair_sls",
+      "method_name": "GA + Repair + SLS (Production)",
+      "seed": 7,
+      "feasible": true,
+      "final_hard_violations": 0,
+      "final_soft_score": 5.805849034591379,
+      "soft_score_comparable": true,
+      "first_feasible_generation": 1,
+      "first_feasible_ga_evaluation": 63,
+      "runtime_seconds": 27.764221100020222,
+      "ga_evaluations": 1000,
+      "repair_evaluations": 36643,
+      "sls_evaluations": 5000,
+      "total_evaluations": 42643
+    },
+    {
+      "dataset": "MEDIUM",
+      "method": "ga",
+      "method_name": "GA without Repair",
+      "seed": 8,
+      "feasible": false,
+      "final_hard_violations": 4,
+      "final_soft_score": 14.26707256606195,
+      "soft_score_comparable": false,
+      "first_feasible_generation": null,
+      "first_feasible_ga_evaluation": null,
+      "runtime_seconds": 7.172667699982412,
+      "ga_evaluations": 1000,
+      "repair_evaluations": 0,
+      "sls_evaluations": 0,
+      "total_evaluations": 1000
+    },
+    {
+      "dataset": "MEDIUM",
+      "method": "ga_repair",
+      "method_name": "GA + Repair",
+      "seed": 8,
+      "feasible": true,
+      "final_hard_violations": 0,
+      "final_soft_score": 9.669477402503128,
+      "soft_score_comparable": true,
+      "first_feasible_generation": 1,
+      "first_feasible_ga_evaluation": 63,
+      "runtime_seconds": 15.936119999969378,
+      "ga_evaluations": 1000,
+      "repair_evaluations": 36392,
+      "sls_evaluations": 0,
+      "total_evaluations": 37392
+    },
+    {
+      "dataset": "MEDIUM",
+      "method": "ga_repair_sls",
+      "method_name": "GA + Repair + SLS (Production)",
+      "seed": 8,
+      "feasible": true,
+      "final_hard_violations": 0,
+      "final_soft_score": 4.961793735052208,
+      "soft_score_comparable": true,
+      "first_feasible_generation": 1,
+      "first_feasible_ga_evaluation": 63,
+      "runtime_seconds": 26.455513099906966,
+      "ga_evaluations": 1000,
+      "repair_evaluations": 36392,
+      "sls_evaluations": 5000,
+      "total_evaluations": 42392
+    },
+    {
+      "dataset": "MEDIUM",
+      "method": "ga",
+      "method_name": "GA without Repair",
+      "seed": 9,
+      "feasible": false,
+      "final_hard_violations": 9,
+      "final_soft_score": 14.058512091102944,
+      "soft_score_comparable": false,
+      "first_feasible_generation": null,
+      "first_feasible_ga_evaluation": null,
+      "runtime_seconds": 7.157211299985647,
+      "ga_evaluations": 1000,
+      "repair_evaluations": 0,
+      "sls_evaluations": 0,
+      "total_evaluations": 1000
+    },
+    {
+      "dataset": "MEDIUM",
+      "method": "ga_repair",
+      "method_name": "GA + Repair",
+      "seed": 9,
+      "feasible": true,
+      "final_hard_violations": 0,
+      "final_soft_score": 9.581626310942358,
+      "soft_score_comparable": true,
+      "first_feasible_generation": 1,
+      "first_feasible_ga_evaluation": 63,
+      "runtime_seconds": 15.744232300086878,
+      "ga_evaluations": 1000,
+      "repair_evaluations": 36550,
+      "sls_evaluations": 0,
+      "total_evaluations": 37550
+    },
+    {
+      "dataset": "MEDIUM",
+      "method": "ga_repair_sls",
+      "method_name": "GA + Repair + SLS (Production)",
+      "seed": 9,
+      "feasible": true,
+      "final_hard_violations": 0,
+      "final_soft_score": 4.826269419977056,
+      "soft_score_comparable": true,
+      "first_feasible_generation": 1,
+      "first_feasible_ga_evaluation": 63,
+      "runtime_seconds": 25.24411940004211,
+      "ga_evaluations": 1000,
+      "repair_evaluations": 36550,
+      "sls_evaluations": 5000,
+      "total_evaluations": 42550
+    }
+  ],
+  "summary": [
+    {
+      "dataset": "EASY",
+      "method": "ga",
+      "method_name": "GA without Repair",
+      "run_count": 10,
+      "feasible_count": 0,
+      "feasible_rate": 0.0,
+      "hard_violations": {
+        "mean": 5.1,
+        "median": 5.0,
+        "std": 0.9433981132056604,
+        "min": 4,
+        "max": 7
+      },
+      "soft_score_feasible_only": {
+        "mean": null,
+        "median": null,
+        "std": null,
+        "min": null,
+        "max": null
+      },
+      "runtime_seconds": {
+        "mean": 6.532057190011256,
+        "median": 6.541092800034676,
+        "std": 0.14973655389501767
+      },
+      "first_feasible_generation": {
+        "mean": null,
+        "median": null,
+        "std": null
+      },
+      "first_feasible_ga_evaluation": {
+        "mean": null,
+        "median": null,
+        "std": null
+      },
+      "ga_evaluations": {
+        "mean": 1000.0,
+        "median": 1000.0,
+        "std": 0.0
+      },
+      "repair_evaluations": {
+        "mean": 0.0,
+        "median": 0.0,
+        "std": 0.0
+      },
+      "sls_evaluations": {
+        "mean": 0.0,
+        "median": 0.0,
+        "std": 0.0
+      },
+      "total_evaluations": {
+        "mean": 1000.0,
+        "median": 1000.0,
+        "std": 0.0
+      }
+    },
+    {
+      "dataset": "EASY",
+      "method": "ga_repair",
+      "method_name": "GA + Repair",
+      "run_count": 10,
+      "feasible_count": 10,
+      "feasible_rate": 1.0,
+      "hard_violations": {
+        "mean": 0.0,
+        "median": 0.0,
+        "std": 0.0,
+        "min": 0,
+        "max": 0
+      },
+      "soft_score_feasible_only": {
+        "mean": 9.645019360613073,
+        "median": 9.659650715873664,
+        "std": 0.2653292911690571,
+        "min": 9.273025984042725,
+        "max": 10.099119692521082
+      },
+      "runtime_seconds": {
+        "mean": 14.178831189975607,
+        "median": 14.649463899957482,
+        "std": 1.427674886802068
+      },
+      "first_feasible_generation": {
+        "mean": 1.0,
+        "median": 1.0,
+        "std": 0.0
+      },
+      "first_feasible_ga_evaluation": {
+        "mean": 63.0,
+        "median": 63.0,
+        "std": 0.0
+      },
+      "ga_evaluations": {
+        "mean": 1000.0,
+        "median": 1000.0,
+        "std": 0.0
+      },
+      "repair_evaluations": {
+        "mean": 30999.7,
+        "median": 31045.5,
+        "std": 1423.8346146937151
+      },
+      "sls_evaluations": {
+        "mean": 0.0,
+        "median": 0.0,
+        "std": 0.0
+      },
+      "total_evaluations": {
+        "mean": 31999.7,
+        "median": 32045.5,
+        "std": 1423.8346146937151
+      }
+    },
+    {
+      "dataset": "EASY",
+      "method": "ga_repair_sls",
+      "method_name": "GA + Repair + SLS (Production)",
+      "run_count": 10,
+      "feasible_count": 10,
+      "feasible_rate": 1.0,
+      "hard_violations": {
+        "mean": 0.0,
+        "median": 0.0,
+        "std": 0.0,
+        "min": 0,
+        "max": 0
+      },
+      "soft_score_feasible_only": {
+        "mean": 6.3504731280017115,
+        "median": 6.319422715458853,
+        "std": 0.4848343219156769,
+        "min": 5.637603265343159,
+        "max": 7.072156662583368
+      },
+      "runtime_seconds": {
+        "mean": 25.363339729991274,
+        "median": 25.524610300024506,
+        "std": 0.9498683474790025
+      },
+      "first_feasible_generation": {
+        "mean": 1.0,
+        "median": 1.0,
+        "std": 0.0
+      },
+      "first_feasible_ga_evaluation": {
+        "mean": 63.0,
+        "median": 63.0,
+        "std": 0.0
+      },
+      "ga_evaluations": {
+        "mean": 1000.0,
+        "median": 1000.0,
+        "std": 0.0
+      },
+      "repair_evaluations": {
+        "mean": 30999.7,
+        "median": 31045.5,
+        "std": 1423.8346146937151
+      },
+      "sls_evaluations": {
+        "mean": 5000.0,
+        "median": 5000.0,
+        "std": 0.0
+      },
+      "total_evaluations": {
+        "mean": 36999.7,
+        "median": 37045.5,
+        "std": 1423.8346146937151
+      }
+    },
+    {
+      "dataset": "MEDIUM",
+      "method": "ga",
+      "method_name": "GA without Repair",
+      "run_count": 10,
+      "feasible_count": 0,
+      "feasible_rate": 0.0,
+      "hard_violations": {
+        "mean": 5.7,
+        "median": 5.0,
+        "std": 1.676305461424021,
+        "min": 3,
+        "max": 9
+      },
+      "soft_score_feasible_only": {
+        "mean": null,
+        "median": null,
+        "std": null,
+        "min": null,
+        "max": null
+      },
+      "runtime_seconds": {
+        "mean": 7.14499071999453,
+        "median": 7.134464550006669,
+        "std": 0.14491303771645084
+      },
+      "first_feasible_generation": {
+        "mean": null,
+        "median": null,
+        "std": null
+      },
+      "first_feasible_ga_evaluation": {
+        "mean": null,
+        "median": null,
+        "std": null
+      },
+      "ga_evaluations": {
+        "mean": 1000.0,
+        "median": 1000.0,
+        "std": 0.0
+      },
+      "repair_evaluations": {
+        "mean": 0.0,
+        "median": 0.0,
+        "std": 0.0
+      },
+      "sls_evaluations": {
+        "mean": 0.0,
+        "median": 0.0,
+        "std": 0.0
+      },
+      "total_evaluations": {
+        "mean": 1000.0,
+        "median": 1000.0,
+        "std": 0.0
+      }
+    },
+    {
+      "dataset": "MEDIUM",
+      "method": "ga_repair",
+      "method_name": "GA + Repair",
+      "run_count": 10,
+      "feasible_count": 10,
+      "feasible_rate": 1.0,
+      "hard_violations": {
+        "mean": 0.0,
+        "median": 0.0,
+        "std": 0.0,
+        "min": 0,
+        "max": 0
+      },
+      "soft_score_feasible_only": {
+        "mean": 9.641885356895193,
+        "median": 9.620989681567469,
+        "std": 0.2722080144304957,
+        "min": 9.092803249787734,
+        "max": 10.188429258459886
+      },
+      "runtime_seconds": {
+        "mean": 15.935585839988198,
+        "median": 15.792152950016316,
+        "std": 0.4046470403759762
+      },
+      "first_feasible_generation": {
+        "mean": 1.0,
+        "median": 1.0,
+        "std": 0.0
+      },
+      "first_feasible_ga_evaluation": {
+        "mean": 63.0,
+        "median": 63.0,
+        "std": 0.0
+      },
+      "ga_evaluations": {
+        "mean": 1000.0,
+        "median": 1000.0,
+        "std": 0.0
+      },
+      "repair_evaluations": {
+        "mean": 35353.6,
+        "median": 35388.5,
+        "std": 1981.9186259783726
+      },
+      "sls_evaluations": {
+        "mean": 0.0,
+        "median": 0.0,
+        "std": 0.0
+      },
+      "total_evaluations": {
+        "mean": 36353.6,
+        "median": 36388.5,
+        "std": 1981.9186259783726
+      }
+    },
+    {
+      "dataset": "MEDIUM",
+      "method": "ga_repair_sls",
+      "method_name": "GA + Repair + SLS (Production)",
+      "run_count": 10,
+      "feasible_count": 10,
+      "feasible_rate": 1.0,
+      "hard_violations": {
+        "mean": 0.0,
+        "median": 0.0,
+        "std": 0.0,
+        "min": 0,
+        "max": 0
+      },
+      "soft_score_feasible_only": {
+        "mean": 5.71094752960392,
+        "median": 5.576837614316177,
+        "std": 0.812679543861657,
+        "min": 4.709969472476619,
+        "max": 7.3172776060199505
+      },
+      "runtime_seconds": {
+        "mean": 26.93458047999302,
+        "median": 27.118078149971552,
+        "std": 0.7375434625047785
+      },
+      "first_feasible_generation": {
+        "mean": 1.0,
+        "median": 1.0,
+        "std": 0.0
+      },
+      "first_feasible_ga_evaluation": {
+        "mean": 63.0,
+        "median": 63.0,
+        "std": 0.0
+      },
+      "ga_evaluations": {
+        "mean": 1000.0,
+        "median": 1000.0,
+        "std": 0.0
+      },
+      "repair_evaluations": {
+        "mean": 35353.6,
+        "median": 35388.5,
+        "std": 1981.9186259783726
+      },
+      "sls_evaluations": {
+        "mean": 5000.0,
+        "median": 5000.0,
+        "std": 0.0
+      },
+      "total_evaluations": {
+        "mean": 41353.6,
+        "median": 41388.5,
+        "std": 1981.9186259783726
+      }
+    }
+  ]
+}

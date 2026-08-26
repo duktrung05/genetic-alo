@@ -9,7 +9,10 @@ import random
 from typing import Dict, List, Set, Tuple, Optional, Any
 from collections import defaultdict
 
-from domain import Schedule, Gene, CourseSection, Room, Timeslot, Lecturer
+from domain import (
+    Schedule, Gene, SchedulingActivity, Room, Timeslot, Lecturer,
+    expand_scheduling_activities,
+)
 from dataset import get_occupied_periods, is_valid_period_block
 from constraints.evaluator import ConstraintEvaluator
 from ga.operators import GAOperators
@@ -27,8 +30,10 @@ class SoftGuidedMutation:
         self.dataset = dataset
         self.evaluator = evaluator if evaluator is not None else ConstraintEvaluator(dataset)
 
-        self.sections: List[CourseSection] = dataset["course_sections"]
-        self.section_map: Dict[str, CourseSection] = {s.section_id: s for s in self.sections}
+        self.sections: List[SchedulingActivity] = expand_scheduling_activities(
+            dataset["course_sections"]
+        )
+        self.section_map = {s.activity_id: s for s in self.sections}
         self.rooms: List[Room] = dataset["rooms"]
         self.room_map: Dict[str, Room] = {r.id: r for r in self.rooms}
         self.timeslots: List[Timeslot] = dataset["timeslots"]
@@ -44,8 +49,8 @@ class SoftGuidedMutation:
             self.day_available_periods[ts.day].add(ts.period)
 
         # Index sections by group and lecturer
-        self.sections_by_group: Dict[str, List[CourseSection]] = defaultdict(list)
-        self.sections_by_lecturer: Dict[str, List[CourseSection]] = defaultdict(list)
+        self.sections_by_group: Dict[str, List[SchedulingActivity]] = defaultdict(list)
+        self.sections_by_lecturer: Dict[str, List[SchedulingActivity]] = defaultdict(list)
         for sec in self.sections:
             if sec.group_id:
                 self.sections_by_group[sec.group_id].append(sec)
@@ -65,7 +70,7 @@ class SoftGuidedMutation:
             ] or self.rooms
 
             # Sort candidate rooms ascending by seat waste: (r.capacity - st_count, r.id)
-            self._valid_rooms_by_waste[sec.section_id] = sorted(
+            self._valid_rooms_by_waste[sec.activity_id] = sorted(
                 valid, key=lambda r: (r.capacity - st_count, r.id)
             )
 
@@ -207,15 +212,22 @@ class SoftGuidedMutation:
                             ))
                         ]
                         for t in alt_ts[:3]:
-                            guided_targets[sec.section_id].append(("timeslot", t.id))
-                        if guided_targets[sec.section_id]:
+                            guided_targets[sec.activity_id].append(("timeslot", t.id))
+                        if guided_targets[sec.activity_id]:
                             rule_counts["S1"] += 1
 
             # --- S5: Consecutive Cross-Campus ---
             elif key == "consecutive_cross_campus":
                 for sec_id in sec_id_list:
                     sec = self.section_map.get(sec_id)
-                    target_campus = getattr(sec, "preferred_campus_id", None) or "CS1"
+                    current_gene = next(
+                        (g for g in mutated.genes if g.activity_id == sec_id), None
+                    )
+                    current_room = self.room_map.get(current_gene.room_id) if current_gene else None
+                    target_campus = (
+                        getattr(sec, "preferred_campus_id", None)
+                        or getattr(current_room, "campus_id", None)
+                    )
                     cand_rooms = [
                         r for r in self._valid_rooms_by_waste.get(sec_id, [])
                         if getattr(r, "campus_id", None) == target_campus
@@ -238,6 +250,22 @@ class SoftGuidedMutation:
                 stats["guided_mutation_attempts"] += 1
                 sec_id = gene.section_id
                 candidates = guided_targets.get(sec_id, [])
+                sec = self.section_map.get(sec_id)
+                sibling_days = set()
+                if sec is not None and sec.meeting_count > 1:
+                    sibling_days = {
+                        self.timeslot_map[other.timeslot_id].day
+                        for other in mutated.genes
+                        if other.activity_id != gene.activity_id
+                        and self.section_map.get(other.activity_id) is not None
+                        and self.section_map[other.activity_id].section_id == sec.section_id
+                        and other.timeslot_id in self.timeslot_map
+                    }
+                    candidates = [
+                        candidate for candidate in candidates
+                        if candidate[0] != "timeslot"
+                        or self.timeslot_map[candidate[1]].day not in sibling_days
+                    ]
 
                 # Decide whether to use Guided Mutation or Fallback Random Mutation
                 if candidates and (random_gen.random() < guided_probability):
@@ -263,7 +291,6 @@ class SoftGuidedMutation:
                         stats["guided_mutation_hard_rejections"] += 1
                 else:
                     # Fallback Random Mutation (50% room, 50% timeslot)
-                    sec = self.section_map.get(sec_id)
                     dur = getattr(sec, "duration_periods", 1) if sec else 1
                     req_type = getattr(sec, "required_room_type", "NORMAL") if sec else "NORMAL"
                     st_cnt = getattr(sec, "student_count", 0) if sec else 0
@@ -276,6 +303,7 @@ class SoftGuidedMutation:
                     else:
                         valid_ts = [
                             t for t in self._valid_ts_by_duration.get(dur, self.timeslots)
+                            if t.day not in sibling_days
                             if avail_ts is None or all(
                                 self.day_period_to_ts_id.get((t.day, p)) in avail_ts
                                 for p in get_occupied_periods(t.period, dur)

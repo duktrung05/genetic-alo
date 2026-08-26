@@ -1,7 +1,10 @@
 import time
 import random
 from typing import List, Optional, Dict
-from domain import Schedule, Gene, CourseSection, Room, Timeslot, Lecturer
+from domain import (
+    Schedule, Gene, SchedulingActivity, Room, Timeslot, Lecturer,
+    expand_scheduling_activities,
+)
 from constraints.evaluator import ConstraintEvaluator
 from dataset import get_occupied_periods, is_valid_period_block, DatasetValidator
 
@@ -177,7 +180,9 @@ class RandomSearchScheduler:
     def __init__(self, dataset: dict, seed: Optional[int] = None):
         DatasetValidator.validate(dataset)
         self.dataset = dataset
-        self.sections: List[CourseSection] = dataset["course_sections"]
+        self.sections: List[SchedulingActivity] = expand_scheduling_activities(
+            dataset["course_sections"]
+        )
         self.rooms: List[Room] = dataset["rooms"]
         self.timeslots: List[Timeslot] = dataset["timeslots"]
         self.seed = seed
@@ -209,7 +214,7 @@ class RandomSearchScheduler:
 
         for i in range(max_evals):
             genes = [
-                Gene(section_id=sec.section_id, room_id=random.choice(self.rooms).id, timeslot_id=random.choice(self.timeslots).id)
+                Gene(activity_id=sec.activity_id, room_id=random.choice(self.rooms).id, timeslot_id=random.choice(self.timeslots).id)
                 for sec in self.sections
             ]
             cand = Schedule(genes=genes)
@@ -311,7 +316,9 @@ class GreedyScheduler:
         """Khởi tạo Bộ lập lịch Greedy với dữ liệu đầu vào."""
         DatasetValidator.validate(dataset)
         self.dataset = dataset
-        self.sections: List[CourseSection] = dataset["course_sections"]
+        self.sections: List[SchedulingActivity] = expand_scheduling_activities(
+            dataset["course_sections"]
+        )
         self.rooms: List[Room] = dataset["rooms"]
         self.timeslots: List[Timeslot] = dataset["timeslots"]
         self.lecturer_map: Dict[str, Lecturer] = {l.id: l for l in dataset.get("lecturers", [])}
@@ -327,6 +334,7 @@ class GreedyScheduler:
         used_lecturer_time = set()
         used_room_time = set()
         used_group_time = set()
+        used_section_days = set()
 
         day_period_to_ts_id = {(t.day, t.period): t.id for t in self.timeslots}
         day_available_periods = {}
@@ -347,6 +355,8 @@ class GreedyScheduler:
             duration = getattr(sec, "duration_periods", 1)
 
             for ts in self.timeslots:
+                if (sec.section_id, ts.day) in used_section_days:
+                    continue
                 if not is_valid_period_block(ts.period, duration, day_available_periods.get(ts.day)):
                     continue
 
@@ -387,6 +397,7 @@ class GreedyScheduler:
                 valid_ts = sorted([
                     t for t in self.timeslots
                     if is_valid_period_block(t.period, duration, day_available_periods.get(t.day))
+                    and (sec.section_id, t.day) not in used_section_days
                     and (avail_ts is None or all(day_period_to_ts_id.get((t.day, p)) in avail_ts for p in get_occupied_periods(t.period, duration)))
                 ] or self.timeslots, key=lambda t: t.id)
 
@@ -401,7 +412,8 @@ class GreedyScheduler:
             if sec.group_id:
                 for p in occupied_p:
                     used_group_time.add((sec.group_id, best_ts.day, p))
-            genes.append(Gene(section_id=sec.section_id, room_id=best_r.id, timeslot_id=best_ts.id))
+            used_section_days.add((sec.section_id, best_ts.day))
+            genes.append(Gene(activity_id=sec.activity_id, room_id=best_r.id, timeslot_id=best_ts.id))
 
         schedule = Schedule(genes=genes)
         score, final_h, final_s = self.evaluator.calculate_fitness(schedule, is_search_eval=True)

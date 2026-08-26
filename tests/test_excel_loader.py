@@ -22,6 +22,7 @@ def test_excel_loader_parses_entities():
     ds = ExcelDatasetLoader.load(EXCEL_PATH)
 
     assert "timeslots" in ds
+    assert "campuses" in ds
     assert "rooms" in ds
     assert "lecturers" in ds
     assert "student_groups" in ds
@@ -29,6 +30,7 @@ def test_excel_loader_parses_entities():
     assert "course_sections" in ds
 
     assert len(ds["timeslots"]) == 96
+    assert len(ds["campuses"]) == 2
     assert len(ds["rooms"]) == 11
     assert len(ds["lecturers"]) == 15
     assert len(ds["student_groups"]) == 12
@@ -62,6 +64,7 @@ def test_json_snapshot_roundtrip_no_data_loss(tmp_path):
 
     # Every scheduling-relevant entity and field must survive the round trip.
     entity_keys = (
+        "campuses",
         "timeslots",
         "rooms",
         "lecturers",
@@ -101,14 +104,20 @@ def test_single_load_workbook_call():
 @pytest.mark.unit
 def test_output_sheets_ignored():
     ds = ExcelDatasetLoader.load(EXCEL_PATH)
-    allowed_keys = {"timeslots", "rooms", "lecturers", "student_groups", "courses", "course_sections", "constraints"}
+    allowed_keys = {"campuses", "timeslots", "rooms", "lecturers", "student_groups", "courses", "course_sections", "constraints"}
     assert set(ds.keys()) == allowed_keys
 
 
 @pytest.mark.unit
 def test_detailed_error_messages_missing_sheet():
     mock_wb = MagicMock()
-    mock_wb.sheetnames = ["ROOMS"] # Missing TIMESLOTS
+    mock_wb.sheetnames = ["CAMPUSES", "ROOMS"]  # Missing TIMESLOTS
+    campus_ws = MagicMock()
+    campus_ws.iter_rows.return_value = [
+        ("campus_id", "campus_name"),
+        ("CS1", "Campus 1"),
+    ]
+    mock_wb.__getitem__.return_value = campus_ws
     with patch("os.path.exists", return_value=True):
         with patch("openpyxl.load_workbook", return_value=mock_wb):
             with pytest.raises(ExcelValidationError) as exc_info:
@@ -119,10 +128,20 @@ def test_detailed_error_messages_missing_sheet():
 @pytest.mark.unit
 def test_detailed_error_messages_missing_column():
     mock_wb = MagicMock()
-    mock_wb.sheetnames = ["TIMESLOTS"]
-    mock_ws = MagicMock()
-    mock_ws.iter_rows.return_value = [("timeslot_id", "day_name")] # Missing period_no, shift
-    mock_wb.__getitem__.return_value = mock_ws
+    mock_wb.sheetnames = ["CAMPUSES", "TIMESLOTS"]
+    campus_ws = MagicMock()
+    campus_ws.iter_rows.return_value = [
+        ("campus_id", "campus_name"),
+        ("CS1", "Campus 1"),
+    ]
+    timeslot_ws = MagicMock()
+    timeslot_ws.iter_rows.return_value = [
+        ("timeslot_id", "day_name")
+    ]  # Missing period_no, shift
+    mock_wb.__getitem__.side_effect = lambda name: {
+        "CAMPUSES": campus_ws,
+        "TIMESLOTS": timeslot_ws,
+    }[name]
     with patch("os.path.exists", return_value=True):
         with patch("openpyxl.load_workbook", return_value=mock_wb):
             with pytest.raises(ExcelValidationError) as exc_info:

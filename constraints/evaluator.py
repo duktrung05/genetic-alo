@@ -11,7 +11,10 @@ are permanently retired from this evaluator.
 
 from dataclasses import dataclass, field
 from typing import Tuple, Dict, Optional, List, Any
-from domain import Schedule, CourseSection, Room, Timeslot, Lecturer, StudentGroup
+from domain import (
+    Schedule, Room, Timeslot, Lecturer, StudentGroup,
+    expand_scheduling_activities,
+)
 from .hard_constraints import HardConstraintChecker
 from .soft_constraints import (
     SoftConstraintChecker,
@@ -67,8 +70,9 @@ class ConstraintEvaluator:
         counters: Optional[EvaluationCounters] = None,
     ) -> None:
         self.counters = counters if counters is not None else EvaluationCounters()
-        self.section_map: Dict[str, CourseSection] = {
-            c.section_id: c for c in dataset["course_sections"]
+        self.activities = expand_scheduling_activities(dataset["course_sections"])
+        self.section_map = {
+            activity.activity_id: activity for activity in self.activities
         }
         self.room_map: Dict[str, Room] = {r.id: r for r in dataset["rooms"]}
         self.timeslot_map: Dict[int, Timeslot] = {t.id: t for t in dataset["timeslots"]}

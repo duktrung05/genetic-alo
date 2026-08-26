@@ -1,0 +1,679 @@
+{
+  "instance_name": "easy",
+  "source_filename": "data/01_data_timetable.xlsx",
+  "frozen_instance_filename": "data/instances/instance_easy.xlsx",
+  "checksum_sha256": "dfbff415600ff0a1a2cba8b55c90ab52dbcd7b3db3b090f16f1b49cee2bc6e6d",
+  "git_commit": "71bd7ab9a8ff1c12d44dfde8add893106445abf1",
+  "timestamp_utc": "2026-08-26T14:36:42.915810+00:00",
+  "metric_definitions": {
+    "activity_demand": "Sum of duration_periods over expanded scheduling activities; duration is per meeting.",
+    "room_period_supply": "Number of rooms multiplied by number of teaching timeslots.",
+    "lab_supply": "Number of LAB rooms multiplied by number of teaching timeslots.",
+    "lecturer_load_ratio": "Activity-period demand divided by available timeslot periods; unrestricted means every dataset timeslot.",
+    "student_group_load_ratio": "Activity-period demand divided by all dataset teaching timeslots.",
+    "candidate_domain": "Count of individually legal (room, start_timeslot) pairs satisfying room capacity/type, same-session consecutive duration fit, and lecturer availability; global conflicts excluded.",
+    "shared_resource_pairs": "For each resource with n activities, n*(n-1)/2, summed across resources."
+  },
+  "dataset_counts": {
+    "sections": 62,
+    "activities": 62,
+    "courses": 20,
+    "lecturers": 15,
+    "student_groups": 12,
+    "rooms": 11,
+    "timeslots": 96,
+    "teaching_days": 6
+  },
+  "difficulty_metrics": {
+    "dataset_counts": {
+      "sections": 62,
+      "activities": 62,
+      "courses": 20,
+      "lecturers": 15,
+      "student_groups": 12,
+      "rooms": 11,
+      "timeslots": 96,
+      "teaching_days": 6
+    },
+    "resource_pressure": {
+      "total_activity_period_demand": 158,
+      "total_room_period_capacity": 1056,
+      "room_utilization_ratio": 0.14962121212121213,
+      "lab_activity_period_demand": 21,
+      "lab_room_period_supply": 288,
+      "lab_utilization_ratio": 0.07291666666666667
+    },
+    "lecturer_pressure": {
+      "summary": {
+        "mean": 0.11281964159871136,
+        "median": 0.10416666666666667,
+        "max": 0.2604166666666667,
+        "min": 0.020833333333333332
+      },
+      "unrestricted_count": 10,
+      "restricted_count": 5,
+      "per_lecturer": [
+        {
+          "lecturer_id": "GV01",
+          "demand_periods": 25,
+          "available_periods": 96,
+          "load_ratio": 0.2604166666666667
+        },
+        {
+          "lecturer_id": "GV02",
+          "demand_periods": 10,
+          "available_periods": 96,
+          "load_ratio": 0.10416666666666667
+        },
+        {
+          "lecturer_id": "GV03",
+          "demand_periods": 8,
+          "available_periods": 88,
+          "load_ratio": 0.09090909090909091
+        },
+        {
+          "lecturer_id": "GV04",
+          "demand_periods": 10,
+          "available_periods": 96,
+          "load_ratio": 0.10416666666666667
+        },
+        {
+          "lecturer_id": "GV05",
+          "demand_periods": 8,
+          "available_periods": 96,
+          "load_ratio": 0.08333333333333333
+        },
+        {
+          "lecturer_id": "GV06",
+          "demand_periods": 12,
+          "available_periods": 86,
+          "load_ratio": 0.13953488372093023
+        },
+        {
+          "lecturer_id": "GV07",
+          "demand_periods": 17,
+          "available_periods": 96,
+          "load_ratio": 0.17708333333333334
+        },
+        {
+          "lecturer_id": "GV08",
+          "demand_periods": 10,
+          "available_periods": 96,
+          "load_ratio": 0.10416666666666667
+        },
+        {
+          "lecturer_id": "GV09",
+          "demand_periods": 8,
+          "available_periods": 84,
+          "load_ratio": 0.09523809523809523
+        },
+        {
+          "lecturer_id": "GV10",
+          "demand_periods": 11,
+          "available_periods": 96,
+          "load_ratio": 0.11458333333333333
+        },
+        {
+          "lecturer_id": "GV11",
+          "demand_periods": 6,
+          "available_periods": 96,
+          "load_ratio": 0.0625
+        },
+        {
+          "lecturer_id": "GV12",
+          "demand_periods": 2,
+          "available_periods": 84,
+          "load_ratio": 0.023809523809523808
+        },
+        {
+          "lecturer_id": "GV13",
+          "demand_periods": 19,
+          "available_periods": 96,
+          "load_ratio": 0.19791666666666666
+        },
+        {
+          "lecturer_id": "GV14",
+          "demand_periods": 10,
+          "available_periods": 88,
+          "load_ratio": 0.11363636363636363
+        },
+        {
+          "lecturer_id": "GV15",
+          "demand_periods": 2,
+          "available_periods": 96,
+          "load_ratio": 0.020833333333333332
+        }
+      ]
+    },
+    "student_group_pressure": {
+      "summary": {
+        "mean": 0.13715277777777776,
+        "median": 0.13541666666666666,
+        "max": 0.1875
+      },
+      "per_group": [
+        {
+          "group_id": "CNTT1-K18",
+          "required_activity_periods": 13,
+          "available_teaching_periods": 96,
+          "load_ratio": 0.13541666666666666
+        },
+        {
+          "group_id": "CNTT2-K18",
+          "required_activity_periods": 14,
+          "available_teaching_periods": 96,
+          "load_ratio": 0.14583333333333334
+        },
+        {
+          "group_id": "CNTT3-K18",
+          "required_activity_periods": 12,
+          "available_teaching_periods": 96,
+          "load_ratio": 0.125
+        },
+        {
+          "group_id": "CNTT4-K18",
+          "required_activity_periods": 13,
+          "available_teaching_periods": 96,
+          "load_ratio": 0.13541666666666666
+        },
+        {
+          "group_id": "KHMT1-K18",
+          "required_activity_periods": 18,
+          "available_teaching_periods": 96,
+          "load_ratio": 0.1875
+        },
+        {
+          "group_id": "KHMT2-K18",
+          "required_activity_periods": 13,
+          "available_teaching_periods": 96,
+          "load_ratio": 0.13541666666666666
+        },
+        {
+          "group_id": "KTPM1-K18",
+          "required_activity_periods": 12,
+          "available_teaching_periods": 96,
+          "load_ratio": 0.125
+        },
+        {
+          "group_id": "KTPM2-K18",
+          "required_activity_periods": 10,
+          "available_teaching_periods": 96,
+          "load_ratio": 0.10416666666666667
+        },
+        {
+          "group_id": "HTTT1-K18",
+          "required_activity_periods": 13,
+          "available_teaching_periods": 96,
+          "load_ratio": 0.13541666666666666
+        },
+        {
+          "group_id": "ATTT1-K18",
+          "required_activity_periods": 14,
+          "available_teaching_periods": 96,
+          "load_ratio": 0.14583333333333334
+        },
+        {
+          "group_id": "TTDPT1-K18",
+          "required_activity_periods": 13,
+          "available_teaching_periods": 96,
+          "load_ratio": 0.13541666666666666
+        },
+        {
+          "group_id": "HTTT2-K18",
+          "required_activity_periods": 13,
+          "available_teaching_periods": 96,
+          "load_ratio": 0.13541666666666666
+        }
+      ]
+    },
+    "candidate_domains": {
+      "summary": {
+        "min": 120,
+        "p25": 336.0,
+        "median": 468.0,
+        "p75": 610.0,
+        "max": 624,
+        "mean": 444.8709677419355
+      },
+      "activities_below_20": 0,
+      "activities_below_50": 0,
+      "activities_below_100": 0,
+      "per_activity": [
+        {
+          "activity_id": "SEC-CNTT1-C01",
+          "section_id": "SEC-CNTT1-C01",
+          "candidate_count": 168
+        },
+        {
+          "activity_id": "SEC-CNTT1-C02",
+          "section_id": "SEC-CNTT1-C02",
+          "candidate_count": 240
+        },
+        {
+          "activity_id": "SEC-CNTT1-C03",
+          "section_id": "SEC-CNTT1-C03",
+          "candidate_count": 312
+        },
+        {
+          "activity_id": "SEC-CNTT1-C04",
+          "section_id": "SEC-CNTT1-C04",
+          "candidate_count": 284
+        },
+        {
+          "activity_id": "SEC-CNTT1-C13",
+          "section_id": "SEC-CNTT1-C13",
+          "candidate_count": 312
+        },
+        {
+          "activity_id": "SEC-CNTT2-C01",
+          "section_id": "SEC-CNTT2-C01",
+          "candidate_count": 468
+        },
+        {
+          "activity_id": "SEC-CNTT2-C02",
+          "section_id": "SEC-CNTT2-C02",
+          "candidate_count": 360
+        },
+        {
+          "activity_id": "SEC-CNTT2-C03",
+          "section_id": "SEC-CNTT2-C03",
+          "candidate_count": 468
+        },
+        {
+          "activity_id": "SEC-CNTT2-C04",
+          "section_id": "SEC-CNTT2-C04",
+          "candidate_count": 210
+        },
+        {
+          "activity_id": "SEC-CNTT2-C13",
+          "section_id": "SEC-CNTT2-C13",
+          "candidate_count": 120
+        },
+        {
+          "activity_id": "SEC-CNTT3-C01",
+          "section_id": "SEC-CNTT3-C01",
+          "candidate_count": 120
+        },
+        {
+          "activity_id": "SEC-CNTT3-C02",
+          "section_id": "SEC-CNTT3-C02",
+          "candidate_count": 360
+        },
+        {
+          "activity_id": "SEC-CNTT3-C03",
+          "section_id": "SEC-CNTT3-C03",
+          "candidate_count": 468
+        },
+        {
+          "activity_id": "SEC-CNTT3-C04",
+          "section_id": "SEC-CNTT3-C04",
+          "candidate_count": 426
+        },
+        {
+          "activity_id": "SEC-CNTT3-C13",
+          "section_id": "SEC-CNTT3-C13",
+          "candidate_count": 468
+        },
+        {
+          "activity_id": "SEC-CNTT4-C01",
+          "section_id": "SEC-CNTT4-C01",
+          "candidate_count": 624
+        },
+        {
+          "activity_id": "SEC-CNTT4-C02",
+          "section_id": "SEC-CNTT4-C02",
+          "candidate_count": 480
+        },
+        {
+          "activity_id": "SEC-CNTT4-C03",
+          "section_id": "SEC-CNTT4-C03",
+          "candidate_count": 336
+        },
+        {
+          "activity_id": "SEC-CNTT4-C04",
+          "section_id": "SEC-CNTT4-C04",
+          "candidate_count": 536
+        },
+        {
+          "activity_id": "SEC-CNTT4-C13",
+          "section_id": "SEC-CNTT4-C13",
+          "candidate_count": 624
+        },
+        {
+          "activity_id": "SEC-KHMT1-C16",
+          "section_id": "SEC-KHMT1-C16",
+          "candidate_count": 480
+        },
+        {
+          "activity_id": "SEC-KHMT1-C17",
+          "section_id": "SEC-KHMT1-C17",
+          "candidate_count": 480
+        },
+        {
+          "activity_id": "SEC-KHMT1-C02",
+          "section_id": "SEC-KHMT1-C02",
+          "candidate_count": 480
+        },
+        {
+          "activity_id": "SEC-KHMT1-C09",
+          "section_id": "SEC-KHMT1-C09",
+          "candidate_count": 432
+        },
+        {
+          "activity_id": "SEC-KHMT1-C10",
+          "section_id": "SEC-KHMT1-C10",
+          "candidate_count": 162
+        },
+        {
+          "activity_id": "SEC-KHMT2-C16",
+          "section_id": "SEC-KHMT2-C16",
+          "candidate_count": 480
+        },
+        {
+          "activity_id": "SEC-KHMT2-C17",
+          "section_id": "SEC-KHMT2-C17",
+          "candidate_count": 624
+        },
+        {
+          "activity_id": "SEC-KHMT2-C02",
+          "section_id": "SEC-KHMT2-C02",
+          "candidate_count": 624
+        },
+        {
+          "activity_id": "SEC-KHMT2-C09",
+          "section_id": "SEC-KHMT2-C09",
+          "candidate_count": 304
+        },
+        {
+          "activity_id": "SEC-KHMT2-C10",
+          "section_id": "SEC-KHMT2-C10",
+          "candidate_count": 560
+        },
+        {
+          "activity_id": "SEC-KTPM1-C01",
+          "section_id": "SEC-KTPM1-C01",
+          "candidate_count": 468
+        },
+        {
+          "activity_id": "SEC-KTPM1-C07",
+          "section_id": "SEC-KTPM1-C07",
+          "candidate_count": 468
+        },
+        {
+          "activity_id": "SEC-KTPM1-C03",
+          "section_id": "SEC-KTPM1-C03",
+          "candidate_count": 468
+        },
+        {
+          "activity_id": "SEC-KTPM1-C08",
+          "section_id": "SEC-KTPM1-C08",
+          "candidate_count": 468
+        },
+        {
+          "activity_id": "SEC-KTPM1-C15",
+          "section_id": "SEC-KTPM1-C15",
+          "candidate_count": 228
+        },
+        {
+          "activity_id": "SEC-KTPM2-C01",
+          "section_id": "SEC-KTPM2-C01",
+          "candidate_count": 624
+        },
+        {
+          "activity_id": "SEC-KTPM2-C07",
+          "section_id": "SEC-KTPM2-C07",
+          "candidate_count": 568
+        },
+        {
+          "activity_id": "SEC-KTPM2-C03",
+          "section_id": "SEC-KTPM2-C03",
+          "candidate_count": 624
+        },
+        {
+          "activity_id": "SEC-KTPM2-C08",
+          "section_id": "SEC-KTPM2-C08",
+          "candidate_count": 624
+        },
+        {
+          "activity_id": "SEC-KTPM2-C15",
+          "section_id": "SEC-KTPM2-C15",
+          "candidate_count": 568
+        },
+        {
+          "activity_id": "SEC-HTTT1-C03",
+          "section_id": "SEC-HTTT1-C03",
+          "candidate_count": 336
+        },
+        {
+          "activity_id": "SEC-HTTT1-C08",
+          "section_id": "SEC-HTTT1-C08",
+          "candidate_count": 624
+        },
+        {
+          "activity_id": "SEC-HTTT1-C13",
+          "section_id": "SEC-HTTT1-C13",
+          "candidate_count": 624
+        },
+        {
+          "activity_id": "SEC-HTTT1-C14",
+          "section_id": "SEC-HTTT1-C14",
+          "candidate_count": 180
+        },
+        {
+          "activity_id": "SEC-HTTT1-C15",
+          "section_id": "SEC-HTTT1-C15",
+          "candidate_count": 568
+        },
+        {
+          "activity_id": "SEC-ATTT1-C04",
+          "section_id": "SEC-ATTT1-C04",
+          "candidate_count": 568
+        },
+        {
+          "activity_id": "SEC-ATTT1-C05",
+          "section_id": "SEC-ATTT1-C05",
+          "candidate_count": 336
+        },
+        {
+          "activity_id": "SEC-ATTT1-C12",
+          "section_id": "SEC-ATTT1-C12",
+          "candidate_count": 536
+        },
+        {
+          "activity_id": "SEC-ATTT1-C06",
+          "section_id": "SEC-ATTT1-C06",
+          "candidate_count": 624
+        },
+        {
+          "activity_id": "SEC-ATTT1-C13",
+          "section_id": "SEC-ATTT1-C13",
+          "candidate_count": 624
+        },
+        {
+          "activity_id": "SEC-TTDPT1-C19",
+          "section_id": "SEC-TTDPT1-C19",
+          "candidate_count": 624
+        },
+        {
+          "activity_id": "SEC-TTDPT1-C13",
+          "section_id": "SEC-TTDPT1-C13",
+          "candidate_count": 180
+        },
+        {
+          "activity_id": "SEC-TTDPT1-C01",
+          "section_id": "SEC-TTDPT1-C01",
+          "candidate_count": 336
+        },
+        {
+          "activity_id": "SEC-TTDPT1-C03",
+          "section_id": "SEC-TTDPT1-C03",
+          "candidate_count": 624
+        },
+        {
+          "activity_id": "SEC-TTDPT1-C18",
+          "section_id": "SEC-TTDPT1-C18",
+          "candidate_count": 544
+        },
+        {
+          "activity_id": "SEC-HTTT2-C04",
+          "section_id": "SEC-HTTT2-C04",
+          "candidate_count": 568
+        },
+        {
+          "activity_id": "SEC-HTTT2-C05",
+          "section_id": "SEC-HTTT2-C05",
+          "candidate_count": 624
+        },
+        {
+          "activity_id": "SEC-HTTT2-C06",
+          "section_id": "SEC-HTTT2-C06",
+          "candidate_count": 624
+        },
+        {
+          "activity_id": "SEC-HTTT2-C14",
+          "section_id": "SEC-HTTT2-C14",
+          "candidate_count": 180
+        },
+        {
+          "activity_id": "SEC-HTTT2-C01",
+          "section_id": "SEC-HTTT2-C01",
+          "candidate_count": 336
+        },
+        {
+          "activity_id": "SEC-KHMT1-C11",
+          "section_id": "SEC-KHMT1-C11",
+          "candidate_count": 180
+        },
+        {
+          "activity_id": "SEC-ATTT1-C20",
+          "section_id": "SEC-ATTT1-C20",
+          "candidate_count": 624
+        }
+      ]
+    },
+    "conflict_pressure": {
+      "activities_per_lecturer": {
+        "mean": 4.133333333333334,
+        "median": 4,
+        "max": 9,
+        "min": 1
+      },
+      "activities_per_student_group": {
+        "mean": 5.166666666666667,
+        "median": 5.0,
+        "max": 6,
+        "min": 5
+      },
+      "activity_pairs_sharing_lecturer": 131,
+      "activity_pairs_sharing_student_group": 130
+    }
+  },
+  "baseline_run_config": {
+    "pop_size": 60,
+    "generations": 100,
+    "crossover_rate": 0.8,
+    "mutation_rate": 0.2,
+    "hard_weight": 1000,
+    "soft_weight": 1,
+    "soft_local_search_max_passes": 2,
+    "soft_local_search_max_candidate_checks": 5000,
+    "evaluation_budget": 1000
+  },
+  "seeds": [
+    0,
+    1,
+    2
+  ],
+  "baseline_results": [
+    {
+      "method": "ga",
+      "seed": 0,
+      "hard_feasible": false,
+      "first_feasible_generation": null,
+      "first_feasible_evaluation": null,
+      "final_hard_violations": 6,
+      "final_soft_score": 13.595233331388906,
+      "runtime_seconds": 5.644107200088911
+    },
+    {
+      "method": "ga_repair",
+      "seed": 0,
+      "hard_feasible": true,
+      "first_feasible_generation": 1,
+      "first_feasible_evaluation": 63,
+      "final_hard_violations": 0,
+      "final_soft_score": 9.829668993499128,
+      "runtime_seconds": 14.623951399931684
+    },
+    {
+      "method": "ga_repair_sls",
+      "seed": 0,
+      "hard_feasible": true,
+      "first_feasible_generation": 1,
+      "first_feasible_evaluation": 63,
+      "final_hard_violations": 0,
+      "final_soft_score": 6.3029432486210775,
+      "runtime_seconds": 25.317074800026603
+    },
+    {
+      "method": "ga",
+      "seed": 1,
+      "hard_feasible": false,
+      "first_feasible_generation": null,
+      "first_feasible_evaluation": null,
+      "final_hard_violations": 5,
+      "final_soft_score": 13.5565267326476,
+      "runtime_seconds": 6.589654400013387
+    },
+    {
+      "method": "ga_repair",
+      "seed": 1,
+      "hard_feasible": true,
+      "first_feasible_generation": 1,
+      "first_feasible_evaluation": 63,
+      "final_hard_violations": 0,
+      "final_soft_score": 9.559138326625057,
+      "runtime_seconds": 14.585790600045584
+    },
+    {
+      "method": "ga_repair_sls",
+      "seed": 1,
+      "hard_feasible": true,
+      "first_feasible_generation": 1,
+      "first_feasible_evaluation": 63,
+      "final_hard_violations": 0,
+      "final_soft_score": 5.637603265343159,
+      "runtime_seconds": 23.1241920000175
+    },
+    {
+      "method": "ga",
+      "seed": 2,
+      "hard_feasible": false,
+      "first_feasible_generation": null,
+      "first_feasible_evaluation": null,
+      "final_hard_violations": 4,
+      "final_soft_score": 13.165174363743049,
+      "runtime_seconds": 4.1389331999234855
+    },
+    {
+      "method": "ga_repair",
+      "seed": 2,
+      "hard_feasible": true,
+      "first_feasible_generation": 1,
+      "first_feasible_evaluation": 63,
+      "final_hard_violations": 0,
+      "final_soft_score": 9.416314984412168,
+      "runtime_seconds": 11.09130600001663
+    },
+    {
+      "method": "ga_repair_sls",
+      "seed": 2,
+      "hard_feasible": true,
+      "first_feasible_generation": 1,
+      "first_feasible_evaluation": 63,
+      "final_hard_violations": 0,
+      "final_soft_score": 7.0141056602306096,
+      "runtime_seconds": 25.748012299998663
+    }
+  ]
+}

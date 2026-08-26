@@ -9,7 +9,10 @@ import time
 from typing import Dict, List, Set, Tuple, Optional, Any
 from collections import defaultdict
 
-from domain import Schedule, Gene, CourseSection, Room, Timeslot, Lecturer
+from domain import (
+    Schedule, Gene, SchedulingActivity, Room, Timeslot, Lecturer,
+    expand_scheduling_activities,
+)
 from dataset import get_occupied_periods, is_valid_period_block
 from constraints.evaluator import ConstraintEvaluator
 
@@ -30,8 +33,10 @@ class SoftLocalSearch:
         self.max_passes = max_passes
         self.max_candidate_checks = max_candidate_checks
 
-        self.sections: List[CourseSection] = dataset["course_sections"]
-        self.section_map: Dict[str, CourseSection] = {s.section_id: s for s in self.sections}
+        self.sections: List[SchedulingActivity] = expand_scheduling_activities(
+            dataset["course_sections"]
+        )
+        self.section_map = {s.activity_id: s for s in self.sections}
         self.rooms: List[Room] = dataset["rooms"]
         self.timeslots: List[Timeslot] = dataset["timeslots"]
         self.timeslot_map: Dict[int, Timeslot] = {t.id: t for t in self.timeslots}
@@ -49,7 +54,7 @@ class SoftLocalSearch:
         self._valid_rooms_cache: Dict[str, List[Room]] = {}
         for sec in self.sections:
             req_type = getattr(sec, "required_room_type", "NORMAL")
-            self._valid_rooms_cache[sec.section_id] = sorted(
+            self._valid_rooms_cache[sec.activity_id] = sorted(
                 [
                     r for r in self.rooms
                     if r.capacity >= sec.student_count and getattr(r, "room_type", "NORMAL") == req_type
@@ -109,7 +114,7 @@ class SoftLocalSearch:
                 if candidate_checks >= self.max_candidate_checks:
                     break
 
-                sec_id = sec.section_id
+                sec_id = sec.activity_id
                 cur_gene = current_genes_map[sec_id]
                 duration = getattr(sec, "duration_periods", 1)
                 req_type = getattr(sec, "required_room_type", "NORMAL")
@@ -137,7 +142,7 @@ class SoftLocalSearch:
 
                     candidate_checks += 1
                     test_genes = [
-                        Gene(s.section_id, r.id if s.section_id == sec_id else current_genes_map[s.section_id].room_id, current_genes_map[s.section_id].timeslot_id)
+                        Gene(s.activity_id, r.id if s.activity_id == sec_id else current_genes_map[s.activity_id].room_id, current_genes_map[s.activity_id].timeslot_id)
                         for s in self.sections
                     ]
                     cand_sched = Schedule(genes=test_genes)
@@ -166,7 +171,7 @@ class SoftLocalSearch:
 
                     candidate_checks += 1
                     test_genes = [
-                        Gene(s.section_id, current_genes_map[s.section_id].room_id, ts.id if s.section_id == sec_id else current_genes_map[s.section_id].timeslot_id)
+                        Gene(s.activity_id, current_genes_map[s.activity_id].room_id, ts.id if s.activity_id == sec_id else current_genes_map[s.activity_id].timeslot_id)
                         for s in self.sections
                     ]
                     cand_sched = Schedule(genes=test_genes)
@@ -199,7 +204,7 @@ class SoftLocalSearch:
 
                         candidate_checks += 1
                         test_genes = [
-                            Gene(s.section_id, r.id if s.section_id == sec_id else current_genes_map[s.section_id].room_id, ts.id if s.section_id == sec_id else current_genes_map[s.section_id].timeslot_id)
+                            Gene(s.activity_id, r.id if s.activity_id == sec_id else current_genes_map[s.activity_id].room_id, ts.id if s.activity_id == sec_id else current_genes_map[s.activity_id].timeslot_id)
                             for s in self.sections
                         ]
                         cand_sched = Schedule(genes=test_genes)
@@ -218,7 +223,7 @@ class SoftLocalSearch:
             if not pass_improved:
                 break
 
-        final_genes = [current_genes_map[s.section_id] for s in self.sections]
+        final_genes = [current_genes_map[s.activity_id] for s in self.sections]
         final_schedule = Schedule(genes=final_genes)
 
         final_hard, _ = self.evaluator.evaluate_hard(final_schedule, category="internal")

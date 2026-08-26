@@ -386,6 +386,8 @@ def main():
             for definition in soft_config.definitions.values()
         },
 
+        "effective_soft_constraints": soft_config.to_metadata(),
+
         "generations":
             ga_config["generations"],
 

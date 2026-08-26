@@ -47,6 +47,29 @@ Bộ dữ liệu chuẩn quy mô đại học được nạp từ `data/01_data_
 
 ---
 
+### `CONSTRAINTS` semantics
+
+Soft rows (`S1`–`S7`) provide the effective optimizer weight and enabled flag.
+Hard rows are audit declarations only: `HardConstraintChecker` always enforces
+all implemented hard checks, their workbook weights do not rescale individual
+checks, and `enabled=False` is rejected because disabling a hard check is not
+supported in Phase 2.2.
+
+### Multi-meeting scheduling semantics
+
+`CourseSection` remains the official business entity. A section is expanded
+deterministically into one `SchedulingActivity` per weekly meeting. Single-
+meeting sections retain their section ID as the activity ID; multi-meeting
+sections use `SECTION-M1` through `SECTION-MN`. Each activity is assigned its
+own room and timeslot, sibling meetings must use distinct teaching days, and
+`duration_periods` means the duration of each meeting (not total weekly time).
+
+S1 continues to count unique active days per group. S2, S3, S4, S6, and S7
+operate per expanded activity, so their assignment/occupied-period denominators
+expand naturally. S5 continues to evaluate adjacent lecturer blocks.
+
+---
+
 ## ⏰ Cấu Trúc Khung Giờ Học (HaUI 2025–2026)
 
 Hệ thống tích hợp cấu hình khung giờ học lý thuyết chuẩn Đại học Công nghiệp Hà Nội (HaUI) tại Cơ sở 1 và Cơ sở 2:
@@ -103,6 +126,23 @@ pytest -q
 pytest --collect-only -q
 ```
 
+
+---
+
+## Run Demo
+
+```bash
+# Activate the project environment, then install dependencies once.
+pip install -r requirements.txt
+
+# Start the final Streamlit demo.
+streamlit run ui_app.py
+```
+
+Open `http://localhost:8501`. The recommended live-demo setup is dataset
+**EASY** with the fixed **GA + Repair + SLS** Final Hybrid Method and seed `0`.
+The Scheduler page validates the frozen workbook before enabling a run; the
+Benchmark page reads the existing Phase 3.1 artifacts and never reruns them.
 
 ---
 

@@ -134,6 +134,25 @@ def test_loader_reads_constraints_sheet(tmp_path):
     assert s1.weight == 10
     assert s1.enabled is True
 
+
+@pytest.mark.unit
+def test_loader_rejects_disabled_hard_constraint(tmp_path):
+    rows = [("H1", "HARD", "Mandatory hard check", 1000000, False)]
+    p = tmp_path / "test.xlsx"
+    p.write_bytes(_build_test_xlsx_with_constraints(constraints_rows=rows))
+    with pytest.raises(ExcelValidationError, match="HARD constraints are always enforced"):
+        ExcelDatasetLoader.load(str(p))
+
+
+@pytest.mark.unit
+def test_soft_config_metadata_is_complete_and_stable():
+    config = SoftConstraintConfig.from_profile("student-centric")
+    exported = config.to_metadata()
+    assert list(exported) == ["S1", "S2", "S3", "S4", "S5", "S6", "S7"]
+    assert exported["S1"]["key"] == "compact_student_schedule"
+    assert exported["S1"]["weight"] == config.get_weight("compact_student_schedule")
+    assert exported["S1"]["enabled"] is config.is_enabled("compact_student_schedule")
+
 @pytest.mark.unit
 @pytest.mark.parametrize("raw_w, expected_w", [
     (10, 10),

@@ -10,9 +10,9 @@ from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional, Union
 
-from domain import Schedule
+from domain import Schedule, expand_scheduling_activities
 from dataset import get_occupied_periods
-from constraints import SoftConstraintConfig
+from constraints import ConstraintEvaluator, SoftConstraintConfig
 
 
 DAY_ORDER = {
@@ -46,7 +46,8 @@ def export_schedule_query_data(
     if not isinstance(dataset, dict) or "course_sections" not in dataset:
         raise ValueError("Invalid dataset supplied to exporter.")
 
-    section_map = {s.section_id: s for s in dataset["course_sections"]}
+    activities = expand_scheduling_activities(dataset["course_sections"])
+    section_map = {activity.activity_id: activity for activity in activities}
     room_map = {r.id: r for r in dataset["rooms"]}
     timeslot_map = {t.id: t for t in dataset["timeslots"]}
     lecturer_map = {l.id: l for l in dataset.get("lecturers", [])}
@@ -87,7 +88,11 @@ def export_schedule_query_data(
         course = course_map.get(sec.course_id)
 
         record = {
+            "activity_id": sec.activity_id,
             "section_id": sec.section_id,
+            "meeting_index": sec.meeting_index,
+            "meeting_count": sec.meeting_count,
+            "meeting": f"{sec.meeting_index}/{sec.meeting_count}",
             "class_code": getattr(sec, "class_code", None),
             "course_id": sec.course_id,
             "course_code": getattr(course, "course_code", None),
@@ -134,14 +139,12 @@ def export_schedule_query_data(
     }
     if metadata and isinstance(metadata, dict):
         meta_dict.update({k: v for k, v in metadata.items() if k not in meta_dict})
-    if soft_config is not None:
-        meta_dict["effective_soft_constraints"] = {
-            definition.constraint_id: {
-                "weight": definition.weight,
-                "enabled": definition.enabled,
-            }
-            for definition in soft_config.definitions.values()
-        }
+    effective_soft_config = (
+        soft_config
+        if soft_config is not None
+        else ConstraintEvaluator(dataset).soft_checker.config
+    )
+    meta_dict["effective_soft_constraints"] = effective_soft_config.to_metadata()
 
     data = {
         "meta": meta_dict,

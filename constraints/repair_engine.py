@@ -9,7 +9,10 @@ import random
 from dataclasses import dataclass, field
 from typing import Dict, List, Set, Tuple, Optional, Any
 from collections import defaultdict
-from domain import Schedule, Gene, CourseSection, Room, Timeslot, Lecturer, RepairStatus
+from domain import (
+    Schedule, Gene, SchedulingActivity, Room, Timeslot, Lecturer, RepairStatus,
+    expand_scheduling_activities,
+)
 from dataset import get_occupied_periods, is_valid_period_block
 from .hard_constraints import HardConstraintChecker
 
@@ -102,7 +105,10 @@ class ScheduleRepairEngine:
 
         self.stats = RepairStats()
 
-        self.section_map: Dict[str, CourseSection] = {c.section_id: c for c in dataset["course_sections"]}
+        self.activities = expand_scheduling_activities(dataset["course_sections"])
+        self.section_map: Dict[str, SchedulingActivity] = {
+            activity.activity_id: activity for activity in self.activities
+        }
         self.room_map: Dict[str, Room] = {r.id: r for r in dataset["rooms"]}
         self.timeslot_map: Dict[int, Timeslot] = {t.id: t for t in dataset["timeslots"]}
         self.lecturer_map: Dict[str, Lecturer] = {l.id: l for l in dataset.get("lecturers", [])}
@@ -123,7 +129,7 @@ class ScheduleRepairEngine:
         self._valid_rooms_cache: Dict[str, List[Room]] = {}
         for sec in self.section_map.values():
             req_type = getattr(sec, "required_room_type", "NORMAL")
-            self._valid_rooms_cache[sec.section_id] = sorted([
+            self._valid_rooms_cache[sec.activity_id] = sorted([
                 r for r in self.rooms
                 if r.capacity >= sec.student_count and getattr(r, "room_type", "NORMAL") == req_type
             ], key=lambda r: (r.capacity, r.id))
@@ -141,14 +147,14 @@ class ScheduleRepairEngine:
         self._section_cand_count: Dict[str, int] = {}
         for sec in self.section_map.values():
             dur = getattr(sec, "duration_periods", 1)
-            valid_rms = self._valid_rooms_cache.get(sec.section_id, [])
+            valid_rms = self._valid_rooms_cache.get(sec.activity_id, [])
             lec = self.lecturer_map.get(sec.lecturer_id)
             avail_ts = getattr(lec, "available_timeslot_ids", None) if lec else None
             valid_ts_list = [
                 t for t in self._valid_ts_by_duration.get(dur, [])
                 if avail_ts is None or all(self.day_period_to_ts_id.get((t.day, p)) in avail_ts for p in get_occupied_periods(t.period, dur))
             ]
-            self._section_cand_count[sec.section_id] = len(valid_rms) * len(valid_ts_list)
+            self._section_cand_count[sec.activity_id] = len(valid_rms) * len(valid_ts_list)
 
         self.hard_checker = HardConstraintChecker(
             self.section_map,
@@ -159,14 +165,14 @@ class ScheduleRepairEngine:
             lecturer_map=self.lecturer_map
         )
 
-    def _get_section_priority_key(self, sec: CourseSection) -> Tuple[int, int, int, int, int, str]:
-        cand_count = self._section_cand_count.get(sec.section_id, 9999)
+    def _get_section_priority_key(self, sec: SchedulingActivity) -> Tuple[int, int, int, int, int, str]:
+        cand_count = self._section_cand_count.get(sec.activity_id, 9999)
         is_lab = 0 if getattr(sec, "required_room_type", "NORMAL") == "LAB" else 1
         duration = -getattr(sec, "duration_periods", 1)
         lec = self.lecturer_map.get(sec.lecturer_id)
         restricted_lec = 0 if (lec and getattr(lec, "available_timeslot_ids", None) is not None) else 1
         st_count = -sec.student_count
-        return (cand_count, is_lab, duration, restricted_lec, st_count, sec.section_id)
+        return (cand_count, is_lab, duration, restricted_lec, st_count, sec.activity_id)
 
     def repair(self, schedule: Schedule, max_attempts: int = 15) -> RepairResult:
         start_time = time.perf_counter()
@@ -253,11 +259,12 @@ class ScheduleRepairEngine:
             used_lecturer_time: Set[Tuple[str, str, int]] = set()
             used_room_time: Set[Tuple[str, str, int]] = set()
             used_group_time: Set[Tuple[str, str, int]] = set()
+            used_section_days: Set[Tuple[str, str]] = set()
 
             repaired_genes_dict: Dict[str, Gene] = {}
 
             for section in ordered_sections:
-                sec_id = section.section_id
+                sec_id = section.activity_id
                 req_type = getattr(section, "required_room_type", "NORMAL")
                 duration = getattr(section, "duration_periods", 1)
                 lec = self.lecturer_map.get(section.lecturer_id)
@@ -279,7 +286,8 @@ class ScheduleRepairEngine:
                             rm_conflict = any((room.id, ts.day, p) in used_room_time for p in occupied)
                             grp_conflict = section.group_id and any((section.group_id, ts.day, p) in used_group_time for p in occupied)
 
-                            if avail_valid and not lec_conflict and not rm_conflict and not grp_conflict:
+                            day_conflict = (section.section_id, ts.day) in used_section_days
+                            if avail_valid and not lec_conflict and not rm_conflict and not grp_conflict and not day_conflict:
                                 chosen_ts = ts
                                 chosen_room = room
 
@@ -292,7 +300,7 @@ class ScheduleRepairEngine:
                     curr_rm = self.room_map.get(current_gene[1]) if current_gene else None
 
                     # Tier 1: Keep timeslot, change room
-                    if curr_ts and is_valid_period_block(curr_ts.period, duration, self.day_available_periods.get(curr_ts.day)):
+                    if curr_ts and (section.section_id, curr_ts.day) not in used_section_days and is_valid_period_block(curr_ts.period, duration, self.day_available_periods.get(curr_ts.day)):
                         occ = get_occupied_periods(curr_ts.period, duration)
                         if avail_ts is None or all(self.day_period_to_ts_id.get((curr_ts.day, p)) in avail_ts for p in occ):
                             if not (section.lecturer_id and any((section.lecturer_id, curr_ts.day, p) in used_lecturer_time for p in occ)) and \
@@ -315,6 +323,8 @@ class ScheduleRepairEngine:
                                 continue
                             if section.group_id and any((section.group_id, ts.day, p) in used_group_time for p in occ):
                                 continue
+                            if (section.section_id, ts.day) in used_section_days:
+                                continue
                             if not any((curr_rm.id, ts.day, p) in used_room_time for p in occ):
                                 chosen_ts = ts
                                 chosen_room = curr_rm
@@ -332,6 +342,8 @@ class ScheduleRepairEngine:
                             if section.lecturer_id and any((section.lecturer_id, ts.day, p) in used_lecturer_time for p in occ):
                                 continue
                             if section.group_id and any((section.group_id, ts.day, p) in used_group_time for p in occ):
+                                continue
+                            if (section.section_id, ts.day) in used_section_days:
                                 continue
 
                             shuffled_rooms = list(candidate_rooms)
@@ -357,6 +369,7 @@ class ScheduleRepairEngine:
                     if section.group_id:
                         for p in cand_occupied:
                             used_group_time.add((section.group_id, chosen_ts.day, p))
+                    used_section_days.add((section.section_id, chosen_ts.day))
                 else:
                     failed_sections.add(sec_id)
                     if current_gene:
@@ -364,8 +377,15 @@ class ScheduleRepairEngine:
 
             # Reconstruct candidate schedule
             final_genes = [
-                repaired_genes_dict.get(sec.section_id, Gene(sec.section_id, input_gene_map[sec.section_id][1], input_gene_map[sec.section_id][0]))
-                for sec in self.dataset["course_sections"]
+                repaired_genes_dict.get(
+                    activity.activity_id,
+                    Gene(
+                        activity.activity_id,
+                        input_gene_map[activity.activity_id][1],
+                        input_gene_map[activity.activity_id][0],
+                    ),
+                )
+                for activity in self.activities
             ]
             cand_schedule = Schedule(genes=final_genes)
 

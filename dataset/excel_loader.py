@@ -145,6 +145,11 @@ class ExcelDatasetLoader:
         """
         if value is None:
             return 1
+        if isinstance(value, bool):
+            raise ExcelValidationError(
+                f"Sheet 'COURSE_SECTIONS', Row {row_idx}, Column 'meetings_per_week', "
+                f"Value '{value}': Must be a positive integer, not a boolean"
+            )
         try:
             f = float(value)
         except (ValueError, TypeError):
@@ -162,11 +167,6 @@ class ExcelDatasetLoader:
             raise ExcelValidationError(
                 f"Sheet 'COURSE_SECTIONS', Row {row_idx}, Column 'meetings_per_week', "
                 f"Value '{value}': Must be >= 1 (got {result})"
-            )
-        if result > 1:
-            raise ExcelValidationError(
-                f"Sheet 'COURSE_SECTIONS', Row {row_idx}, Column 'meetings_per_week', "
-                f"Value '{value}': meetings_per_week > 1 is not supported by the current chromosome."
             )
         return result
 
@@ -336,6 +336,18 @@ class ExcelDatasetLoader:
             enabled = cls._parse_enabled_bool(
                 row_dict.get("enabled"), "CONSTRAINTS", row_idx, "enabled"
             )
+
+            # Phase 2.2 does not redesign HardConstraintChecker. HARD rows are
+            # declarative/audit metadata: their workbook weights do not scale
+            # individual hard checks, and every hard check remains mandatory.
+            # Rejecting disabled HARD rows prevents the workbook from claiming
+            # semantics the checker cannot honor.
+            if c_type == "HARD" and not enabled:
+                raise ExcelValidationError(
+                    f"Sheet 'CONSTRAINTS', Row {row_idx}, Column 'enabled', "
+                    f"Value '{row_dict.get('enabled')}': HARD constraints are always "
+                    "enforced; enabled=False is not supported"
+                )
 
             definitions.append(ConstraintDefinition(
                 constraint_id=c_id,
@@ -554,8 +566,22 @@ class ExcelDatasetLoader:
                 "Sheet 'LECTURER_AVAILABILITY', Row 1: first columns must be "
                 "'lecturer_id', 'lecturer_name'"
             )
-        actual_timeslot_columns = [name for name in avail_header[2:] if name]
+        actual_timeslot_columns = avail_header[2:]
+        # Excel templates may carry formatting in unused columns, causing
+        # openpyxl to expose trailing None headers. They are worksheet padding,
+        # not availability columns. Internal blanks remain invalid.
+        while actual_timeslot_columns and not actual_timeslot_columns[-1]:
+            actual_timeslot_columns.pop()
         expected_timeslot_columns = list(code_to_ts_id)
+        if any(not name for name in actual_timeslot_columns):
+            raise ExcelValidationError(
+                "Sheet 'LECTURER_AVAILABILITY', Row 1: blank timeslot columns "
+                "are not allowed"
+            )
+        if len(actual_timeslot_columns) != len(set(actual_timeslot_columns)):
+            raise ExcelValidationError(
+                "Sheet 'LECTURER_AVAILABILITY', Row 1: duplicate timeslot columns"
+            )
         missing_columns = sorted(set(expected_timeslot_columns) - set(actual_timeslot_columns))
         unknown_columns = sorted(set(actual_timeslot_columns) - set(expected_timeslot_columns))
         if missing_columns:
@@ -568,9 +594,11 @@ class ExcelDatasetLoader:
                 "Sheet 'LECTURER_AVAILABILITY', Row 1: unknown timeslot columns: "
                 f"{unknown_columns}"
             )
-        if len(actual_timeslot_columns) != len(set(actual_timeslot_columns)):
+        if len(actual_timeslot_columns) != len(expected_timeslot_columns):
             raise ExcelValidationError(
-                "Sheet 'LECTURER_AVAILABILITY', Row 1: duplicate timeslot columns"
+                "Sheet 'LECTURER_AVAILABILITY', Row 1: timeslot-column count "
+                f"must be exactly {len(expected_timeslot_columns)}, got "
+                f"{len(actual_timeslot_columns)}"
             )
 
         for row_idx, r in enumerate(rows_avail[1:], start=2):
@@ -1157,14 +1185,22 @@ class ExcelDatasetLoader:
         lec_load = {}
         for l in lecturers:
             l_secs = [s for s in sections if s.lecturer_id == l.id]
-            total_p = sum(getattr(s, "duration_periods", 1) for s in l_secs)
+            total_p = sum(
+                getattr(s, "duration_periods", 1)
+                * getattr(s, "meetings_per_week", 1)
+                for s in l_secs
+            )
             lec_load[l.id] = {"name": l.name, "sections": len(l_secs), "total_periods": total_p}
 
         # Study load per student group
         grp_load = {}
         for g in groups:
             g_secs = [s for s in sections if s.group_id == g.id]
-            total_p = sum(getattr(s, "duration_periods", 1) for s in g_secs)
+            total_p = sum(
+                getattr(s, "duration_periods", 1)
+                * getattr(s, "meetings_per_week", 1)
+                for s in g_secs
+            )
             grp_load[g.id] = {"name": g.name, "sections": len(g_secs), "total_periods": total_p}
 
         # Candidate count min / max / mean

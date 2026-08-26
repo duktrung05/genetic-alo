@@ -7,11 +7,15 @@ import openpyxl
 from openpyxl.styles import Font, Alignment, PatternFill
 from openpyxl.utils import get_column_letter
 
-from domain import Schedule
+from domain import Schedule, expand_scheduling_activities
 from constraints import ConstraintEvaluator, SoftConstraintConfig
 
 CSV_HEADERS = [
+    "activity_id",
     "section_id",
+    "meeting_index",
+    "meeting_count",
+    "meeting",
     "class_code",
     "course_id",
     "course_code",
@@ -43,14 +47,15 @@ def export_schedule_to_csv(
     if not isinstance(dataset, dict) or "course_sections" not in dataset:
         raise ValueError("Invalid dataset supplied to exporter.")
 
-    section_map = {s.section_id: s for s in dataset["course_sections"]}
+    activities = expand_scheduling_activities(dataset["course_sections"])
+    section_map = {activity.activity_id: activity for activity in activities}
     course_map = {c.course_id: c for c in dataset.get("courses", [])}
     room_map = {r.id: r for r in dataset["rooms"]}
     timeslot_map = {t.id: t for t in dataset["timeslots"]}
 
     genes = schedule.genes
     if len(genes) != len(section_map):
-        raise ValueError(f"Gene count mismatch: expected {len(section_map)} sections, got {len(genes)} genes.")
+        raise ValueError(f"Gene count mismatch: expected {len(section_map)} activities, got {len(genes)} genes.")
 
     seen_section_ids = set()
     for gene in genes:
@@ -107,7 +112,11 @@ def export_schedule_to_csv(
         room_type = getattr(room, "room_type", "NORMAL")
 
         row = {
+            "activity_id": sec.activity_id,
             "section_id": sec.section_id,
+            "meeting_index": sec.meeting_index,
+            "meeting_count": sec.meeting_count,
+            "meeting": f"{sec.meeting_index}/{sec.meeting_count}",
             "class_code": getattr(sec, "class_code", None) or "",
             "course_id": getattr(sec, "course_id", ""),
             "course_code": getattr(course_map.get(sec.course_id), "course_code", None) or "",
@@ -191,7 +200,8 @@ def export_schedule_to_excel(
             out_path = out_path.parent / f"{out_path.stem}_INFEASIBLE.xlsx"
 
     meta = metadata or {}
-    section_map = {s.section_id: s for s in dataset["course_sections"]}
+    activities = expand_scheduling_activities(dataset["course_sections"])
+    section_map = {activity.activity_id: activity for activity in activities}
     room_map = {r.id: r for r in dataset["rooms"]}
     timeslot_map = {t.id: t for t in dataset["timeslots"]}
     lecturer_map = {l.id: l for l in dataset.get("lecturers", [])}
@@ -304,7 +314,11 @@ def export_schedule_to_excel(
         crs = course_map.get(sec.course_id)
 
         assignments.append({
+            "activity_id": sec.activity_id,
             "section_id": sec.section_id,
+            "meeting_index": sec.meeting_index,
+            "meeting_count": sec.meeting_count,
+            "meeting": f"{sec.meeting_index}/{sec.meeting_count}",
             "class_code": getattr(sec, "class_code", None) or "",
             "course_id": sec.course_id,
             "course_code": getattr(crs, "course_code", None) or "",
@@ -338,7 +352,8 @@ def export_schedule_to_excel(
     # --- 2. SHEET RAW_ASSIGNMENTS ---
     ws_raw = wb.create_sheet(title="RAW_ASSIGNMENTS")
     raw_cols = [
-        "section_id", "class_code", "course_id", "course_code", "course_name",
+        "activity_id", "section_id", "meeting_index", "meeting_count", "meeting",
+        "class_code", "course_id", "course_code", "course_name",
         "student_group_id", "student_group_name", "lecturer_id", "lecturer_name",
         "student_count", "room_id", "room_number", "building", "campus_id",
         "room_type", "day_no", "day_name", "start_period", "end_period",
@@ -348,36 +363,36 @@ def export_schedule_to_excel(
     ws_raw.append(raw_cols)
 
     # Sort raw assignments by section_id
-    raw_sorted = sorted(assignments, key=lambda a: a["section_id"])
+    raw_sorted = sorted(assignments, key=lambda a: (a["section_id"], a["meeting_index"]))
     for a in raw_sorted:
         ws_raw.append([a[c] for c in raw_cols])
     format_sheet(ws_raw)
 
     # --- 3. SHEET SCHEDULE_BY_GROUP ---
     ws_grp = wb.create_sheet(title="SCHEDULE_BY_GROUP")
-    grp_cols = ["group_id", "group_name", "day_name", "periods", "time_range", "course_code", "course_name", "lecturer_name", "room_display", "campus_id"]
+    grp_cols = ["group_id", "group_name", "day_name", "periods", "time_range", "class_code", "meeting", "course_code", "course_name", "lecturer_name", "room_display", "campus_id"]
     ws_grp.append(grp_cols)
     grp_sorted = sorted(assignments, key=lambda a: (a["student_group_id"], a["day_no"], a["start_period"]))
     for a in grp_sorted:
-        ws_grp.append([a["student_group_id"], a["student_group_name"], a["day_name"], a["periods"], a["time_range"], a["course_code"], a["course_name"], a["lecturer_name"], a["room_display"], a["campus_id"]])
+        ws_grp.append([a["student_group_id"], a["student_group_name"], a["day_name"], a["periods"], a["time_range"], a["class_code"], a["meeting"], a["course_code"], a["course_name"], a["lecturer_name"], a["room_display"], a["campus_id"]])
     format_sheet(ws_grp)
 
     # --- 4. SHEET SCHEDULE_BY_LECTURER ---
     ws_lec = wb.create_sheet(title="SCHEDULE_BY_LECTURER")
-    lec_cols = ["lecturer_id", "lecturer_name", "day_name", "periods", "time_range", "course_name", "student_group_name", "room_display", "campus_id"]
+    lec_cols = ["lecturer_id", "lecturer_name", "day_name", "periods", "time_range", "class_code", "meeting", "course_code", "course_name", "student_group_name", "room_display", "campus_id"]
     ws_lec.append(lec_cols)
     lec_sorted = sorted(assignments, key=lambda a: (a["lecturer_id"], a["day_no"], a["start_period"]))
     for a in lec_sorted:
-        ws_lec.append([a["lecturer_id"], a["lecturer_name"], a["day_name"], a["periods"], a["time_range"], a["course_name"], a["student_group_name"], a["room_display"], a["campus_id"]])
+        ws_lec.append([a["lecturer_id"], a["lecturer_name"], a["day_name"], a["periods"], a["time_range"], a["class_code"], a["meeting"], a["course_code"], a["course_name"], a["student_group_name"], a["room_display"], a["campus_id"]])
     format_sheet(ws_lec)
 
     # --- 5. SHEET SCHEDULE_BY_ROOM ---
     ws_rm = wb.create_sheet(title="SCHEDULE_BY_ROOM")
-    rm_cols = ["room_id", "room_display", "campus_id", "day_name", "periods", "time_range", "course_name", "lecturer_name", "student_group_name"]
+    rm_cols = ["room_id", "room_display", "campus_id", "day_name", "periods", "time_range", "class_code", "meeting", "course_code", "course_name", "lecturer_name", "student_group_name"]
     ws_rm.append(rm_cols)
     rm_sorted = sorted(assignments, key=lambda a: (a["room_id"], a["day_no"], a["start_period"]))
     for a in rm_sorted:
-        ws_rm.append([a["room_id"], a["room_display"], a["campus_id"], a["day_name"], a["periods"], a["time_range"], a["course_name"], a["lecturer_name"], a["student_group_name"]])
+        ws_rm.append([a["room_id"], a["room_display"], a["campus_id"], a["day_name"], a["periods"], a["time_range"], a["class_code"], a["meeting"], a["course_code"], a["course_name"], a["lecturer_name"], a["student_group_name"]])
     format_sheet(ws_rm)
 
     # --- 6. SHEET VIOLATIONS ---
@@ -472,6 +487,7 @@ def export_schedule_to_excel(
         ("hard_weight", meta.get("hard_weight", 1000)),
         ("soft_weight", meta.get("soft_weight", 1)),
         ("same_session_rule", True),
+        ("effective_soft_constraints", json.dumps(soft_cfg.to_metadata(), ensure_ascii=False, sort_keys=True)),
         ("S1_compact_student_schedule_weight", soft_cfg.get_weight("compact_student_schedule")),
         ("S1_compact_student_schedule_enabled", soft_cfg.is_enabled("compact_student_schedule")),
         ("S2_late_day_periods_weight", soft_cfg.get_weight("late_day_periods")),

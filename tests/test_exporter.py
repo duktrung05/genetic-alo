@@ -45,7 +45,9 @@ def test_csv_exporter_multi_period_fields(exporter_dataset, tmp_path):
 
     # Check columns
     expected_headers = [
-        "section_id", "course_id", "lecturer_id", "student_group_id", "room_id",
+        "activity_id", "section_id", "meeting_index", "meeting_count", "meeting",
+        "class_code", "course_id", "course_code",
+        "lecturer_id", "student_group_id", "room_id",
         "day", "start_period", "end_period", "start_time", "end_time",
         "duration_periods", "session", "room_type"
     ]
@@ -111,8 +113,9 @@ def test_excel_exporter_creates_valid_file(exporter_dataset, tmp_path):
     ws = wb["RAW_ASSIGNMENTS"]
     num_sections = len(exporter_dataset["course_sections"])
     assert ws.max_row == num_sections + 1
-    assert ws["A1"].value == "section_id"
-    assert ws["E1"].value == "course_name"
+    assert ws["A1"].value == "activity_id"
+    assert "section_id" in [cell.value for cell in ws[1]]
+    assert "course_name" in [cell.value for cell in ws[1]]
 
     assert ws.freeze_panes == "A2"
 

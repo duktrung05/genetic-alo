@@ -1,6 +1,7 @@
 """Tests for Step 3 — Campus & Preference metadata preservation."""
 import io
 import copy
+import json
 import pytest
 import openpyxl
 
@@ -188,11 +189,11 @@ def test_loader_reads_meetings_per_week(tmp_path):
     assert secs_by_id["SEC-001"].meetings_per_week == 1
 
 @pytest.mark.unit
-def test_loader_meetings_per_week_above_one_rejected(tmp_path):
+def test_loader_meetings_per_week_above_one_supported(tmp_path):
     p = tmp_path / "test.xlsx"
     p.write_bytes(_build_test_xlsx(sec_meetings_per_week=2.0))
-    with pytest.raises(ExcelValidationError, match="not supported by the current chromosome"):
-        ExcelDatasetLoader.load(str(p))
+    dataset = ExcelDatasetLoader.load(str(p))
+    assert dataset["course_sections"][0].meetings_per_week == 2
 
 @pytest.mark.unit
 def test_loader_meetings_per_week_non_integer_float_rejected(tmp_path):
@@ -266,12 +267,102 @@ def test_validator_rejects_invalid_preferred_shift(small_dataset):
     assert any("preferred_shift" in e and "night" in e for e in report["errors"])
 
 @pytest.mark.unit
-def test_validator_meetings_per_week_gt1_produces_warning(small_dataset):
+def test_validator_meetings_per_week_gt1_is_supported(small_dataset):
     ds = copy.deepcopy(small_dataset)
     sec = ds["course_sections"][0]
     object.__setattr__(sec, "meetings_per_week", 2)
     report = DatasetValidator.validate_report(ds)
-    assert any("meetings_per_week" in w for w in report["warnings"])
+    assert report["valid"]
+
+
+@pytest.mark.unit
+def test_loader_meetings_per_week_boolean_rejected(tmp_path):
+    p = tmp_path / "test.xlsx"
+    p.write_bytes(_build_test_xlsx(sec_meetings_per_week=True))
+    with pytest.raises(ExcelValidationError, match="not a boolean"):
+        ExcelDatasetLoader.load(str(p))
+
+
+def _mutate_test_workbook(raw_bytes, mutation):
+    wb = openpyxl.load_workbook(io.BytesIO(raw_bytes))
+    mutation(wb)
+    buf = io.BytesIO()
+    wb.save(buf)
+    return buf.getvalue()
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize(
+    "mutation, message",
+    [
+        (lambda wb: wb["LECTURER_AVAILABILITY"].cell(1, 5, "UNKNOWN"), "unknown timeslot columns"),
+        (lambda wb: wb["LECTURER_AVAILABILITY"].cell(1, 4, "TS-M1"), "duplicate timeslot columns"),
+        (lambda wb: wb["LECTURER_AVAILABILITY"].delete_cols(4), "missing timeslot columns"),
+        (lambda wb: wb["LECTURER_AVAILABILITY"].cell(2, 3, 1), "must be boolean"),
+        (lambda wb: wb["LECTURER_AVAILABILITY"].cell(2, 1, "GV404"), "unknown lecturer_id"),
+        (lambda wb: wb["LECTURER_AVAILABILITY"].append(["GV01", "Duplicate", True, True]), "Duplicate lecturer_id"),
+    ],
+)
+def test_loader_strict_lecturer_availability_validation(tmp_path, mutation, message):
+    p = tmp_path / "test.xlsx"
+    p.write_bytes(_mutate_test_workbook(_build_test_xlsx(), mutation))
+    with pytest.raises(ExcelValidationError, match=message):
+        ExcelDatasetLoader.load(str(p))
+
+
+@pytest.mark.unit
+def test_course_and_class_codes_round_trip_all_exports(tmp_path):
+    from constraints import SoftConstraintConfig
+    from evaluation import export_schedule_query_data, export_schedule_to_excel
+
+    source = tmp_path / "source.xlsx"
+    source.write_bytes(_build_test_xlsx())
+    dataset = ExcelDatasetLoader.load_and_validate(str(source))
+    schedule = Schedule([Gene("SEC-001", "R1", 0)])
+    soft_config = SoftConstraintConfig.from_profile("student-centric")
+
+    normalized = tmp_path / "normalized.json"
+    ExcelDatasetLoader.export_normalized_json(dataset, str(normalized))
+    restored = ExcelDatasetLoader.load_normalized_json(str(normalized))
+    assert restored["courses"][0].course_code == "IT001"
+    assert restored["course_sections"][0].class_code == "CLASS-001"
+
+    query_path = tmp_path / "query.json"
+    export_schedule_query_data(schedule, dataset, query_path, soft_config=soft_config)
+    query_data = json.loads(query_path.read_text(encoding="utf-8"))
+    assignment = query_data["assignments"][0]
+    assert assignment["course_code"] == "IT001"
+    assert assignment["class_code"] == "CLASS-001"
+    assert assignment["campus_id"] == "CS2"
+    assert query_data["meta"]["effective_soft_constraints"] == soft_config.to_metadata()
+
+    dataset_without_campus = copy.deepcopy(dataset)
+    dataset_without_campus["rooms"][0].campus_id = None
+    no_campus_query = tmp_path / "query-no-campus.json"
+    export_schedule_query_data(
+        schedule,
+        dataset_without_campus,
+        no_campus_query,
+        soft_config=soft_config,
+    )
+    no_campus_assignment = json.loads(
+        no_campus_query.read_text(encoding="utf-8")
+    )["assignments"][0]
+    assert no_campus_assignment["campus_id"] is None
+
+    xlsx_path = tmp_path / "schedule.xlsx"
+    export_schedule_to_excel(schedule, dataset, xlsx_path, soft_config=soft_config)
+    workbook = openpyxl.load_workbook(xlsx_path, data_only=True)
+    for sheet_name in ("RAW_ASSIGNMENTS", "SCHEDULE_BY_LECTURER", "SCHEDULE_BY_ROOM"):
+        header = [cell.value for cell in workbook[sheet_name][1]]
+        row = [cell.value for cell in workbook[sheet_name][2]]
+        assert row[header.index("course_code")] == "IT001"
+        assert row[header.index("class_code")] == "CLASS-001"
+    run_config = {
+        row[0].value: row[1].value
+        for row in workbook["RUN_CONFIG"].iter_rows(min_row=2)
+    }
+    assert json.loads(run_config["effective_soft_constraints"]) == soft_config.to_metadata()
 
 @pytest.mark.unit
 def test_validator_meetings_per_week_zero_is_error(small_dataset):

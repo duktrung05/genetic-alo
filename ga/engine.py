@@ -4,7 +4,10 @@ from typing import List, Dict, Optional, Tuple, Set
 from collections import defaultdict
 import numpy as np
 
-from domain import Schedule, Gene, CourseSection, Room, Timeslot, Lecturer
+from domain import (
+    Schedule, Gene, SchedulingActivity, Room, Timeslot, Lecturer,
+    expand_scheduling_activities,
+)
 from constraints import ConstraintEvaluator, ScheduleRepairEngine, SoftConstraintConfig
 from dataset import get_occupied_periods, is_valid_period_block, DatasetValidator
 from evaluation.run_metrics import RunMetrics
@@ -38,7 +41,9 @@ class GeneticAlgorithmEngine:
         self.evaluator = ConstraintEvaluator(dataset, soft_config=soft_config)
         self.repairer = ScheduleRepairEngine(dataset=dataset, evaluator=self.evaluator)
 
-        self.sections: List[CourseSection] = dataset["course_sections"]
+        self.sections: List[SchedulingActivity] = expand_scheduling_activities(
+            dataset["course_sections"]
+        )
 
         self.rooms: List[Room] = dataset["rooms"]
         self.timeslots: List[Timeslot] = dataset["timeslots"]
@@ -55,6 +60,7 @@ class GeneticAlgorithmEngine:
         """Tạo nhiễm sắc thể Thời khóa biểu ban đầu ngẫu nhiên với cấu trúc hợp lệ."""
 
         genes = []
+        section_days = defaultdict(set)
         for sec in self.sections:
             duration = getattr(sec, "duration_periods", 1)
             req_type = getattr(sec, "required_room_type", "NORMAL")
@@ -80,9 +86,16 @@ class GeneticAlgorithmEngine:
             if not valid_ts:
                 raise ValueError(f"No valid timeslot block of duration {duration} available for section '{sec.section_id}'.")
 
+            unused_day_ts = [
+                ts for ts in valid_ts if ts.day not in section_days[sec.section_id]
+            ]
+            if unused_day_ts:
+                valid_ts = unused_day_ts
+
             r = random.choice(valid_rooms)
             ts = random.choice(valid_ts)
-            genes.append(Gene(section_id=sec.section_id, room_id=r.id, timeslot_id=ts.id))
+            genes.append(Gene(activity_id=sec.activity_id, room_id=r.id, timeslot_id=ts.id))
+            section_days[sec.section_id].add(ts.day)
 
         sched = Schedule(genes=genes)
         if not GAOperators.validate_chromosome(sched, self.dataset):

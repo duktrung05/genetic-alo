@@ -180,11 +180,15 @@ class DatasetValidator:
             meetings = getattr(sec, "meetings_per_week", 1)
             if not isinstance(meetings, int) or isinstance(meetings, bool) or meetings < 1:
                 errors.append(f"Section '{sec.section_id}' has invalid meetings_per_week {meetings} (must be >= 1).")
-            elif meetings > 1:
+                meeting_multiplier = 1
+            elif meetings > len(day_available_periods):
                 errors.append(
-                    f"Section '{sec.section_id}' has meetings_per_week={meetings}. "
-                    "meetings_per_week > 1 is not supported by the current chromosome."
+                    f"Section '{sec.section_id}' has meetings_per_week={meetings}, "
+                    f"but only {len(day_available_periods)} distinct teaching days are available."
                 )
+                meeting_multiplier = meetings
+            else:
+                meeting_multiplier = meetings
 
             if not isinstance(sec.student_count, int) or isinstance(sec.student_count, bool) or sec.student_count < 1:
                 errors.append(f"Section '{sec.section_id}' has invalid student_count {sec.student_count}.")
@@ -204,15 +208,15 @@ class DatasetValidator:
                 )
 
             if sec.lecturer_id:
-                lec_required_periods[sec.lecturer_id] += duration
+                lec_required_periods[sec.lecturer_id] += duration * meeting_multiplier
             if sec.group_id:
-                grp_required_periods[sec.group_id] += duration
+                grp_required_periods[sec.group_id] += duration * meeting_multiplier
 
             req_type = getattr(sec, "required_room_type", "NORMAL")
             if req_type not in VALID_ROOM_TYPES:
                 errors.append(f"Section '{sec.section_id}' has invalid required_room_type='{req_type}'.")
             if req_type == "LAB":
-                lab_required_periods += duration
+                lab_required_periods += duration * meeting_multiplier
 
             # Room availability check
             matching_rooms = [
@@ -248,6 +252,12 @@ class DatasetValidator:
                     ]
                     if not valid_lec_ts:
                         errors.append(f"Lecturer '{sec.lecturer_id}' assigned to section '{sec.section_id}' has no available timeslot block of duration {duration}.")
+                    elif len({t.day for t in valid_lec_ts}) < meeting_multiplier:
+                        errors.append(
+                            f"Lecturer '{sec.lecturer_id}' has valid availability on only "
+                            f"{len({t.day for t in valid_lec_ts})} distinct days for section "
+                            f"'{sec.section_id}', but meetings_per_week={meeting_multiplier}."
+                        )
 
         # Check total lecturer load vs available periods
         for lec in lecturers:

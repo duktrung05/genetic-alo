@@ -159,6 +159,20 @@ class SoftConstraintConfig:
         definition = self._defs.get(canonical)
         return definition.constraint_id if definition else _KEY_TO_ID.get(canonical, "")
 
+    def to_metadata(self) -> Dict[str, Dict[str, object]]:
+        """Return the effective S1-S7 configuration in a stable export shape."""
+        return {
+            definition.constraint_id: {
+                "key": definition.key,
+                "name": definition.name,
+                "weight": definition.weight,
+                "enabled": definition.enabled,
+            }
+            for definition in sorted(
+                self._defs.values(), key=lambda item: item.constraint_id
+            )
+        }
+
     @classmethod
     def from_constraint_definitions(
         cls, constraint_defs: List[ConstraintDefinition]
@@ -562,7 +576,10 @@ class SoftConstraintChecker:
             "constraint_id": self.config.get_constraint_id(key),
             "constraint_name": self.config.get_name(key),
             "constraint_key": key,
-            "section_ids": section_ids or (section.section_id if section else "-"),
+            "section_ids": section_ids or (
+                getattr(section, "activity_id", section.section_id)
+                if section else "-"
+            ),
             "lecturer_id": lecturer_id or (
                 getattr(section, "lecturer_id", None) if section else None
             ) or "-",

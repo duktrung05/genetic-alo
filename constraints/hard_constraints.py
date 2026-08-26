@@ -1,12 +1,12 @@
 from typing import Dict, Tuple, Set, Optional
 from collections import defaultdict
-from domain import Schedule, CourseSection, Room, Timeslot, Lecturer
+from domain import Schedule, SchedulingActivity, Room, Timeslot, Lecturer
 from dataset import get_occupied_periods
 
 class HardConstraintChecker:
     def __init__(
         self,
-        section_map: Dict[str, CourseSection],
+        section_map: Dict[str, SchedulingActivity],
         room_map: Dict[str, Room],
         timeslot_map: Dict[int, Timeslot],
         lecturer_ids: Optional[Set[str]] = None,
@@ -39,6 +39,7 @@ class HardConstraintChecker:
             "invalid_lecturer_references": 0,
             "invalid_group_references": 0,
             "gene_count_mismatch": 0,
+            "same_section_same_day": 0,
         }
 
         if not isinstance(schedule, Schedule) or not isinstance(getattr(schedule, "genes", None), list):
@@ -56,6 +57,7 @@ class HardConstraintChecker:
         lecturer_time = defaultdict(list)
         room_time = defaultdict(list)
         group_time = defaultdict(list)
+        section_days = defaultdict(list)
 
         for gene in genes:
             sec_id = getattr(gene, "section_id", None)
@@ -124,6 +126,8 @@ class HardConstraintChecker:
                         for p in occupied_p:
                             group_time[(section.group_id, ts.day, p)].append(sec_id)
 
+                    section_days[section.section_id].append(ts.day)
+
         missing_count = len(expected_sections - set(seen_section_counts.keys()))
         details["missing_sections"] = missing_count
 
@@ -141,6 +145,14 @@ class HardConstraintChecker:
         for sections in group_time.values():
             if len(sections) > 1:
                 details["group_overlap"] += (len(sections) - 1)
+
+        for days in section_days.values():
+            day_counts = defaultdict(int)
+            for day in days:
+                day_counts[day] += 1
+            details["same_section_same_day"] += sum(
+                count - 1 for count in day_counts.values() if count > 1
+            )
 
         total_hard = sum(details.values())
         return total_hard, details
