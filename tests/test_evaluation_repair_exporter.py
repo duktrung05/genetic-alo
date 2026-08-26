@@ -85,7 +85,7 @@ def test_workbook_violations_total_equals_summary(sample_dataset, tmp_path):
     sum_soft_penalty = None
     for row in ws_sum.iter_rows(values_only=True):
         if row[0] == "soft_penalty":
-            sum_soft_penalty = int(row[1])
+            sum_soft_penalty = float(row[1])
             break
 
     assert sum_soft_penalty is not None
@@ -96,11 +96,12 @@ def test_workbook_violations_total_equals_summary(sample_dataset, tmp_path):
     viol_total_penalty = None
     for row in ws_viol.iter_rows(values_only=True):
         if row[0] == "SUMMARY" and row[2] == "TOTAL_SOFT_PENALTY":
-            viol_total_penalty = int(row[11])  # weighted_penalty column (0-indexed: 11)
+            viol_total_penalty = float(row[11])  # weighted_penalty remains column 12
             break
 
     assert viol_total_penalty is not None
-    assert viol_total_penalty == sum_soft_penalty == unified.soft_penalty
+    assert viol_total_penalty == pytest.approx(sum_soft_penalty)
+    assert sum_soft_penalty == pytest.approx(unified.soft_penalty)
 
 
 def test_repair_engine_direct_hard_conflict(sample_dataset):

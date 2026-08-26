@@ -85,10 +85,15 @@ def _build_test_xlsx(
     wb = openpyxl.Workbook()
     wb.remove(wb.active)
 
+    ws_campus = wb.create_sheet("CAMPUSES")
+    ws_campus.append(["campus_id", "campus_name"])
+    for campus_id in sorted({"CS1", room_campus, group_home_campus, sec_preferred_campus}):
+        ws_campus.append([campus_id, campus_id])
+
     ws_ts = wb.create_sheet("TIMESLOTS")
     ws_ts.append(["timeslot_id", "day_name", "period_no", "shift", "start_time", "end_time"])
-    ws_ts.append(["TS-M1", "Thu 2", 1, "Sang", "07:00", "07:50"])
-    ws_ts.append(["TS-M2", "Thu 2", 2, "Sang", "07:50", "08:40"])
+    ws_ts.append(["TS-M1", "Thu 2", 1, "Sáng", "07:00", "07:50"])
+    ws_ts.append(["TS-M2", "Thu 2", 2, "Sáng", "07:50", "08:40"])
 
     ws_rm = wb.create_sheet("ROOMS")
     ws_rm.append(["room_id", "campus_id", "building", "room_number", "capacity", "room_type"])
@@ -99,23 +104,27 @@ def _build_test_xlsx(
     ws_lec.append(["lecturer_id", "lecturer_name"])
     ws_lec.append(["GV01", "Giang vien 1"])
 
+    ws_avail = wb.create_sheet("LECTURER_AVAILABILITY")
+    ws_avail.append(["lecturer_id", "lecturer_name", "TS-M1", "TS-M2"])
+    ws_avail.append(["GV01", "Giang vien 1", True, True])
+
     ws_grp = wb.create_sheet("STUDENT_GROUPS")
     ws_grp.append(["group_id", "group_name", "size", "home_campus_id"])
     ws_grp.append(["G1", "Group 1", 30, group_home_campus])
 
     ws_crs = wb.create_sheet("COURSES")
-    ws_crs.append(["course_id", "course_name", "difficulty"])
-    ws_crs.append(["C01", "Course 1", "MEDIUM"])
+    ws_crs.append(["course_id", "course_code", "course_name", "difficulty"])
+    ws_crs.append(["C01", "IT001", "Course 1", "MEDIUM"])
 
     ws_sec = wb.create_sheet("COURSE_SECTIONS")
     ws_sec.append([
-        "section_id", "course_id", "course_name", "lecturer_id",
+        "section_id", "class_code", "course_id", "course_code", "course_name", "lecturer_id",
         "student_group_id", "student_count", "required_room_type",
         "duration_periods", "preferred_campus_id", "preferred_shift",
         "meetings_per_week",
     ])
     ws_sec.append([
-        "SEC-001", "C01", "Course 1", "GV01",
+        "SEC-001", "CLASS-001", "C01", "IT001", "Course 1", "GV01",
         "G1", 30, "NORMAL", 1,
         sec_preferred_campus, sec_preferred_shift, sec_meetings_per_week,
     ])
@@ -179,12 +188,11 @@ def test_loader_reads_meetings_per_week(tmp_path):
     assert secs_by_id["SEC-001"].meetings_per_week == 1
 
 @pytest.mark.unit
-def test_loader_meetings_per_week_float_integer_ok(tmp_path):
+def test_loader_meetings_per_week_above_one_rejected(tmp_path):
     p = tmp_path / "test.xlsx"
     p.write_bytes(_build_test_xlsx(sec_meetings_per_week=2.0))
-    ds = ExcelDatasetLoader.load(str(p))
-    secs_by_id = {s.section_id: s for s in ds["course_sections"]}
-    assert secs_by_id["SEC-001"].meetings_per_week == 2
+    with pytest.raises(ExcelValidationError, match="not supported by the current chromosome"):
+        ExcelDatasetLoader.load(str(p))
 
 @pytest.mark.unit
 def test_loader_meetings_per_week_non_integer_float_rejected(tmp_path):

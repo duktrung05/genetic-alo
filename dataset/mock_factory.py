@@ -1,6 +1,6 @@
 import random
 from typing import List, Dict, Optional, FrozenSet ,Tuple
-from domain import Course, CourseSection, Room, Lecturer, StudentGroup, Timeslot
+from domain import Campus, Course, CourseSection, Room, Lecturer, StudentGroup, Timeslot
 from .timeslot_factory import create_theory_timeslots
 from .validator import DatasetValidator
 
@@ -91,6 +91,7 @@ class DatasetFactory:
         ]
 
         ds = {
+            "campuses": [Campus(id="CS1", name="Cơ sở 1")],
             "timeslots": timeslots,
             "rooms": rooms,
             "lecturers": lecturers,
@@ -254,6 +255,10 @@ class DatasetFactory:
         rng.shuffle(course_sections)
 
         ds = {
+            "campuses": [
+                Campus(id="CS1", name="Cơ sở 1"),
+                Campus(id="CS2", name="Cơ sở 2"),
+            ],
             "timeslots": timeslots,
             "rooms": rooms,
             "lecturers": lecturers,
@@ -269,5 +274,4 @@ class DatasetFactory:
         """Load and validate dataset from specified Excel workbook path."""
         from .excel_loader import ExcelDatasetLoader
         return ExcelDatasetLoader.load_and_validate(excel_path)
-
 

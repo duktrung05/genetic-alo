@@ -63,10 +63,10 @@ class RunMetrics:
     first_feasible_generation: Optional[int]
 
     final_hard_violations: int
-    final_soft_penalty: int
+    final_soft_penalty: float
     feasible: bool
     score: float = 0.0
-    raw_soft_violations: int = 0
+    raw_soft_violations: float = 0.0
 
     # Categorized evaluation breakdown fields
     search_hard_constraint_evaluations: int = 0
@@ -88,12 +88,12 @@ class RunMetrics:
     soft_ls_calls: int = 0
     soft_ls_candidate_checks: int = 0
     soft_ls_accepted_moves: int = 0
-    soft_ls_improvement: int = 0
+    soft_ls_improvement: float = 0.0
     soft_ls_runtime_seconds: float = 0.0
 
     # Soft-Guided Mutation & Pre/Post SLS metrics
-    soft_before_sls: Optional[int] = None
-    soft_after_sls: Optional[int] = None
+    soft_before_sls: Optional[float] = None
+    soft_after_sls: Optional[float] = None
     guided_mutation_calls: int = 0
     guided_mutation_attempts: int = 0
     guided_mutation_successes: int = 0
@@ -297,4 +297,3 @@ class AggregateRunMetrics:
         d["time_to_first_feasible_median"] = self.median_time_to_first_feasible_seconds
         d["time_to_first_feasible_mean"] = self.mean_time_to_first_feasible_seconds
         return d
-

@@ -12,6 +12,7 @@ from typing import Dict, List, Optional, Union
 
 from domain import Schedule
 from dataset import get_occupied_periods
+from constraints import SoftConstraintConfig
 
 
 DAY_ORDER = {
@@ -30,8 +31,9 @@ def export_schedule_query_data(
     dataset: dict,
     output_path: Union[str, Path] = "outputs/production/schedule_query_data.json",
     hard_violations: int = 0,
-    soft_penalty: int = 0,
+    soft_penalty: float = 0.0,
     metadata: Optional[dict] = None,
+    soft_config: Optional[SoftConstraintConfig] = None,
 ) -> str:
     """Xuất danh sách phân công lịch học sang định dạng JSON cho trợ lý tra cứu."""
 
@@ -49,6 +51,7 @@ def export_schedule_query_data(
     timeslot_map = {t.id: t for t in dataset["timeslots"]}
     lecturer_map = {l.id: l for l in dataset.get("lecturers", [])}
     group_map = {g.id: g for g in dataset.get("student_groups", [])}
+    course_map = {c.course_id: c for c in dataset.get("courses", [])}
 
     # Map (day, period) -> Timeslot for fast end_time lookup
     day_period_map = {(ts.day, ts.period): ts for ts in timeslot_map.values()}
@@ -80,11 +83,14 @@ def export_schedule_query_data(
 
         rm_name = room.name if room else gene.room_id
         rm_type = getattr(room, "room_type", "NORMAL") if room else "NORMAL"
-        campus_id = getattr(room, "campus_id", None) or getattr(sec, "preferred_campus_id", None) or "CS1"
+        campus_id = getattr(room, "campus_id", None) if room else None
+        course = course_map.get(sec.course_id)
 
         record = {
             "section_id": sec.section_id,
+            "class_code": getattr(sec, "class_code", None),
             "course_id": sec.course_id,
+            "course_code": getattr(course, "course_code", None),
             "course_name": sec.course_name,
             "duration_periods": duration,
             "student_group_id": sec.group_id,
@@ -128,6 +134,14 @@ def export_schedule_query_data(
     }
     if metadata and isinstance(metadata, dict):
         meta_dict.update({k: v for k, v in metadata.items() if k not in meta_dict})
+    if soft_config is not None:
+        meta_dict["effective_soft_constraints"] = {
+            definition.constraint_id: {
+                "weight": definition.weight,
+                "enabled": definition.enabled,
+            }
+            for definition in soft_config.definitions.values()
+        }
 
     data = {
         "meta": meta_dict,

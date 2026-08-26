@@ -5,9 +5,10 @@ Parses and validates timetable scheduling dataset from Microsoft Excel workbook 
 
 import os
 import json
+import datetime
 from typing import Dict, List, Set, Optional, Any
 import openpyxl
-from domain import Timeslot, Room, Lecturer, StudentGroup, Course, CourseSection, ConstraintDefinition
+from domain import Campus, Timeslot, Room, Lecturer, StudentGroup, Course, CourseSection, ConstraintDefinition
 from .validator import DatasetValidator
 
 class ExcelValidationError(ValueError):
@@ -20,11 +21,13 @@ class ExcelDatasetLoader:
 
     # Canonical mapping from Excel constraint_id to internal technical key
     SOFT_CONSTRAINT_KEY_BY_ID: Dict[str, str] = {
-        "S1": "weekly_distribution",
+        "S1": "compact_student_schedule",
         "S2": "late_day_periods",
         "S3": "preferred_shift_mismatch",
         "S4": "room_seat_waste",
         "S5": "consecutive_cross_campus",
+        "S6": "preferred_campus_mismatch",
+        "S7": "student_home_campus_mismatch",
     }
     SUPPORTED_SOFT_IDS: frozenset = frozenset(SOFT_CONSTRAINT_KEY_BY_ID.keys())
 
@@ -44,6 +47,8 @@ class ExcelDatasetLoader:
     }
 
     VALID_SHIFTS = frozenset({"morning", "afternoon", "evening"})
+    VALID_DIFFICULTIES = frozenset({"EASY", "MEDIUM", "HARD"})
+    VALID_ROOM_TYPES = frozenset({"NORMAL", "LAB"})
 
     IGNORED_SHEETS = {
         "README",
@@ -63,6 +68,69 @@ class ExcelDatasetLoader:
         if not text or text.lower() == "nan":
             return None
         return text
+
+    @classmethod
+    def _required_str(cls, value, sheet: str, row_idx: int, col: str) -> str:
+        text = cls._normalize_optional_str(value)
+        if text is None:
+            raise ExcelValidationError(
+                f"Sheet '{sheet}', Row {row_idx}, Column '{col}': value must not be blank"
+            )
+        return text
+
+    @classmethod
+    def _parse_positive_int(cls, value, sheet: str, row_idx: int, col: str) -> int:
+        if value is None or isinstance(value, bool):
+            raise ExcelValidationError(
+                f"Sheet '{sheet}', Row {row_idx}, Column '{col}', Value '{value}': "
+                "Must be a positive integer"
+            )
+        try:
+            number = float(value)
+        except (ValueError, TypeError):
+            raise ExcelValidationError(
+                f"Sheet '{sheet}', Row {row_idx}, Column '{col}', Value '{value}': "
+                "Must be a positive integer"
+            )
+        if not number.is_integer():
+            raise ExcelValidationError(
+                f"Sheet '{sheet}', Row {row_idx}, Column '{col}', Value '{value}': "
+                "Fractional value not allowed; must be a positive integer"
+            )
+        result = int(number)
+        if result < 1:
+            raise ExcelValidationError(
+                f"Sheet '{sheet}', Row {row_idx}, Column '{col}', Value '{value}': "
+                "Must be > 0"
+            )
+        return result
+
+    @classmethod
+    def _parse_difficulty(cls, value, sheet: str, row_idx: int, col: str) -> str:
+        difficulty = cls._required_str(value, sheet, row_idx, col).upper()
+        if difficulty not in cls.VALID_DIFFICULTIES:
+            raise ExcelValidationError(
+                f"Sheet '{sheet}', Row {row_idx}, Column '{col}', Value '{value}': "
+                f"Unknown difficulty '{value}'. Allowed values: {sorted(cls.VALID_DIFFICULTIES)}"
+            )
+        return difficulty
+
+    @classmethod
+    def _parse_time(cls, value, sheet: str, row_idx: int, col: str) -> str:
+        try:
+            if isinstance(value, datetime.datetime):
+                parsed = value.time()
+            elif isinstance(value, datetime.time):
+                parsed = value
+            else:
+                text = cls._required_str(value, sheet, row_idx, col)
+                parsed = datetime.time.fromisoformat(text)
+        except (TypeError, ValueError):
+            raise ExcelValidationError(
+                f"Sheet '{sheet}', Row {row_idx}, Column '{col}', Value '{value}': "
+                "Invalid time; expected HH:MM or HH:MM:SS"
+            )
+        return parsed.strftime("%H:%M:%S") if parsed.second else parsed.strftime("%H:%M")
 
     @classmethod
     def _parse_meetings_per_week(cls, value, row_idx: int) -> int:
@@ -94,6 +162,11 @@ class ExcelDatasetLoader:
             raise ExcelValidationError(
                 f"Sheet 'COURSE_SECTIONS', Row {row_idx}, Column 'meetings_per_week', "
                 f"Value '{value}': Must be >= 1 (got {result})"
+            )
+        if result > 1:
+            raise ExcelValidationError(
+                f"Sheet 'COURSE_SECTIONS', Row {row_idx}, Column 'meetings_per_week', "
+                f"Value '{value}': meetings_per_week > 1 is not supported by the current chromosome."
             )
         return result
 
@@ -293,6 +366,40 @@ class ExcelDatasetLoader:
         # 0. Parse CONSTRAINTS sheet (before other sheets)
         constraint_definitions = cls._parse_constraints_sheet(wb)
 
+        # CAMPUS master is authoritative for every campus foreign key.
+        if "CAMPUSES" not in wb.sheetnames:
+            raise ExcelValidationError(
+                "Sheet 'CAMPUSES', Row 0, Column 'sheet': Sheet is missing from workbook"
+            )
+        ws_campus = wb["CAMPUSES"]
+        rows_campus = list(ws_campus.iter_rows(values_only=True))
+        if not rows_campus:
+            raise ExcelValidationError("Sheet 'CAMPUSES', Row 1, Column 'all': Sheet is empty")
+        header_campus = [str(h).strip() if h is not None else "" for h in rows_campus[0]]
+        for col in ("campus_id", "campus_name"):
+            if col not in header_campus:
+                raise ExcelValidationError(
+                    f"Sheet 'CAMPUSES', Row 1, Column '{col}': Required header column is missing"
+                )
+        campuses: List[Campus] = []
+        campus_ids: Set[str] = set()
+        for row_idx, row in enumerate(rows_campus[1:], start=2):
+            if not row or all(value is None for value in row):
+                continue
+            campus_id = cls._required_str(
+                row[header_campus.index("campus_id")], "CAMPUSES", row_idx, "campus_id"
+            )
+            campus_name = cls._required_str(
+                row[header_campus.index("campus_name")], "CAMPUSES", row_idx, "campus_name"
+            )
+            if campus_id in campus_ids:
+                raise ExcelValidationError(
+                    f"Sheet 'CAMPUSES', Row {row_idx}, Column 'campus_id', "
+                    f"Value '{campus_id}': Duplicate campus_id"
+                )
+            campus_ids.add(campus_id)
+            campuses.append(Campus(id=campus_id, name=campus_name))
+
         # Log ignored sheets if present
         for sheet_name in wb.sheetnames:
             if sheet_name in cls.IGNORED_SHEETS:
@@ -308,7 +415,7 @@ class ExcelDatasetLoader:
             raise ExcelValidationError("Sheet 'TIMESLOTS', Row 1, Column 'all': Sheet is empty")
 
         header_ts = [str(h).strip() if h is not None else "" for h in rows_ts[0]]
-        req_ts_cols = ["timeslot_id", "day_name", "period_no", "shift"]
+        req_ts_cols = ["timeslot_id", "day_name", "period_no", "shift", "start_time", "end_time"]
         for col in req_ts_cols:
             if col not in header_ts:
                 raise ExcelValidationError(f"Sheet 'TIMESLOTS', Row 1, Column '{col}': Required header column is missing")
@@ -319,24 +426,46 @@ class ExcelDatasetLoader:
         for row_idx, row in enumerate(rows_ts[1:], start=2):
             if not row or row[0] is None:
                 continue
-            code = str(row[header_ts.index("timeslot_id")]).strip()
-            if not code:
-                raise ExcelValidationError(f"Sheet 'TIMESLOTS', Row {row_idx}, Column 'timeslot_id', Value '{row[0]}': Invalid empty timeslot_id")
+            code = cls._required_str(
+                row[header_ts.index("timeslot_id")], "TIMESLOTS", row_idx, "timeslot_id"
+            )
             if code in code_to_ts_id:
                 raise ExcelValidationError(f"Sheet 'TIMESLOTS', Row {row_idx}, Column 'timeslot_id', Value '{code}': Duplicate timeslot_id")
 
-            day_name = str(row[header_ts.index("day_name")]).strip()
-            try:
-                period_no = int(row[header_ts.index("period_no")])
-            except (ValueError, TypeError):
-                raise ExcelValidationError(f"Sheet 'TIMESLOTS', Row {row_idx}, Column 'period_no', Value '{row[header_ts.index('period_no')]}\': Invalid period number")
+            day_name = cls._required_str(
+                row[header_ts.index("day_name")], "TIMESLOTS", row_idx, "day_name"
+            )
+            period_no = cls._parse_positive_int(
+                row[header_ts.index("period_no")], "TIMESLOTS", row_idx, "period_no"
+            )
 
-            shift = str(row[header_ts.index("shift")]).strip()
+            shift = cls._required_str(
+                row[header_ts.index("shift")], "TIMESLOTS", row_idx, "shift"
+            )
+            session = cls.SHIFT_MAP.get(shift)
+            if session is None:
+                raise ExcelValidationError(
+                    f"Sheet 'TIMESLOTS', Row {row_idx}, Column 'shift', Value '{shift}': "
+                    f"Unknown shift '{shift}'"
+                )
             ts_id = len(timeslots)
             code_to_ts_id[code] = ts_id
-            session = cls.SHIFT_MAP.get(shift, "morning")
-            start_t = str(row[header_ts.index("start_time")]).strip() if "start_time" in header_ts and row[header_ts.index("start_time")] else "07:00"
-            end_t = str(row[header_ts.index("end_time")]).strip() if "end_time" in header_ts and row[header_ts.index("end_time")] else "07:50"
+            start_t = cls._parse_time(
+                row[header_ts.index("start_time")], "TIMESLOTS", row_idx, "start_time"
+            )
+            end_t = cls._parse_time(
+                row[header_ts.index("end_time")], "TIMESLOTS", row_idx, "end_time"
+            )
+            if datetime.time.fromisoformat(start_t) >= datetime.time.fromisoformat(end_t):
+                raise ExcelValidationError(
+                    f"Sheet 'TIMESLOTS', Row {row_idx}: start_time '{start_t}' "
+                    f"must be before end_time '{end_t}'"
+                )
+            if any(t.day == day_name and t.period == period_no for t in timeslots):
+                raise ExcelValidationError(
+                    f"Sheet 'TIMESLOTS', Row {row_idx}: Duplicate "
+                    f"(day_name, period_no) ('{day_name}', {period_no})"
+                )
 
             ts = Timeslot(
                 id=ts_id,
@@ -345,6 +474,7 @@ class ExcelDatasetLoader:
                 start_time=start_t,
                 end_time=end_t,
                 session=session,
+                external_id=code,
             )
             timeslots.append(ts)
 
@@ -375,15 +505,12 @@ class ExcelDatasetLoader:
                 raise ExcelValidationError(f"Sheet 'ROOMS', Row {row_idx}, Column 'room_id', Value '{r_id}': Duplicate room_id")
             room_ids.add(r_id)
 
-            try:
-                cap = int(r[header_rm.index("capacity")])
-                if cap <= 0:
-                    raise ValueError("Capacity must be positive")
-            except (ValueError, TypeError):
-                raise ExcelValidationError(f"Sheet 'ROOMS', Row {row_idx}, Column 'capacity', Value '{r[header_rm.index('capacity')]}\': Capacity must be positive integer")
+            cap = cls._parse_positive_int(
+                r[header_rm.index("capacity")], "ROOMS", row_idx, "capacity"
+            )
 
             r_type = str(r[header_rm.index("room_type")]).strip()
-            if r_type not in ["NORMAL", "LAB"]:
+            if r_type not in cls.VALID_ROOM_TYPES:
                 raise ExcelValidationError(f"Sheet 'ROOMS', Row {row_idx}, Column 'room_type', Value '{r_type}': Invalid room_type. Must be 'NORMAL' or 'LAB'")
 
             bld = str(r[header_rm.index("building")]).strip() if "building" in header_rm and r[header_rm.index("building")] else ""
@@ -393,6 +520,11 @@ class ExcelDatasetLoader:
             campus_id = cls._normalize_optional_str(
                 r[header_rm.index("campus_id")] if "campus_id" in header_rm else None
             )
+            if campus_id is not None and campus_id not in campus_ids:
+                raise ExcelValidationError(
+                    f"Sheet 'ROOMS', Row {row_idx}, Column 'campus_id', "
+                    f"Value '{campus_id}': Unknown campus_id"
+                )
 
             room = Room(
                 id=r_id,
@@ -405,29 +537,66 @@ class ExcelDatasetLoader:
 
         # 3. Parse LECTURER_AVAILABILITY
         lec_avail_map: Dict[str, Optional[frozenset]] = {}
-        if "LECTURER_AVAILABILITY" in wb.sheetnames:
-            ws_avail = wb["LECTURER_AVAILABILITY"]
-            rows_avail = list(ws_avail.iter_rows(values_only=True))
-            if rows_avail:
-                avail_header = [str(h).strip() if h is not None else "" for h in rows_avail[0]]
-                for row_idx, r in enumerate(rows_avail[1:], start=2):
-                    if not r or r[0] is None:
-                        continue
-                    l_id = str(r[0]).strip()
-                    avail_ts_set: Set[int] = set()
-                    for col_idx in range(2, len(r)):
-                        if col_idx < len(avail_header):
-                            col_name = avail_header[col_idx]
-                            is_avail = r[col_idx]
-                            if is_avail is not True and is_avail is not False and is_avail is not None:
-                                raise ExcelValidationError(f"Sheet 'LECTURER_AVAILABILITY', Row {row_idx}, Column '{col_name}', Value '{is_avail}': Availability must be boolean True/False")
-                            if is_avail and col_name in code_to_ts_id:
-                                avail_ts_set.add(code_to_ts_id[col_name])
+        if "LECTURER_AVAILABILITY" not in wb.sheetnames:
+            raise ExcelValidationError(
+                "Sheet 'LECTURER_AVAILABILITY', Row 0, Column 'sheet': "
+                "Sheet is missing from canonical workbook"
+            )
+        ws_avail = wb["LECTURER_AVAILABILITY"]
+        rows_avail = list(ws_avail.iter_rows(values_only=True))
+        if not rows_avail:
+            raise ExcelValidationError(
+                "Sheet 'LECTURER_AVAILABILITY', Row 1, Column 'all': Sheet is empty"
+            )
+        avail_header = [str(h).strip() if h is not None else "" for h in rows_avail[0]]
+        if len(avail_header) < 2 or avail_header[:2] != ["lecturer_id", "lecturer_name"]:
+            raise ExcelValidationError(
+                "Sheet 'LECTURER_AVAILABILITY', Row 1: first columns must be "
+                "'lecturer_id', 'lecturer_name'"
+            )
+        actual_timeslot_columns = [name for name in avail_header[2:] if name]
+        expected_timeslot_columns = list(code_to_ts_id)
+        missing_columns = sorted(set(expected_timeslot_columns) - set(actual_timeslot_columns))
+        unknown_columns = sorted(set(actual_timeslot_columns) - set(expected_timeslot_columns))
+        if missing_columns:
+            raise ExcelValidationError(
+                "Sheet 'LECTURER_AVAILABILITY', Row 1: missing timeslot columns: "
+                f"{missing_columns}"
+            )
+        if unknown_columns:
+            raise ExcelValidationError(
+                "Sheet 'LECTURER_AVAILABILITY', Row 1: unknown timeslot columns: "
+                f"{unknown_columns}"
+            )
+        if len(actual_timeslot_columns) != len(set(actual_timeslot_columns)):
+            raise ExcelValidationError(
+                "Sheet 'LECTURER_AVAILABILITY', Row 1: duplicate timeslot columns"
+            )
 
-                    if len(avail_ts_set) == len(timeslots):
-                        lec_avail_map[l_id] = None
-                    else:
-                        lec_avail_map[l_id] = frozenset(avail_ts_set)
+        for row_idx, r in enumerate(rows_avail[1:], start=2):
+            if not r or all(value is None for value in r):
+                continue
+            l_id = cls._required_str(r[0], "LECTURER_AVAILABILITY", row_idx, "lecturer_id")
+            if l_id in lec_avail_map:
+                raise ExcelValidationError(
+                    f"Sheet 'LECTURER_AVAILABILITY', Row {row_idx}, Column 'lecturer_id', "
+                    f"Value '{l_id}': Duplicate lecturer_id"
+                )
+            avail_ts_set: Set[int] = set()
+            for col_name in expected_timeslot_columns:
+                col_idx = avail_header.index(col_name)
+                is_avail = r[col_idx] if col_idx < len(r) else None
+                if not isinstance(is_avail, bool):
+                    raise ExcelValidationError(
+                        f"Sheet 'LECTURER_AVAILABILITY', Row {row_idx}, "
+                        f"Column '{col_name}', Value '{is_avail}': "
+                        "Availability must be boolean True/False"
+                    )
+                if is_avail:
+                    avail_ts_set.add(code_to_ts_id[col_name])
+            lec_avail_map[l_id] = (
+                None if len(avail_ts_set) == len(timeslots) else frozenset(avail_ts_set)
+            )
 
         # 4. Parse LECTURERS
         if "LECTURERS" not in wb.sheetnames:
@@ -458,12 +627,37 @@ class ExcelDatasetLoader:
 
             l_name = str(r[header_lec.index("lecturer_name")]).strip()
             avail = lec_avail_map.get(l_id)
+            if "limited_availability" in header_lec:
+                limited = r[header_lec.index("limited_availability")]
+                if not isinstance(limited, bool):
+                    raise ExcelValidationError(
+                        f"Sheet 'LECTURERS', Row {row_idx}, Column 'limited_availability', "
+                        f"Value '{limited}': Must be boolean True/False"
+                    )
+                if limited != (avail is not None):
+                    raise ExcelValidationError(
+                        f"Sheet 'LECTURERS', Row {row_idx}, Column 'limited_availability': "
+                        "Value does not match LECTURER_AVAILABILITY matrix"
+                    )
             lec = Lecturer(
                 id=l_id,
                 name=l_name,
                 available_timeslot_ids=avail,
             )
             lecturers.append(lec)
+
+        unknown_availability_lecturers = sorted(set(lec_avail_map) - lecturer_ids)
+        missing_availability_lecturers = sorted(lecturer_ids - set(lec_avail_map))
+        if unknown_availability_lecturers:
+            raise ExcelValidationError(
+                "Sheet 'LECTURER_AVAILABILITY': unknown lecturer_id values: "
+                f"{unknown_availability_lecturers}"
+            )
+        if missing_availability_lecturers:
+            raise ExcelValidationError(
+                "Sheet 'LECTURER_AVAILABILITY': missing lecturer rows: "
+                f"{missing_availability_lecturers}"
+            )
 
         # 5. Parse STUDENT_GROUPS
         if "STUDENT_GROUPS" not in wb.sheetnames:
@@ -493,16 +687,18 @@ class ExcelDatasetLoader:
             group_ids.add(g_id)
 
             g_name = str(r[header_grp.index("group_name")]).strip()
-            try:
-                size = int(r[header_grp.index("size")])
-                if size <= 0:
-                    raise ValueError("Group size must be positive")
-            except (ValueError, TypeError):
-                raise ExcelValidationError(f"Sheet 'STUDENT_GROUPS', Row {row_idx}, Column 'size', Value '{r[header_grp.index('size')]}\': Group size must be positive integer")
+            size = cls._parse_positive_int(
+                r[header_grp.index("size")], "STUDENT_GROUPS", row_idx, "size"
+            )
 
             home_campus_id = cls._normalize_optional_str(
                 r[header_grp.index("home_campus_id")] if "home_campus_id" in header_grp else None
             )
+            if home_campus_id is not None and home_campus_id not in campus_ids:
+                raise ExcelValidationError(
+                    f"Sheet 'STUDENT_GROUPS', Row {row_idx}, Column 'home_campus_id', "
+                    f"Value '{home_campus_id}': Unknown campus_id"
+                )
 
             grp = StudentGroup(
                 id=g_id,
@@ -521,13 +717,16 @@ class ExcelDatasetLoader:
             raise ExcelValidationError("Sheet 'COURSES', Row 1, Column 'all': Sheet is empty")
 
         header_crs = [str(h).strip() if h is not None else "" for h in rows_crs[0]]
-        req_crs_cols = ["course_id", "course_name"]
+        req_crs_cols = ["course_id", "course_code", "course_name", "difficulty"]
         for col in req_crs_cols:
             if col not in header_crs:
                 raise ExcelValidationError(f"Sheet 'COURSES', Row 1, Column '{col}': Required header column is missing")
 
         courses: List[Course] = []
         course_ids: Set[str] = set()
+        course_codes: Set[str] = set()
+        course_by_id: Dict[str, Course] = {}
+        difficulty_by_course_id: Dict[str, str] = {}
 
         for row_idx, r in enumerate(rows_crs[1:], start=2):
             if not r or r[0] is None:
@@ -539,15 +738,41 @@ class ExcelDatasetLoader:
                 raise ExcelValidationError(f"Sheet 'COURSES', Row {row_idx}, Column 'course_id', Value '{c_id}': Duplicate course_id")
             course_ids.add(c_id)
 
-            c_name = str(r[header_crs.index("course_name")]).strip()
-            diff = str(r[header_crs.index("difficulty")]).strip() if "difficulty" in header_crs and r[header_crs.index("difficulty")] else ""
+            course_code = cls._required_str(
+                r[header_crs.index("course_code")], "COURSES", row_idx, "course_code"
+            )
+            if course_code in course_codes:
+                raise ExcelValidationError(
+                    f"Sheet 'COURSES', Row {row_idx}, Column 'course_code', "
+                    f"Value '{course_code}': Duplicate course_code"
+                )
+            course_codes.add(course_code)
+            c_name = cls._required_str(
+                r[header_crs.index("course_name")], "COURSES", row_idx, "course_name"
+            )
+            diff = cls._parse_difficulty(
+                r[header_crs.index("difficulty")], "COURSES", row_idx, "difficulty"
+            )
+            if "default_room_type" in header_crs:
+                default_room_type = cls._required_str(
+                    r[header_crs.index("default_room_type")],
+                    "COURSES", row_idx, "default_room_type",
+                )
+                if default_room_type not in cls.VALID_ROOM_TYPES:
+                    raise ExcelValidationError(
+                        f"Sheet 'COURSES', Row {row_idx}, Column 'default_room_type', "
+                        f"Value '{default_room_type}': Invalid room_type"
+                    )
             crs = Course(
                 course_id=c_id,
                 name=c_name,
                 credits=3,
                 is_difficult=(diff == "HARD"),
+                course_code=course_code,
             )
             courses.append(crs)
+            course_by_id[c_id] = crs
+            difficulty_by_course_id[c_id] = diff
 
         # 7. Parse COURSE_SECTIONS
         if "COURSE_SECTIONS" not in wb.sheetnames:
@@ -558,13 +783,20 @@ class ExcelDatasetLoader:
             raise ExcelValidationError("Sheet 'COURSE_SECTIONS', Row 1, Column 'all': Sheet is empty")
 
         header_sec = [str(h).strip() if h is not None else "" for h in rows_sec[0]]
-        req_sec_cols = ["section_id", "course_id", "lecturer_id", "student_group_id", "student_count", "required_room_type", "duration_periods"]
+        req_sec_cols = [
+            "section_id", "class_code", "course_id", "course_code",
+            "lecturer_id", "student_group_id", "student_count",
+            "required_room_type", "duration_periods",
+        ]
         for col in req_sec_cols:
             if col not in header_sec:
                 raise ExcelValidationError(f"Sheet 'COURSE_SECTIONS', Row 1, Column '{col}': Required header column is missing")
 
         course_sections: List[CourseSection] = []
         section_ids: Set[str] = set()
+        class_codes: Set[str] = set()
+        lecturer_by_id = {lecturer.id: lecturer for lecturer in lecturers}
+        group_by_id = {group.id: group for group in student_groups}
 
         for row_idx, r in enumerate(rows_sec[1:], start=2):
             if not r or r[0] is None:
@@ -576,9 +808,30 @@ class ExcelDatasetLoader:
                 raise ExcelValidationError(f"Sheet 'COURSE_SECTIONS', Row {row_idx}, Column 'section_id', Value '{sec_id}': Duplicate section_id")
             section_ids.add(sec_id)
 
+            class_code = cls._required_str(
+                r[header_sec.index("class_code")],
+                "COURSE_SECTIONS", row_idx, "class_code",
+            )
+            if class_code in class_codes:
+                raise ExcelValidationError(
+                    f"Sheet 'COURSE_SECTIONS', Row {row_idx}, Column 'class_code', "
+                    f"Value '{class_code}': Duplicate class_code"
+                )
+            class_codes.add(class_code)
+
             c_id = str(r[header_sec.index("course_id")]).strip()
             if c_id not in course_ids:
                 raise ExcelValidationError(f"Sheet 'COURSE_SECTIONS', Row {row_idx}, Column 'course_id', Value '{c_id}': Referenced course_id does not exist in COURSES sheet")
+            section_course_code = cls._required_str(
+                r[header_sec.index("course_code")],
+                "COURSE_SECTIONS", row_idx, "course_code",
+            )
+            if section_course_code != course_by_id[c_id].course_code:
+                raise ExcelValidationError(
+                    f"Sheet 'COURSE_SECTIONS', Row {row_idx}, Column 'course_code', "
+                    f"Value '{section_course_code}': does not match COURSES master "
+                    f"value '{course_by_id[c_id].course_code}'"
+                )
 
             l_id = str(r[header_sec.index("lecturer_id")]).strip()
             if l_id not in lecturer_ids:
@@ -588,31 +841,74 @@ class ExcelDatasetLoader:
             if g_id not in group_ids:
                 raise ExcelValidationError(f"Sheet 'COURSE_SECTIONS', Row {row_idx}, Column 'student_group_id', Value '{g_id}': Referenced student_group_id does not exist in STUDENT_GROUPS sheet")
 
-            try:
-                st_cnt = int(r[header_sec.index("student_count")])
-                if st_cnt <= 0:
-                    raise ValueError("student_count must be positive")
-            except (ValueError, TypeError):
-                raise ExcelValidationError(f"Sheet 'COURSE_SECTIONS', Row {row_idx}, Column 'student_count', Value '{r[header_sec.index('student_count')]}\': Student count must be positive integer")
+            st_cnt = cls._parse_positive_int(
+                r[header_sec.index("student_count")],
+                "COURSE_SECTIONS", row_idx, "student_count",
+            )
 
             req_type = str(r[header_sec.index("required_room_type")]).strip()
-            if req_type not in ["NORMAL", "LAB"]:
+            if req_type not in cls.VALID_ROOM_TYPES:
                 raise ExcelValidationError(f"Sheet 'COURSE_SECTIONS', Row {row_idx}, Column 'required_room_type', Value '{req_type}': Invalid required_room_type. Must be 'NORMAL' or 'LAB'")
 
-            try:
-                dur = int(r[header_sec.index("duration_periods")])
-                if dur < 1:
-                    raise ValueError("duration_periods must be >= 1")
-            except (ValueError, TypeError):
-                raise ExcelValidationError(f"Sheet 'COURSE_SECTIONS', Row {row_idx}, Column 'duration_periods', Value '{r[header_sec.index('duration_periods')]}\': Duration periods must be integer >= 1")
+            dur = cls._parse_positive_int(
+                r[header_sec.index("duration_periods")],
+                "COURSE_SECTIONS", row_idx, "duration_periods",
+            )
 
-            c_name = str(r[header_sec.index("course_name")]).strip() if "course_name" in header_sec and r[header_sec.index("course_name")] else c_id
-            diff = str(r[header_sec.index("difficulty")]).strip() if "difficulty" in header_sec and r[header_sec.index("difficulty")] else ""
+            c_name = course_by_id[c_id].name
+            if "course_name" in header_sec:
+                supplied_course_name = cls._required_str(
+                    r[header_sec.index("course_name")],
+                    "COURSE_SECTIONS", row_idx, "course_name",
+                )
+                if supplied_course_name != c_name:
+                    raise ExcelValidationError(
+                        f"Sheet 'COURSE_SECTIONS', Row {row_idx}, Column 'course_name': "
+                        "does not match COURSES master"
+                    )
+            diff = difficulty_by_course_id[c_id]
+            if "difficulty" in header_sec:
+                supplied_difficulty = cls._parse_difficulty(
+                    r[header_sec.index("difficulty")],
+                    "COURSE_SECTIONS", row_idx, "difficulty",
+                )
+                if supplied_difficulty != difficulty_by_course_id[c_id]:
+                    raise ExcelValidationError(
+                        f"Sheet 'COURSE_SECTIONS', Row {row_idx}, Column 'difficulty': "
+                        "does not match COURSES master"
+                    )
+                diff = supplied_difficulty
 
             # Optional preference fields
             preferred_campus_id = cls._normalize_optional_str(
                 r[header_sec.index("preferred_campus_id")] if "preferred_campus_id" in header_sec else None
             )
+            if preferred_campus_id is not None and preferred_campus_id not in campus_ids:
+                raise ExcelValidationError(
+                    f"Sheet 'COURSE_SECTIONS', Row {row_idx}, Column 'preferred_campus_id', "
+                    f"Value '{preferred_campus_id}': Unknown campus_id"
+                )
+
+            if "student_group_name" in header_sec:
+                supplied_group_name = cls._required_str(
+                    r[header_sec.index("student_group_name")],
+                    "COURSE_SECTIONS", row_idx, "student_group_name",
+                )
+                if supplied_group_name != group_by_id[g_id].name:
+                    raise ExcelValidationError(
+                        f"Sheet 'COURSE_SECTIONS', Row {row_idx}, Column 'student_group_name': "
+                        "does not match STUDENT_GROUPS master"
+                    )
+            if "lecturer_name" in header_sec:
+                supplied_lecturer_name = cls._required_str(
+                    r[header_sec.index("lecturer_name")],
+                    "COURSE_SECTIONS", row_idx, "lecturer_name",
+                )
+                if supplied_lecturer_name != lecturer_by_id[l_id].name:
+                    raise ExcelValidationError(
+                        f"Sheet 'COURSE_SECTIONS', Row {row_idx}, Column 'lecturer_name': "
+                        "does not match LECTURERS master"
+                    )
 
             # Normalize preferred_shift via SHIFT_MAP then validate
             raw_shift = cls._normalize_optional_str(
@@ -646,10 +942,12 @@ class ExcelDatasetLoader:
                 preferred_campus_id=preferred_campus_id,
                 preferred_shift=preferred_shift,
                 meetings_per_week=meetings_per_week,
+                class_code=class_code,
             )
             course_sections.append(sec)
 
         return {
+            "campuses": campuses,
             "timeslots": timeslots,
             "rooms": rooms,
             "lecturers": lecturers,
@@ -690,6 +988,7 @@ class ExcelDatasetLoader:
             "timeslots": [
                 {
                     "id": t.id,
+                    "external_id": getattr(t, "external_id", None),
                     "day": t.day,
                     "period": t.period,
                     "start_time": t.start_time,
@@ -697,6 +996,10 @@ class ExcelDatasetLoader:
                     "session": t.session,
                 }
                 for t in dataset["timeslots"]
+            ],
+            "campuses": [
+                {"id": campus.id, "name": campus.name}
+                for campus in dataset.get("campuses", [])
             ],
             "rooms": [
                 {
@@ -732,6 +1035,7 @@ class ExcelDatasetLoader:
             "courses": [
                 {
                     "course_id": c.course_id,
+                    "course_code": getattr(c, "course_code", None),
                     "name": c.name,
                     "credits": getattr(c, "credits", 3),
                     "is_difficult": getattr(c, "is_difficult", False),
@@ -741,6 +1045,7 @@ class ExcelDatasetLoader:
             "course_sections": [
                 {
                     "section_id": s.section_id,
+                    "class_code": getattr(s, "class_code", None),
                     "course_id": s.course_id,
                     "course_name": s.course_name,
                     "lecturer_id": s.lecturer_id,
@@ -783,6 +1088,14 @@ class ExcelDatasetLoader:
 
         timeslots = [Timeslot(**t) for t in data["timeslots"]]
         rooms = [Room(**r) for r in data["rooms"]]
+        if "campuses" in data:
+            campuses = [Campus(**campus) for campus in data["campuses"]]
+        else:
+            # Legacy normalized snapshots predate the campus master. Preserve
+            # compatibility by materializing only the campus IDs already stored
+            # on rooms; canonical Excel never uses this fallback.
+            legacy_ids = sorted({room.campus_id for room in rooms if room.campus_id})
+            campuses = [Campus(id=campus_id, name=campus_id) for campus_id in legacy_ids]
         lecturers = [
             Lecturer(
                 id=l["id"],
@@ -796,14 +1109,21 @@ class ExcelDatasetLoader:
             for l in data["lecturers"]
         ]
         student_groups = [StudentGroup(**g) for g in data["student_groups"]]
-        courses = [Course(**c) for c in data.get("courses", [])]
-        course_sections = [CourseSection(**s) for s in data["course_sections"]]
+        courses = [
+            Course(**({**course, "course_code": course.get("course_code") or course["course_id"]}))
+            for course in data.get("courses", [])
+        ]
+        course_sections = [
+            CourseSection(**({**section, "class_code": section.get("class_code")}))
+            for section in data["course_sections"]
+        ]
         constraints = [
             ConstraintDefinition(**c)
             for c in data.get("constraints", [])
         ]
 
         dataset = {
+            "campuses": campuses,
             "timeslots": timeslots,
             "rooms": rooms,
             "lecturers": lecturers,

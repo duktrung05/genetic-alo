@@ -21,6 +21,7 @@ class Timeslot:
     start_time: str
     end_time: str
     session: str
+    external_id: Optional[str] = None
 
     def __post_init__(self):
         valid_sessions = {"morning", "afternoon", "evening"}
@@ -37,6 +38,12 @@ class Room:
     room_type: str = "NORMAL"
     campus_id: Optional[str] = None
 
+    def __post_init__(self):
+        if self.capacity < 1:
+            raise ValueError(f"capacity must be >= 1, got {self.capacity}")
+        if self.room_type not in {"NORMAL", "LAB"}:
+            raise ValueError(f"Invalid room_type '{self.room_type}'")
+
 @dataclass
 class Lecturer:
     id: str
@@ -49,3 +56,21 @@ class StudentGroup:
     name: str
     student_count: int
     home_campus_id: Optional[str] = None
+
+    def __post_init__(self):
+        if self.student_count < 1:
+            raise ValueError(
+                f"student_count must be >= 1, got {self.student_count}"
+            )
+
+
+@dataclass(frozen=True)
+class Campus:
+    id: str
+    name: str
+
+    def __post_init__(self):
+        if not self.id.strip():
+            raise ValueError("campus id must not be empty")
+        if not self.name.strip():
+            raise ValueError("campus name must not be empty")

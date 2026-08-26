@@ -12,7 +12,12 @@ import matplotlib.pyplot as plt
 sys.stdout.reconfigure(encoding="utf-8")
 
 from dataset import ExcelDatasetLoader
-from constraints import ConstraintEvaluator
+from constraints import (
+    ConstraintEvaluator,
+    DEFAULT_SOFT_WEIGHT_PROFILE,
+    SOFT_WEIGHT_PROFILES,
+    SoftConstraintConfig,
+)
 from ga import GeneticAlgorithmEngine
 from evaluation import (
     export_schedule_to_excel,
@@ -68,6 +73,13 @@ def parse_args():
         action="store_true",
         default=False,
         help="Enable post-search Soft Local Search (default: False)",
+    )
+
+    parser.add_argument(
+        "--weight-profile",
+        choices=list(SOFT_WEIGHT_PROFILES),
+        default=DEFAULT_SOFT_WEIGHT_PROFILE,
+        help="S1-S7 stakeholder weight profile (default: balanced)",
     )
 
     return parser.parse_args()
@@ -145,12 +157,14 @@ def main():
         "soft_weight": 1,
     }
 
+    soft_config = SoftConstraintConfig.from_profile(args.weight_profile)
     engine = GeneticAlgorithmEngine(
         dataset,
         pop_size=ga_config["pop_size"],
         hard_weight=ga_config["hard_weight"],
         soft_weight=ga_config["soft_weight"],
         seed=args.seed,
+        soft_config=soft_config,
     )
 
     run_result = engine.run(
@@ -196,7 +210,7 @@ def main():
     #   Excel / Query JSON / Metadata / UI đều cùng final score.
     # ==================================================================
 
-    evaluator = ConstraintEvaluator(dataset)
+    evaluator = ConstraintEvaluator(dataset, soft_config=soft_config)
     unified = evaluator.evaluate_unified(best_schedule)
 
     hard_violations = unified.hard_violations
@@ -259,25 +273,27 @@ def main():
     # 5. SOFT CONSTRAINT BREAKDOWN
     # ==================================================================
 
-    print("\n  CHI TIẾT RÀNG BUỘC MỀM (SOFT CONSTRAINTS S1–S5):")
+    print("\n  CHI TIẾT RÀNG BUỘC MỀM CHUẨN HÓA (S1–S7):")
 
     print(
         f"  {'ID':<4} | "
         f"{'Technical Key':<26} | "
-        f"{'Raw':<5} | "
+        f"{'Raw':<8} | "
+        f"{'Norm':<8} | "
         f"{'Weight':<6} | "
         f"{'Weighted Penalty'}"
     )
 
-    print("  " + "-" * 65)
+    print("  " + "-" * 80)
 
     for item in unified.soft_breakdown:
         print(
             f"  {item.constraint_id:<4} | "
             f"{item.constraint_key:<26} | "
-            f"{item.raw_count:<5} | "
+            f"{item.raw_count:<8.4f} | "
+            f"{item.normalized_penalty:<8.4f} | "
             f"{item.weight:<6} | "
-            f"{item.weighted_penalty}"
+            f"{item.weighted_penalty:.6f}"
         )
 
     print(
@@ -358,6 +374,18 @@ def main():
         "population_size":
             args.population_size,
 
+        "soft_weight_profile":
+            args.weight_profile,
+
+        "soft_weights": {
+            item.constraint_id: item.weight for item in unified.soft_breakdown
+        },
+
+        "soft_enabled": {
+            definition.constraint_id: definition.enabled
+            for definition in soft_config.definitions.values()
+        },
+
         "generations":
             ga_config["generations"],
 
@@ -428,6 +456,7 @@ def main():
         output_path=output_path,
         metadata=meta_export,
         allow_infeasible_export=False,
+        soft_config=soft_config,
     )
 
     print(
@@ -447,6 +476,7 @@ def main():
             hard_violations=hard_violations,
             soft_penalty=soft_penalty,
             metadata=meta_export,
+            soft_config=soft_config,
         )
 
         print(

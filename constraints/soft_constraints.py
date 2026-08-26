@@ -1,74 +1,140 @@
+"""Normalized soft constraints for the timetable objective.
+
+Every objective follows the same pipeline::
+
+    raw metric -> instance-derived denominator -> normalized [0, 1]
+               -> stakeholder weight -> weighted contribution
+
+The normalized convention prevents count-valued objectives (especially room
+seat waste) from dominating only because their raw unit has a larger scale.
+"""
+
 from __future__ import annotations
-import math
+
+from collections import defaultdict
 from dataclasses import dataclass
 from types import MappingProxyType
-from typing import Dict, List, Mapping, Optional, Tuple, Any
-from collections import defaultdict
+from typing import Any, Dict, List, Mapping, Optional, Set, Tuple
 
-from domain import Schedule, CourseSection, Room, Timeslot, ConstraintDefinition
+from domain import (
+    ConstraintDefinition,
+    CourseSection,
+    Room,
+    Schedule,
+    StudentGroup,
+    Timeslot,
+)
 from dataset import get_occupied_periods
 
-# ---------------------------------------------------------------------------
-# Canonical key mapping
-# ---------------------------------------------------------------------------
 
 SOFT_CONSTRAINT_KEY_BY_ID: Dict[str, str] = {
-    "S1": "weekly_distribution",
+    "S1": "compact_student_schedule",
     "S2": "late_day_periods",
     "S3": "preferred_shift_mismatch",
     "S4": "room_seat_waste",
     "S5": "consecutive_cross_campus",
+    "S6": "preferred_campus_mismatch",
+    "S7": "student_home_campus_mismatch",
 }
 
-# Reverse map: key → ID
-_KEY_TO_ID: Dict[str, str] = {v: k for k, v in SOFT_CONSTRAINT_KEY_BY_ID.items()}
+_KEY_TO_ID: Dict[str, str] = {
+    value: key for key, value in SOFT_CONSTRAINT_KEY_BY_ID.items()
+}
 
-# Ordered list of canonical keys (S1 → S5)
-SOFT_CONSTRAINT_KEYS: List[str] = [
-    "weekly_distribution",
-    "late_day_periods",
-    "preferred_shift_mismatch",
-    "room_seat_waste",
-    "consecutive_cross_campus",
+# Older integrations may still request the former S1 key. Configuration lookup
+# remains compatible, while all new breakdowns use the accurate compact name.
+_LEGACY_KEY_ALIASES: Dict[str, str] = {
+    "weekly_distribution": "compact_student_schedule",
+}
+
+SOFT_CONSTRAINT_KEYS: List[str] = list(SOFT_CONSTRAINT_KEY_BY_ID.values())
+
+DEFAULT_SOFT_WEIGHT_PROFILE = "balanced"
+
+# All profiles use the same normalized S1-S7 metrics.  Only stakeholder
+# priorities differ, and every profile has the same total weight (28) so that
+# profile comparisons are easy to audit.
+SOFT_WEIGHT_PROFILES: Mapping[str, Mapping[str, int]] = MappingProxyType({
+    "student-centric": MappingProxyType({
+        "compact_student_schedule": 6,
+        "late_day_periods": 4,
+        "preferred_shift_mismatch": 5,
+        "room_seat_waste": 2,
+        "consecutive_cross_campus": 3,
+        "preferred_campus_mismatch": 3,
+        "student_home_campus_mismatch": 5,
+    }),
+    "balanced": MappingProxyType({
+        "compact_student_schedule": 5,
+        "late_day_periods": 4,
+        "preferred_shift_mismatch": 4,
+        "room_seat_waste": 4,
+        "consecutive_cross_campus": 4,
+        "preferred_campus_mismatch": 3,
+        "student_home_campus_mismatch": 4,
+    }),
+    "resource-centric": MappingProxyType({
+        "compact_student_schedule": 3,
+        "late_day_periods": 3,
+        "preferred_shift_mismatch": 3,
+        "room_seat_waste": 10,
+        "consecutive_cross_campus": 4,
+        "preferred_campus_mismatch": 2,
+        "student_home_campus_mismatch": 3,
+    }),
+})
+
+_DEFAULT_WEIGHTS: Mapping[str, int] = SOFT_WEIGHT_PROFILES[
+    DEFAULT_SOFT_WEIGHT_PROFILE
 ]
 
-# Default weights used when no Excel constraint definitions are available (mock datasets)
-_DEFAULT_WEIGHTS: Dict[str, int] = {
-    "weekly_distribution": 10,
-    "late_day_periods": 5,
-    "preferred_shift_mismatch": 4,
-    "room_seat_waste": 2,
-    "consecutive_cross_campus": 8,
-}
-
-# Vietnamese names used in default config (matches Excel names for S1–S5)
 _DEFAULT_NAMES: Dict[str, str] = {
-    "weekly_distribution":      "Phân bố môn học của mỗi nhóm đều trong tuần",
-    "late_day_periods":         "Hạn chế quá nhiều tiết cuối ngày",
+    "compact_student_schedule": "Giảm số ngày sinh viên phải đến trường",
+    "late_day_periods": "Hạn chế quá nhiều tiết cuối ngày",
     "preferred_shift_mismatch": "Ưu tiên ca học mong muốn của lớp học phần",
-    "room_seat_waste":          "Giảm số ghế trống trong phòng",
-    "consecutive_cross_campus": "Hạn chế giảng viên di chuyển liên tiếp giữa hai cơ sở",
+    "room_seat_waste": "Giảm tỷ lệ ghế trống trong phòng",
+    "consecutive_cross_campus": "Hạn chế giảng viên chuyển cơ sở liên tiếp",
+    "preferred_campus_mismatch": "Ưu tiên cơ sở mong muốn của lớp học phần",
+    "student_home_campus_mismatch": "Ưu tiên cơ sở chính của nhóm sinh viên",
 }
 
 
-# ---------------------------------------------------------------------------
-# SoftConstraintDefinition & SoftConstraintConfig
-# ---------------------------------------------------------------------------
+def _canonical_key(key: str) -> str:
+    return _LEGACY_KEY_ALIASES.get(key, key)
+
+
+def _normalized(raw: float, denominator: float) -> float:
+    if denominator <= 0:
+        return 0.0
+    return min(1.0, max(0.0, float(raw) / float(denominator)))
+
 
 @dataclass(frozen=True)
 class SoftConstraintDefinition:
-    """Per-constraint metadata: id, key, name, weight, enabled."""
-    constraint_id: str   # "S1", "S2", ...
-    key: str             # "weekly_distribution", ...
-    name: str            # Vietnamese display name
-    weight: int          # penalty per raw violation
-    enabled: bool        # if False, constraint contributes 0 penalty
+    constraint_id: str
+    key: str
+    name: str
+    weight: int
+    enabled: bool
+
+
+@dataclass(frozen=True)
+class NormalizedSoftMetric:
+    """Auditable result for one normalized objective."""
+
+    raw: float
+    denominator: float
+    normalized: float
+    weight: int
+    weighted: float
+    enabled: bool
 
 
 class SoftConstraintConfig:
     def __init__(self, definitions: Mapping[str, SoftConstraintDefinition]) -> None:
+        canonical = {_canonical_key(key): value for key, value in definitions.items()}
         self._defs: MappingProxyType[str, SoftConstraintDefinition] = MappingProxyType(
-            dict(definitions)
+            canonical
         )
 
     @property
@@ -76,87 +142,100 @@ class SoftConstraintConfig:
         return self._defs
 
     def get_weight(self, key: str) -> int:
-        defn = self._defs.get(key)
-        return defn.weight if defn else 0
+        definition = self._defs.get(_canonical_key(key))
+        return definition.weight if definition else 0
 
     def is_enabled(self, key: str) -> bool:
-        defn = self._defs.get(key)
-        return defn.enabled if defn else False
+        definition = self._defs.get(_canonical_key(key))
+        return definition.enabled if definition else False
 
     def get_name(self, key: str) -> str:
-        defn = self._defs.get(key)
-        return defn.name if defn else key
+        canonical = _canonical_key(key)
+        definition = self._defs.get(canonical)
+        return definition.name if definition else canonical
 
     def get_constraint_id(self, key: str) -> str:
-        defn = self._defs.get(key)
-        return defn.constraint_id if defn else _KEY_TO_ID.get(key, "")
+        canonical = _canonical_key(key)
+        definition = self._defs.get(canonical)
+        return definition.constraint_id if definition else _KEY_TO_ID.get(canonical, "")
 
     @classmethod
     def from_constraint_definitions(
-        cls,
-        constraint_defs: List[ConstraintDefinition],
+        cls, constraint_defs: List[ConstraintDefinition]
     ) -> "SoftConstraintConfig":
-        """Build SoftConstraintConfig from a list of ConstraintDefinition objects.
+        """Use workbook weights, adding S6/S7 defaults for legacy workbooks.
 
-        Only rows with constraint_type == "SOFT" are used.
-        Weight and enabled are taken directly from the Excel data.
+        Missing legacy S1-S5 rows stay disabled to preserve partial custom
+        configurations. S6/S7 are new Phase-1 objectives and default to weight
+        5/enabled when an older workbook has no rows for them.
         """
-        defs: Dict[str, SoftConstraintDefinition] = {}
-        for cd in constraint_defs:
-            if cd.constraint_type != "SOFT":
+
+        definitions: Dict[str, SoftConstraintDefinition] = {}
+        for constraint in constraint_defs:
+            if constraint.constraint_type != "SOFT":
                 continue
-            key = SOFT_CONSTRAINT_KEY_BY_ID.get(cd.constraint_id)
+            key = SOFT_CONSTRAINT_KEY_BY_ID.get(constraint.constraint_id)
             if key is None:
-                # Should have been caught by the loader validator
                 continue
-            defs[key] = SoftConstraintDefinition(
-                constraint_id=cd.constraint_id,
+            definitions[key] = SoftConstraintDefinition(
+                constraint_id=constraint.constraint_id,
                 key=key,
-                name=cd.constraint_name,
-                weight=cd.weight,
-                enabled=cd.enabled,
+                # S1 changed semantics in Phase 1; do not expose the legacy
+                # "weekly distribution" label for the compactness metric.
+                name=(
+                    _DEFAULT_NAMES[key]
+                    if constraint.constraint_id == "S1"
+                    else constraint.constraint_name
+                ),
+                weight=constraint.weight,
+                enabled=constraint.enabled,
             )
-        # Fill in any missing keys with disabled=True / weight=0 as safety net
+
         for key in SOFT_CONSTRAINT_KEYS:
-            if key not in defs:
-                c_id = _KEY_TO_ID.get(key, "")
-                defs[key] = SoftConstraintDefinition(
-                    constraint_id=c_id,
-                    key=key,
-                    name=_DEFAULT_NAMES.get(key, key),
-                    weight=0,
-                    enabled=False,
-                )
-        return cls(defs)
+            if key in definitions:
+                continue
+            constraint_id = _KEY_TO_ID[key]
+            is_new_campus_objective = constraint_id in {"S6", "S7"}
+            definitions[key] = SoftConstraintDefinition(
+                constraint_id=constraint_id,
+                key=key,
+                name=_DEFAULT_NAMES[key],
+                weight=_DEFAULT_WEIGHTS[key] if is_new_campus_objective else 0,
+                enabled=is_new_campus_objective,
+            )
+        return cls(definitions)
 
     @classmethod
     def default(cls) -> "SoftConstraintConfig":
-        """Create default SoftConstraintConfig for mock datasets (no Excel).
+        return cls.from_profile(DEFAULT_SOFT_WEIGHT_PROFILE)
 
-        Uses weights: S1=10, S2=5, S3=4, S4=2, S5=8  (all enabled).
-        This is the ONLY place default weights are defined.
-        """
-        defs: Dict[str, SoftConstraintDefinition] = {}
-        for key in SOFT_CONSTRAINT_KEYS:
-            c_id = _KEY_TO_ID.get(key, "")
-            defs[key] = SoftConstraintDefinition(
-                constraint_id=c_id,
-                key=key,
-                name=_DEFAULT_NAMES.get(key, key),
-                weight=_DEFAULT_WEIGHTS[key],
-                enabled=True,
+    @classmethod
+    def from_profile(cls, profile_name: str) -> "SoftConstraintConfig":
+        """Build an enabled S1-S7 config from a named calibration profile."""
+
+        normalized_name = profile_name.strip().lower().replace("_", "-")
+        if normalized_name not in SOFT_WEIGHT_PROFILES:
+            choices = ", ".join(SOFT_WEIGHT_PROFILES)
+            raise ValueError(
+                f"Unknown soft weight profile '{profile_name}'. Expected one of: {choices}"
             )
-        return cls(defs)
+        weights = SOFT_WEIGHT_PROFILES[normalized_name]
+        return cls(
+            {
+                key: SoftConstraintDefinition(
+                    constraint_id=_KEY_TO_ID[key],
+                    key=key,
+                    name=_DEFAULT_NAMES[key],
+                    weight=weights[key],
+                    enabled=True,
+                )
+                for key in SOFT_CONSTRAINT_KEYS
+            }
+        )
 
-    # Legacy-compatibility: expose validate() as no-op so existing callers
-    # that call soft_config.validate() don't break during transition.
     def validate(self) -> None:
-        pass
+        """Compatibility hook retained for existing callers."""
 
-
-# ---------------------------------------------------------------------------
-# SoftConstraintChecker
-# ---------------------------------------------------------------------------
 
 class SoftConstraintChecker:
     def __init__(
@@ -165,304 +244,342 @@ class SoftConstraintChecker:
         room_map: Dict[str, Room],
         timeslot_map: Dict[int, Timeslot],
         config: Optional[SoftConstraintConfig] = None,
+        student_group_map: Optional[Dict[str, StudentGroup]] = None,
     ) -> None:
         self.section_map = section_map
         self.room_map = room_map
         self.timeslot_map = timeslot_map
         self.config = config if config is not None else SoftConstraintConfig.default()
+        self.student_group_map = student_group_map or {}
 
-    # ------------------------------------------------------------------
-    # Public interface
-    # ------------------------------------------------------------------
-
-    def evaluate(
-        self, schedule: Schedule
-    ) -> Tuple[int, Dict[str, int]]:
-        raw_count, details, _ = self.evaluate_detailed(schedule)
-        return raw_count, details
-
-    def calculate_weighted_penalty(self, details: Dict[str, int]) -> int:
-        penalty = 0
-        for key, count in details.items():
-            if self.config.is_enabled(key):
-                penalty += count * self.config.get_weight(key)
-        return penalty
+    def evaluate(self, schedule: Schedule) -> Tuple[float, Dict[str, float]]:
+        raw_total, raw_details, _, _, _ = self.evaluate_metrics(schedule)
+        return raw_total, raw_details
 
     def evaluate_detailed(
         self, schedule: Schedule
-    ) -> Tuple[int, Dict[str, int], List[Dict[str, Any]]]:
-        """Evaluate all 5 soft constraints and return (raw_count, details, items).
+    ) -> Tuple[float, Dict[str, float], List[Dict[str, Any]]]:
+        """Backward-compatible raw-detail view used by existing reports/tests."""
 
-        details keys (always present, even if constraint disabled):
-            weekly_distribution, late_day_periods, preferred_shift_mismatch,
-            room_seat_waste, consecutive_cross_campus
+        raw_total, raw_details, _, items, _ = self.evaluate_metrics(schedule)
+        return raw_total, raw_details, items
 
-        Each item contains at minimum:
-            violation_type, severity, constraint_id, constraint_name,
-            constraint_key, section_ids, lecturer_id, student_group_ids,
-            room_id, day, periods, raw_count, weight, weighted_penalty, description
-        """
-        details: Dict[str, int] = {k: 0 for k in SOFT_CONSTRAINT_KEYS}
+    def calculate_weighted_penalty(self, normalized_details: Mapping[str, float]) -> float:
+        """Apply stakeholder weights to normalized metrics."""
+
+        return sum(
+            float(value) * self.config.get_weight(key)
+            for key, value in normalized_details.items()
+            if self.config.is_enabled(key)
+        )
+
+    def evaluate_metrics(
+        self, schedule: Schedule
+    ) -> Tuple[
+        float,
+        Dict[str, float],
+        Dict[str, NormalizedSoftMetric],
+        List[Dict[str, Any]],
+        Dict[str, float],
+    ]:
+        """Return raw values, normalized metrics, instances, and denominators."""
+
+        raw: Dict[str, float] = {key: 0.0 for key in SOFT_CONSTRAINT_KEYS}
+        denominators: Dict[str, float] = {key: 0.0 for key in SOFT_CONSTRAINT_KEYS}
         items: List[Dict[str, Any]] = []
 
         if not isinstance(schedule, Schedule) or not isinstance(
             getattr(schedule, "genes", None), list
         ):
-            return 0, details, items
+            metrics = self._build_metrics(raw, denominators)
+            return 0.0, raw, metrics, items, denominators
 
-        # Pre-process: build per-gene info
-        # Maps used by multiple constraints
-        # group_id → day → list of occupied periods
-        group_day_periods: Dict[str, Dict[str, List[int]]] = defaultdict(
-            lambda: defaultdict(list)
-        )
-        # lecturer_id → day → list of (start_period, end_period, section_id, campus_id)
-        lecturer_day_blocks: Dict[str, Dict[str, List[Tuple[int, int, str, Optional[str]]]]] = defaultdict(
-            lambda: defaultdict(list)
-        )
-
+        group_days: Dict[str, Set[str]] = defaultdict(set)
+        lecturer_day_blocks: Dict[
+            str, Dict[str, List[Tuple[int, int, str, Optional[str]]]]
+        ] = defaultdict(lambda: defaultdict(list))
         valid_genes = []
+
         for gene in schedule.genes:
-            sec_id = getattr(gene, "section_id", None)
-            ts_id = getattr(gene, "timeslot_id", None)
-            rm_id = getattr(gene, "room_id", None)
-            if sec_id not in self.section_map or ts_id not in self.timeslot_map:
+            section_id = getattr(gene, "section_id", None)
+            timeslot_id = getattr(gene, "timeslot_id", None)
+            room_id = getattr(gene, "room_id", None)
+            if section_id not in self.section_map or timeslot_id not in self.timeslot_map:
                 continue
-            section = self.section_map[sec_id]
-            ts = self.timeslot_map[ts_id]
-            room = self.room_map.get(rm_id)
+            section = self.section_map[section_id]
+            timeslot = self.timeslot_map[timeslot_id]
+            room = self.room_map.get(room_id)
             duration = getattr(section, "duration_periods", 1)
-            occupied = get_occupied_periods(ts.period, duration)
-            valid_genes.append((gene, section, ts, room, duration, occupied, rm_id))
+            occupied = get_occupied_periods(timeslot.period, duration)
+            valid_genes.append((gene, section, timeslot, room, duration, occupied, room_id))
 
-            # Build group day periods
             if section.group_id:
-                group_day_periods[section.group_id][ts.day].extend(occupied)
-
-            # Build lecturer day blocks
+                group_days[section.group_id].add(timeslot.day)
             if section.lecturer_id:
-                campus_id = getattr(room, "campus_id", None) if room else None
-                start_p = ts.period
-                end_p = ts.period + duration - 1
-                lecturer_day_blocks[section.lecturer_id][ts.day].append(
-                    (start_p, end_p, sec_id, campus_id)
+                lecturer_day_blocks[section.lecturer_id][timeslot.day].append(
+                    (
+                        timeslot.period,
+                        timeslot.period + duration - 1,
+                        section_id,
+                        getattr(room, "campus_id", None) if room else None,
+                    )
                 )
 
-        # ----------------------------------------------------------------
-        # S1: weekly_distribution
-        # ----------------------------------------------------------------
-        if self.config.is_enabled("weekly_distribution"):
-            w = self.config.get_weight("weekly_distribution")
-            c_id = self.config.get_constraint_id("weekly_distribution")
-            c_name = self.config.get_name("weekly_distribution")
+        available_days = {timeslot.day for timeslot in self.timeslot_map.values()}
 
-            # Collect all teaching days across all timeslots
-            all_days: List[str] = sorted({
-                ts.day for ts in self.timeslot_map.values()
-            })
-            num_days = len(all_days) if all_days else 1
-
-            for grp_id, day_map in group_day_periods.items():
-                total_periods = sum(len(ps) for ps in day_map.values())
-                if total_periods == 0:
+        # S1: excess active group-days above the compact optimum (one day per
+        # scheduled group), normalized by the maximum possible excess.
+        s1_key = "compact_student_schedule"
+        if self.config.is_enabled(s1_key) and available_days and group_days:
+            scheduled_group_count = len(group_days)
+            available_day_count = len(available_days)
+            denominators[s1_key] = float(
+                scheduled_group_count * (available_day_count - 1)
+            )
+            for group_id, active_days in group_days.items():
+                active_count = len(active_days)
+                excess_count = max(0, active_count - 1)
+                raw[s1_key] += excess_count
+                if excess_count == 0:
                     continue
-                target = math.ceil(total_periods / num_days)
-                excess = sum(
-                    max(0, len(day_map.get(d, [])) - target)
-                    for d in all_days
-                )
-                if excess > 0:
-                    details["weekly_distribution"] += excess
-                    items.append({
-                        "violation_type": "SOFT",
-                        "severity": "LOW",
-                        "constraint_id": c_id,
-                        "constraint_name": c_name,
-                        "constraint_key": "weekly_distribution",
-                        "section_ids": "-",
-                        "lecturer_id": "-",
-                        "student_group_ids": grp_id,
-                        "room_id": "-",
-                        "day": "-",
-                        "periods": f"target={target}/day, total={total_periods}",
-                        "raw_count": excess,
-                        "weight": w,
-                        "weighted_penalty": excess * w,
-                        "description": (
-                            f"Nhóm '{grp_id}' phân bố không đều: "
-                            f"tổng {total_periods} tiết, target {target}/ngày, "
-                            f"excess {excess} tiết"
-                        ),
-                    })
+                items.append(self._item(
+                    s1_key,
+                    raw_count=float(excess_count),
+                    section_ids="-",
+                    student_group_ids=group_id,
+                    day=",".join(sorted(active_days)),
+                    periods=f"active_days={active_count}/{available_day_count}",
+                    description=(
+                        f"Nhóm '{group_id}' học {active_count}/{len(available_days)} "
+                        "ngày có thể xếp lịch"
+                    ),
+                ))
 
-        # ----------------------------------------------------------------
-        # S2: late_day_periods
-        # ----------------------------------------------------------------
-        if self.config.is_enabled("late_day_periods"):
-            w = self.config.get_weight("late_day_periods")
-            c_id = self.config.get_constraint_id("late_day_periods")
-            c_name = self.config.get_name("late_day_periods")
-
-            for gene, section, ts, room, duration, occupied, rm_id in valid_genes:
-                if ts.session == "evening":
-                    raw = duration  # all occupied periods are evening (same-session rule)
-                    details["late_day_periods"] += raw
-                    items.append({
-                        "violation_type": "SOFT",
-                        "severity": "LOW",
-                        "constraint_id": c_id,
-                        "constraint_name": c_name,
-                        "constraint_key": "late_day_periods",
-                        "section_ids": section.section_id,
-                        "lecturer_id": getattr(section, "lecturer_id", "-") or "-",
-                        "student_group_ids": getattr(section, "group_id", "-") or "-",
-                        "room_id": rm_id or "-",
-                        "day": ts.day,
-                        "periods": (
-                            f"Tiết {ts.period}"
-                            if duration == 1
-                            else f"Tiết {ts.period}-{ts.period + duration - 1}"
-                        ),
-                        "raw_count": raw,
-                        "weight": w,
-                        "weighted_penalty": raw * w,
-                        "description": (
-                            f"Section '{section.section_id}' xếp vào ca tối "
-                            f"({ts.day}, Tiết {ts.period}-{ts.period + duration - 1}, "
-                            f"{raw} tiết ca tối)"
-                        ),
-                    })
-
-        # ----------------------------------------------------------------
-        # S3: preferred_shift_mismatch
-        # ----------------------------------------------------------------
-        if self.config.is_enabled("preferred_shift_mismatch"):
-            w = self.config.get_weight("preferred_shift_mismatch")
-            c_id = self.config.get_constraint_id("preferred_shift_mismatch")
-            c_name = self.config.get_name("preferred_shift_mismatch")
-
-            for gene, section, ts, room, duration, occupied, rm_id in valid_genes:
-                pref = getattr(section, "preferred_shift", None)
-                if pref is None:
+        # S2: fraction of scheduled occupied periods placed in the evening.
+        s2_key = "late_day_periods"
+        if self.config.is_enabled(s2_key):
+            denominators[s2_key] = float(sum(row[4] for row in valid_genes))
+            for _, section, timeslot, _, duration, _, room_id in valid_genes:
+                if timeslot.session != "evening":
                     continue
-                assigned = ts.session
-                if assigned != pref:
-                    details["preferred_shift_mismatch"] += 1
-                    items.append({
-                        "violation_type": "SOFT",
-                        "severity": "LOW",
-                        "constraint_id": c_id,
-                        "constraint_name": c_name,
-                        "constraint_key": "preferred_shift_mismatch",
-                        "section_ids": section.section_id,
-                        "lecturer_id": getattr(section, "lecturer_id", "-") or "-",
-                        "student_group_ids": getattr(section, "group_id", "-") or "-",
-                        "room_id": rm_id or "-",
-                        "day": ts.day,
-                        "periods": (
-                            f"Tiết {ts.period}"
-                            if duration == 1
-                            else f"Tiết {ts.period}-{ts.period + duration - 1}"
-                        ),
-                        "raw_count": 1,
-                        "weight": w,
-                        "weighted_penalty": w,
-                        "description": (
-                            f"Section '{section.section_id}' muốn ca '{pref}' "
-                            f"nhưng được xếp ca '{assigned}' ({ts.day})"
-                        ),
-                    })
+                raw[s2_key] += duration
+                items.append(self._item(
+                    s2_key,
+                    raw_count=float(duration),
+                    section=section,
+                    room_id=room_id,
+                    day=timeslot.day,
+                    periods=self._period_label(timeslot.period, duration),
+                    description=(
+                        f"Section '{section.section_id}' có {duration} tiết ca tối "
+                        f"({timeslot.day})"
+                    ),
+                ))
 
-        # ----------------------------------------------------------------
-        # S4: room_seat_waste
-        # ----------------------------------------------------------------
-        if self.config.is_enabled("room_seat_waste"):
-            w = self.config.get_weight("room_seat_waste")
-            c_id = self.config.get_constraint_id("room_seat_waste")
-            c_name = self.config.get_name("room_seat_waste")
-
-            for gene, section, ts, room, duration, occupied, rm_id in valid_genes:
-                if room is None:
+        # S3: mismatch rate among assignments declaring a preferred shift.
+        s3_key = "preferred_shift_mismatch"
+        if self.config.is_enabled(s3_key):
+            eligible = [row for row in valid_genes if row[1].preferred_shift is not None]
+            denominators[s3_key] = float(len(eligible))
+            for _, section, timeslot, _, duration, _, room_id in eligible:
+                if timeslot.session == section.preferred_shift:
                     continue
-                unused = max(0, room.capacity - section.student_count)
-                if unused > 0:
-                    details["room_seat_waste"] += unused
-                    items.append({
-                        "violation_type": "SOFT",
-                        "severity": "LOW",
-                        "constraint_id": c_id,
-                        "constraint_name": c_name,
-                        "constraint_key": "room_seat_waste",
-                        "section_ids": section.section_id,
-                        "lecturer_id": getattr(section, "lecturer_id", "-") or "-",
-                        "student_group_ids": getattr(section, "group_id", "-") or "-",
-                        "room_id": rm_id or "-",
-                        "day": ts.day,
-                        "periods": (
-                            f"Tiết {ts.period}"
-                            if duration == 1
-                            else f"Tiết {ts.period}-{ts.period + duration - 1}"
-                        ),
-                        "raw_count": unused,
-                        "weight": w,
-                        "weighted_penalty": unused * w,
-                        "description": (
-                            f"Phòng '{rm_id}' ({room.capacity} chỗ) cho "
-                            f"{section.student_count} SV: {unused} ghế trống"
-                        ),
-                    })
+                raw[s3_key] += 1.0
+                items.append(self._item(
+                    s3_key,
+                    raw_count=1.0,
+                    section=section,
+                    room_id=room_id,
+                    day=timeslot.day,
+                    periods=self._period_label(timeslot.period, duration),
+                    description=(
+                        f"Section '{section.section_id}' muốn ca "
+                        f"'{section.preferred_shift}' nhưng được xếp '{timeslot.session}'"
+                    ),
+                ))
 
-        # ----------------------------------------------------------------
-        # S5: consecutive_cross_campus
-        # ----------------------------------------------------------------
-        if self.config.is_enabled("consecutive_cross_campus"):
-            w = self.config.get_weight("consecutive_cross_campus")
-            c_id = self.config.get_constraint_id("consecutive_cross_campus")
-            c_name = self.config.get_name("consecutive_cross_campus")
+        # S4: mean room-waste ratio. Capacity failures are hard-only.
+        s4_key = "room_seat_waste"
+        if self.config.is_enabled(s4_key):
+            eligible_count = 0
+            for _, section, timeslot, room, duration, _, room_id in valid_genes:
+                if room is None or room.capacity < section.student_count or room.capacity <= 0:
+                    continue
+                eligible_count += 1
+                waste_ratio = (room.capacity - section.student_count) / room.capacity
+                raw[s4_key] += waste_ratio
+                if waste_ratio <= 0:
+                    continue
+                items.append(self._item(
+                    s4_key,
+                    raw_count=float(waste_ratio),
+                    section=section,
+                    room_id=room_id,
+                    day=timeslot.day,
+                    periods=self._period_label(timeslot.period, duration),
+                    description=(
+                        f"Phòng '{room_id}' ({room.capacity} chỗ) cho "
+                        f"{section.student_count} SV: waste_ratio={waste_ratio:.4f}"
+                    ),
+                ))
+            denominators[s4_key] = float(eligible_count)
 
-            for lec_id, day_map in lecturer_day_blocks.items():
+        # S5: mismatched immediately-consecutive campus transitions divided by
+        # all adjacent lecturer transitions with known campuses.
+        s5_key = "consecutive_cross_campus"
+        if self.config.is_enabled(s5_key):
+            for lecturer_id, day_map in lecturer_day_blocks.items():
                 for day, blocks in day_map.items():
-                    # Sort by (start_period, end_period, section_id) for determinism
-                    sorted_blocks = sorted(blocks, key=lambda b: (b[0], b[1], b[2]))
-                    for i in range(1, len(sorted_blocks)):
-                        prev = sorted_blocks[i - 1]
-                        curr = sorted_blocks[i]
-                        prev_end = prev[1]
-                        curr_start = curr[0]
-                        prev_campus = prev[3]
-                        curr_campus = curr[3]
-
-                        # Both must have campus_id; skip if either is None
-                        if prev_campus is None or curr_campus is None:
+                    ordered = sorted(blocks, key=lambda row: (row[0], row[1], row[2]))
+                    for previous, current in zip(ordered, ordered[1:]):
+                        if previous[3] is None or current[3] is None:
                             continue
+                        denominators[s5_key] += 1.0
+                        if current[0] != previous[1] + 1 or current[3] == previous[3]:
+                            continue
+                        raw[s5_key] += 1.0
+                        items.append(self._item(
+                            s5_key,
+                            raw_count=1.0,
+                            section_ids=f"{previous[2]},{current[2]}",
+                            lecturer_id=lecturer_id,
+                            day=day,
+                            periods=(
+                                f"Tiết {previous[0]}-{previous[1]} ({previous[3]}) → "
+                                f"Tiết {current[0]}-{current[1]} ({current[3]})"
+                            ),
+                            severity="MEDIUM",
+                            description=(
+                                f"GV '{lecturer_id}' chuyển cơ sở liên tiếp từ "
+                                f"{previous[3]} sang {current[3]} ({day})"
+                            ),
+                        ))
 
-                        # Consecutive = curr starts immediately after prev ends
-                        if curr_start == prev_end + 1 and curr_campus != prev_campus:
-                            details["consecutive_cross_campus"] += 1
-                            items.append({
-                                "violation_type": "SOFT",
-                                "severity": "MEDIUM",
-                                "constraint_id": c_id,
-                                "constraint_name": c_name,
-                                "constraint_key": "consecutive_cross_campus",
-                                "section_ids": f"{prev[2]},{curr[2]}",
-                                "lecturer_id": lec_id,
-                                "student_group_ids": "-",
-                                "room_id": "-",
-                                "day": day,
-                                "periods": (
-                                    f"Tiết {prev[0]}-{prev[1]} ({prev_campus}) "
-                                    f"→ Tiết {curr[0]}-{curr[1]} ({curr_campus})"
-                                ),
-                                "raw_count": 1,
-                                "weight": w,
-                                "weighted_penalty": w,
-                                "description": (
-                                    f"GV '{lec_id}' phải chuyển từ {prev_campus} "
-                                    f"(Tiết {prev[0]}-{prev[1]}) sang {curr_campus} "
-                                    f"(Tiết {curr[0]}-{curr[1]}) liên tiếp ({day})"
-                                ),
-                            })
+        # S6: section preferred-campus mismatch rate.
+        s6_key = "preferred_campus_mismatch"
+        if self.config.is_enabled(s6_key):
+            eligible = [row for row in valid_genes if row[1].preferred_campus_id is not None]
+            denominators[s6_key] = float(len(eligible))
+            for _, section, timeslot, room, duration, _, room_id in eligible:
+                assigned_campus = getattr(room, "campus_id", None) if room else None
+                if assigned_campus == section.preferred_campus_id:
+                    continue
+                raw[s6_key] += 1.0
+                items.append(self._item(
+                    s6_key,
+                    raw_count=1.0,
+                    section=section,
+                    room_id=room_id,
+                    day=timeslot.day,
+                    periods=self._period_label(timeslot.period, duration),
+                    description=(
+                        f"Section '{section.section_id}' muốn cơ sở "
+                        f"'{section.preferred_campus_id}' nhưng được xếp '{assigned_campus}'"
+                    ),
+                ))
 
-        total_raw = sum(details.values())
-        return total_raw, details, items
+        # S7: one contribution per assignment because the current domain has
+        # exactly one student group per CourseSection.
+        s7_key = "student_home_campus_mismatch"
+        if self.config.is_enabled(s7_key):
+            eligible_rows = []
+            for row in valid_genes:
+                group = self.student_group_map.get(row[1].group_id)
+                if group is not None and group.home_campus_id is not None:
+                    eligible_rows.append((row, group))
+            denominators[s7_key] = float(len(eligible_rows))
+            for row, group in eligible_rows:
+                _, section, timeslot, room, duration, _, room_id = row
+                assigned_campus = getattr(room, "campus_id", None) if room else None
+                if assigned_campus == group.home_campus_id:
+                    continue
+                raw[s7_key] += 1.0
+                items.append(self._item(
+                    s7_key,
+                    raw_count=1.0,
+                    section=section,
+                    room_id=room_id,
+                    day=timeslot.day,
+                    periods=self._period_label(timeslot.period, duration),
+                    description=(
+                        f"Nhóm '{group.id}' có cơ sở chính '{group.home_campus_id}' "
+                        f"nhưng section '{section.section_id}' được xếp '{assigned_campus}'"
+                    ),
+                ))
+
+        metrics = self._build_metrics(raw, denominators)
+        for item in items:
+            metric = metrics[item["constraint_key"]]
+            item["denominator"] = metric.denominator
+            item["normalized_contribution"] = (
+                item["raw_count"] / metric.denominator
+                if metric.denominator > 0 else 0.0
+            )
+            item["normalized_penalty"] = metric.normalized
+            item["weighted_penalty"] = (
+                item["normalized_contribution"] * metric.weight
+                if metric.enabled else 0.0
+            )
+
+        return sum(raw.values()), raw, metrics, items, denominators
+
+    def _build_metrics(
+        self, raw: Mapping[str, float], denominators: Mapping[str, float]
+    ) -> Dict[str, NormalizedSoftMetric]:
+        metrics: Dict[str, NormalizedSoftMetric] = {}
+        for key in SOFT_CONSTRAINT_KEYS:
+            normalized = _normalized(raw.get(key, 0.0), denominators.get(key, 0.0))
+            enabled = self.config.is_enabled(key)
+            weight = self.config.get_weight(key)
+            metrics[key] = NormalizedSoftMetric(
+                raw=float(raw.get(key, 0.0)),
+                denominator=float(denominators.get(key, 0.0)),
+                normalized=normalized,
+                weight=weight,
+                weighted=(normalized * weight) if enabled else 0.0,
+                enabled=enabled,
+            )
+        return metrics
+
+    def _item(
+        self,
+        key: str,
+        *,
+        raw_count: float,
+        section: Optional[CourseSection] = None,
+        section_ids: Optional[str] = None,
+        lecturer_id: Optional[str] = None,
+        student_group_ids: Optional[str] = None,
+        room_id: Optional[str] = None,
+        day: str = "-",
+        periods: str = "-",
+        severity: str = "LOW",
+        description: str,
+    ) -> Dict[str, Any]:
+        return {
+            "violation_type": "SOFT",
+            "severity": severity,
+            "constraint_id": self.config.get_constraint_id(key),
+            "constraint_name": self.config.get_name(key),
+            "constraint_key": key,
+            "section_ids": section_ids or (section.section_id if section else "-"),
+            "lecturer_id": lecturer_id or (
+                getattr(section, "lecturer_id", None) if section else None
+            ) or "-",
+            "student_group_ids": student_group_ids or (
+                getattr(section, "group_id", None) if section else None
+            ) or "-",
+            "room_id": room_id or "-",
+            "day": day,
+            "periods": periods,
+            "raw_count": raw_count,
+            "weight": self.config.get_weight(key),
+            "weighted_penalty": 0.0,
+            "description": description,
+        }
+
+    @staticmethod
+    def _period_label(start_period: int, duration: int) -> str:
+        if duration == 1:
+            return f"Tiết {start_period}"
+        return f"Tiết {start_period}-{start_period + duration - 1}"

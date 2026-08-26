@@ -179,7 +179,7 @@ def test_soft_constraint_config_immutability():
 
     # Attempting to mutate inner dataclass attributes raises FrozenInstanceError
     with pytest.raises(FrozenInstanceError):
-        config.definitions["weekly_distribution"].weight = 99  # type: ignore
+        config.definitions["compact_student_schedule"].weight = 99  # type: ignore
 
 
 # ============================================================

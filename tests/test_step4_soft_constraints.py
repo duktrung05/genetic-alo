@@ -1,4 +1,4 @@
-"""Tests for Step 4 — Excel-driven Soft Constraints S1–S5."""
+"""Tests for normalized Excel-driven Soft Constraints S1–S7."""
 
 import io
 import copy
@@ -45,6 +45,11 @@ def _build_test_xlsx_with_constraints(
     wb = openpyxl.Workbook()
     wb.remove(wb.active)
 
+    ws_campus = wb.create_sheet("CAMPUSES")
+    ws_campus.append(["campus_id", "campus_name"])
+    for campus_id in sorted({"CS1", room_campus, sec_preferred_campus}):
+        ws_campus.append([campus_id, campus_id])
+
     # TIMESLOTS
     ws_ts = wb.create_sheet("TIMESLOTS")
     ws_ts.append(["timeslot_id", "day_name", "period_no", "shift", "start_time", "end_time"])
@@ -62,6 +67,10 @@ def _build_test_xlsx_with_constraints(
     ws_lec.append(["lecturer_id", "lecturer_name"])
     ws_lec.append(["GV01", "Giảng viên 1"])
 
+    ws_avail = wb.create_sheet("LECTURER_AVAILABILITY")
+    ws_avail.append(["lecturer_id", "lecturer_name", "TS-M1", "TS-M2", "TS-E1"])
+    ws_avail.append(["GV01", "Giảng viên 1", True, True, True])
+
     # STUDENT_GROUPS
     ws_grp = wb.create_sheet("STUDENT_GROUPS")
     ws_grp.append(["group_id", "group_name", "size", "home_campus_id"])
@@ -69,19 +78,19 @@ def _build_test_xlsx_with_constraints(
 
     # COURSES
     ws_crs = wb.create_sheet("COURSES")
-    ws_crs.append(["course_id", "course_name", "difficulty"])
-    ws_crs.append(["C01", "Course 1", "MEDIUM"])
+    ws_crs.append(["course_id", "course_code", "course_name", "difficulty"])
+    ws_crs.append(["C01", "IT001", "Course 1", "MEDIUM"])
 
     # COURSE_SECTIONS
     ws_sec = wb.create_sheet("COURSE_SECTIONS")
     ws_sec.append([
-        "section_id", "course_id", "course_name", "lecturer_id",
+        "section_id", "class_code", "course_id", "course_code", "course_name", "lecturer_id",
         "student_group_id", "student_count", "required_room_type",
         "duration_periods", "preferred_campus_id", "preferred_shift",
         "meetings_per_week",
     ])
     ws_sec.append([
-        "SEC-001", "C01", "Course 1", "GV01",
+        "SEC-001", "CLASS-001", "C01", "IT001", "Course 1", "GV01",
         "G1", 30, "NORMAL", 1,
         sec_preferred_campus, sec_preferred_shift, 1,
     ])
@@ -212,12 +221,12 @@ def test_loader_rejects_unsupported_soft_id(tmp_path):
 
 
 # ============================================================
-# 14.2. S1 — weekly_distribution tests
+# 14.2. S1 — compact_student_schedule tests
 # ============================================================
 
 @pytest.mark.unit
-def test_s1_balanced_distribution():
-    """Tải: [2, 2, 2, 2, 2] trên 5 ngày → target=2, excess=0."""
+def test_s1_more_active_days_has_maximum_compactness_penalty():
+    """One group active on all five available days has normalized S1=1."""
     timeslots = create_theory_timeslots(days=["Thứ 2", "Thứ 3", "Thứ 4", "Thứ 5", "Thứ 6"], max_period=5)
     rooms = [Room(id="R1", name="R1", capacity=50)]
     group = StudentGroup(id="G1", name="G1", student_count=30)
@@ -243,12 +252,13 @@ def test_s1_balanced_distribution():
         {r.id: r for r in rooms},
         {t.id: t for t in timeslots},
     )
-    raw, details, items = checker.evaluate_detailed(sched)
-    assert details["weekly_distribution"] == 0
+    _, details, metrics, _, _ = checker.evaluate_metrics(sched)
+    assert details["compact_student_schedule"] == 4
+    assert metrics["compact_student_schedule"].normalized == pytest.approx(1.0)
 
 @pytest.mark.unit
-def test_s1_unbalanced_distribution():
-    """Tải: [6, 4, 0, 0, 0] trên 5 ngày → tổng 10, target=2, excess=(6-2)+(4-2)=6."""
+def test_s1_compact_two_day_schedule_has_lower_penalty():
+    """One group active on two of five days has normalized S1=1/4."""
     days = ["Thứ 2", "Thứ 3", "Thứ 4", "Thứ 5", "Thứ 6"]
     timeslots = create_theory_timeslots(days=days, max_period=10)
     rooms = [Room(id="R1", name="R1", capacity=50)]
@@ -273,8 +283,9 @@ def test_s1_unbalanced_distribution():
         {r.id: r for r in rooms},
         {t.id: t for t in timeslots},
     )
-    raw, details, _ = checker.evaluate_detailed(sched)
-    assert details["weekly_distribution"] == 6
+    _, details, metrics, _, _ = checker.evaluate_metrics(sched)
+    assert details["compact_student_schedule"] == 1
+    assert metrics["compact_student_schedule"].normalized == pytest.approx(0.25)
 
 
 # ============================================================
@@ -350,10 +361,10 @@ def test_s3_none_preferred_shift():
 
 @pytest.mark.unit
 @pytest.mark.parametrize("capacity, student_count, expected_waste", [
-    (40, 40, 0),
-    (50, 40, 10),
-    (100, 40, 60),
-    (30, 40, 0),  # insufficient capacity is hard violation, S4 waste is 0
+    (100, 100, 0.0),
+    (100, 50, 0.5),
+    (200, 50, 0.75),
+    (30, 40, 0.0),  # insufficient capacity is hard-only; S4 ignores it
 ])
 def test_s4_room_seat_waste(capacity, student_count, expected_waste):
     timeslots = create_theory_timeslots(days=["Thứ 2"], max_period=5)
@@ -362,7 +373,7 @@ def test_s4_room_seat_waste(capacity, student_count, expected_waste):
     sched = Schedule(genes=[Gene("SEC1", "R1", timeslots[0].id)])
     checker = SoftConstraintChecker({"SEC1": sec}, {"R1": room}, {t.id: t for t in timeslots})
     _, details = checker.evaluate(sched)
-    assert details["room_seat_waste"] == expected_waste
+    assert details["room_seat_waste"] == pytest.approx(expected_waste)
 
 
 # ============================================================
@@ -449,25 +460,26 @@ def test_s5_gap_between_cross_campus_no_penalty():
 
 
 # ============================================================
-# 14.7. Weight test (raw counts × weights)
+# 14.7. Weight test (normalized metrics × stakeholder weights)
 # ============================================================
 
 @pytest.mark.unit
 def test_weight_calculation_formula():
-    """Raw: S1=2, S2=3, S3=4, S4=5, S5=6; Weights: 10, 5, 4, 2, 8 → Total=109."""
+    """All supplied metrics are normalized and weighted without raw-unit bias."""
     config = SoftConstraintConfig.default()
     details = {
-        "weekly_distribution": 2,
-        "late_day_periods": 3,
-        "preferred_shift_mismatch": 4,
-        "room_seat_waste": 5,
-        "consecutive_cross_campus": 6,
+        "compact_student_schedule": 0.2,
+        "late_day_periods": 0.3,
+        "preferred_shift_mismatch": 0.4,
+        "room_seat_waste": 0.5,
+        "consecutive_cross_campus": 0.6,
+        "preferred_campus_mismatch": 0.7,
+        "student_home_campus_mismatch": 0.8,
     }
     checker = SoftConstraintChecker({}, {}, {}, config=config)
     tot = checker.calculate_weighted_penalty(details)
-    expected = 2 * 10 + 3 * 5 + 4 * 4 + 5 * 2 + 6 * 8
-    assert expected == 109
-    assert tot == expected
+    expected = 0.2 * 5 + 0.3 * 4 + 0.4 * 4 + 0.5 * 4 + 0.6 * 4 + 0.7 * 3 + 0.8 * 4
+    assert tot == pytest.approx(expected)
 
 
 # ============================================================
@@ -497,8 +509,9 @@ def test_disabled_constraint_contributes_zero():
     # S4 is in details but item weighted_penalty is 0
     s4_items = [i for i in items if i.get("constraint_key") == "room_seat_waste"]
     assert len(s4_items) == 0  # disabled constraint creates no violation items
-    tot = checker.calculate_weighted_penalty(details)
-    assert tot == 0
+    _, _, metrics, _, _ = checker.evaluate_metrics(sched)
+    assert metrics["room_seat_waste"].raw == 0
+    assert metrics["room_seat_waste"].weighted == 0
 
 
 # ============================================================
@@ -517,7 +530,7 @@ def test_unified_evaluator_consistency(small_dataset):
     res = evaluator.evaluate_unified(sched)
     calculated_soft = sum(item.weighted_penalty for item in res.soft_breakdown)
     assert res.soft_penalty == calculated_soft
-    assert len(res.soft_breakdown) == 5
+    assert len(res.soft_breakdown) == 7
 
     # Check key names in breakdown
     keys_in_breakdown = [item.constraint_key for item in res.soft_breakdown]
@@ -562,11 +575,13 @@ def test_exporter_uses_s1_s5_not_legacy(tmp_path):
     # Check RUN_CONFIG
     ws_cfg = wb["RUN_CONFIG"]
     cfg_params = {row[0]: row[1] for row in ws_cfg.iter_rows(min_row=2, values_only=True)}
-    assert "S1_weekly_distribution_weight" in cfg_params
+    assert "S1_compact_student_schedule_weight" in cfg_params
     assert "S2_late_day_periods_weight" in cfg_params
     assert "S3_preferred_shift_mismatch_weight" in cfg_params
     assert "S4_room_seat_waste_weight" in cfg_params
     assert "S5_consecutive_cross_campus_weight" in cfg_params
+    assert "S6_preferred_campus_mismatch_weight" in cfg_params
+    assert "S7_student_home_campus_mismatch_weight" in cfg_params
 
     # Legacy weights MUST NOT exist
     assert "student_gaps_weight" not in cfg_params
@@ -581,7 +596,7 @@ def test_exporter_uses_s1_s5_not_legacy(tmp_path):
 
 @pytest.mark.unit
 def test_ga_engine_runs_with_excel_constraints(tmp_path):
-    """GeneticAlgorithmEngine runs clean with S1-S5 soft constraints."""
+    """GeneticAlgorithmEngine runs clean with a legacy S1-S5 workbook config."""
     from ga import GeneticAlgorithmEngine
 
     c_defs = [

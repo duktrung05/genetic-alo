@@ -5,7 +5,7 @@ from collections import defaultdict
 import numpy as np
 
 from domain import Schedule, Gene, CourseSection, Room, Timeslot, Lecturer
-from constraints import ConstraintEvaluator, ScheduleRepairEngine
+from constraints import ConstraintEvaluator, ScheduleRepairEngine, SoftConstraintConfig
 from dataset import get_occupied_periods, is_valid_period_block, DatasetValidator
 from evaluation.run_metrics import RunMetrics
 from .operators import GAOperators
@@ -20,6 +20,7 @@ class GeneticAlgorithmEngine:
         soft_weight: int = 1,
         elite_count: int = 2,
         seed: Optional[int] = None,
+        soft_config: Optional[SoftConstraintConfig] = None,
     ):
         DatasetValidator.validate(dataset)
         if not isinstance(pop_size, int) or pop_size < 2:
@@ -34,7 +35,7 @@ class GeneticAlgorithmEngine:
         self.elite_count = elite_count
         self.seed = seed
 
-        self.evaluator = ConstraintEvaluator(dataset)
+        self.evaluator = ConstraintEvaluator(dataset, soft_config=soft_config)
         self.repairer = ScheduleRepairEngine(dataset=dataset, evaluator=self.evaluator)
 
         self.sections: List[CourseSection] = dataset["course_sections"]
@@ -393,6 +394,5 @@ class GeneticAlgorithmEngine:
             "run_metrics": metrics,
         })
         return res_dict
-
 
 

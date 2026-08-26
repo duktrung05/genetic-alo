@@ -14,14 +14,17 @@ Hệ thống tối ưu hóa và xếp lịch thời khóa biểu trường đạ
   - Khung giờ giảng viên rảnh (`lecturer_unavailable`): Giảng viên phải khả dụng trên toàn bộ các tiết của khối lớp.
   - Loại phòng phù hợp (`room_type_mismatch`: NORMAL / LAB): Lớp thực hành (LAB) phải được xếp vào phòng LAB.
 
-- **Đánh giá Ràng buộc Mềm có Trọng số (Excel-driven Soft Constraints S1–S5):**
-  - **S1 `weekly_distribution` (Weight: 10):** Phân bố môn học của mỗi nhóm sinh viên đều trong tuần.
-  - **S2 `late_day_periods` (Weight: 5):** Hạn chế quá nhiều tiết học vào ca tối (ca `evening`).
-  - **S3 `preferred_shift_mismatch` (Weight: 4):** Ưu tiên xếp lớp học phần đúng ca học mong muốn (`preferred_shift`).
-  - **S4 `room_seat_waste` (Weight: 2):** Giảm số ghế trống lãng phí trong phòng học.
-  - **S5 `consecutive_cross_campus` (Weight: 8):** Hạn chế giảng viên di chuyển liên tiếp giữa 2 cơ sở trong ngày.
-  
-  > *Lưu ý:* Trọng số và trạng thái `enabled` của S1–S5 được tự động đọc trực tiếp từ sheet `CONSTRAINTS` của file Excel đầu vào (`data/01_data_timetable.xlsx`).
+- **Đánh giá Ràng buộc Mềm Chuẩn hóa (Soft Constraints S1–S7):**
+  - Mỗi objective được chuẩn hóa về `[0, 1]` trước khi nhân stakeholder weight.
+  - **S1 `compact_student_schedule` (Balanced weight: 5):** `(total_active_group_days - scheduled_group_count) / (scheduled_group_count × (available_days - 1))`; 0 là compact nhất, 1 là mọi group học trên mọi teaching day.
+  - **S2 `late_day_periods` (Weight: 5):** Tỷ lệ tiết học được xếp vào ca tối.
+  - **S3 `preferred_shift_mismatch` (Weight: 4):** Tỷ lệ lớp sai ca học mong muốn.
+  - **S4 `room_seat_waste` (Balanced weight: 4):** Trung bình tỷ lệ ghế trống theo sức chứa từng phòng.
+  - **S5 `consecutive_cross_campus` (Weight: 8):** Tỷ lệ lượt giảng viên chuyển cơ sở giữa hai block liên tiếp.
+  - **S6 `preferred_campus_mismatch` (Balanced weight: 3):** Tỷ lệ section sai cơ sở mong muốn.
+  - **S7 `student_home_campus_mismatch` (Balanced weight: 4):** Tỷ lệ assignment sai cơ sở chính của nhóm sinh viên.
+
+  > **Weight profiles (S1→S7):** Student-centric `(6,4,5,2,3,3,5)`; **Balanced mặc định** `(5,4,4,4,4,3,4)`; Resource-centric `(3,3,3,10,4,2,3)`. Workbook cũ vẫn load được; production CLI dùng `--weight-profile` để chọn profile rõ ràng. S6 và S7 giữ riêng vì khác business meaning, nhưng current workbook có agreement 62/62 (100%), nên combined weight phải được review để tránh double counting.
 
 - **Dataset Validator (`DatasetValidator`):** Kiểm tra tính hợp lệ và khả thi của dữ liệu trước khi khởi tạo quần thể GA.
 
@@ -213,7 +216,7 @@ GA/
 ├── schedule_assistant/            # Package Trợ lý tra cứu (intent_parser, query_service, response_formatter, models)
 ├── domain/                        # Data models (@dataclass: Schedule, Gene, CourseSection, Room, Timeslot...)
 ├── dataset/                       # Excel loader, dataset validator, timeslot factory & mock factory
-├── constraints/                   # HardConstraintChecker, SoftConstraintChecker (S1-S5) & ScheduleRepairEngine
+├── constraints/                   # HardConstraintChecker, normalized SoftConstraintChecker (S1-S7) & Repair Engine
 ├── ga/                            # GeneticAlgorithmEngine & GAOperators (selection, crossover, mutation)
 ├── evaluation/                    # Baselines (Greedy, Random), metrics, query_data_exporter, visualizer
 ├── scripts/                       # Script demo chạy GA

@@ -138,10 +138,10 @@ def test_violations_sheet_feasible(sample_dataset, feasible_schedule, tmp_path):
     expected_headers = [
         "violation_type", "severity", "constraint_name", "section_ids", "lecturer_id",
         "student_group_ids", "room_id", "day", "periods", "raw_count", "weight",
-        "weighted_penalty", "description"
+        "weighted_penalty", "denominator", "normalized_penalty", "description"
     ]
     assert headers == expected_headers
-    desc_cell = ws.cell(row=2, column=13).value
+    desc_cell = ws.cell(row=2, column=15).value
     assert "No hard violations detected" in str(desc_cell)
 
 # 11. Infeasible schedule có hậu tố hoặc bị reject
@@ -255,8 +255,11 @@ def test_soft_feasible_metrics_in_aggregate():
 # 22. Soft constraint default config
 def test_soft_constraint_default_config():
     config = SoftConstraintConfig.default()
-    assert config.get_weight("weekly_distribution") == 10
-    assert config.get_weight("late_day_periods") == 5
+    assert config.get_weight("compact_student_schedule") == 5
+    assert config.get_weight("weekly_distribution") == 5  # legacy lookup alias
+    assert config.get_weight("late_day_periods") == 4
+    assert config.get_weight("preferred_campus_mismatch") == 3
+    assert config.get_weight("student_home_campus_mismatch") == 4
 
 
 # 23. Output Excel mở lại được bằng openpyxl

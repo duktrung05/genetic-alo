@@ -1,6 +1,6 @@
 """Unit tests for Soft-Guided Mutation module.
 
-Verifies reproducibility, fallback mechanics, target selection rules for S1-S5,
+Verifies reproducibility, fallback mechanics, and target selection rules,
 stochastic shortlist selection, and parent schedule isolation.
 """
 
@@ -233,3 +233,38 @@ def test_mutation_does_not_modify_parent_schedule(sample_dataset):
 
     assert parent_sched.genes[0].room_id == orig_room
     assert parent_sched.genes[0].timeslot_id == orig_ts
+
+
+def test_s1_guided_mutation_uses_active_days_without_breaking_hard_feasibility():
+    timeslots = [
+        Timeslot(0, "D1", 1, "07:00", "07:50", "morning"),
+        Timeslot(1, "D1", 2, "07:50", "08:40", "morning"),
+        Timeslot(2, "D2", 1, "07:00", "07:50", "morning"),
+        Timeslot(3, "D2", 2, "07:50", "08:40", "morning"),
+        Timeslot(4, "D3", 1, "07:00", "07:50", "morning"),
+        Timeslot(5, "D3", 2, "07:50", "08:40", "morning"),
+    ]
+    sections = [
+        CourseSection("A", "C1", "A", "L1", "G1", 20),
+        CourseSection("B", "C2", "B", "L2", "G1", 20),
+    ]
+    dataset = {
+        "timeslots": timeslots,
+        "rooms": [Room("R1", "Room", 20)],
+        "course_sections": sections,
+        "student_groups": [StudentGroup("G1", "Group", 20)],
+        "courses": [],
+        "constraints": [],
+    }
+    evaluator = ConstraintEvaluator(dataset)
+    parent = Schedule([Gene("A", "R1", 0), Gene("B", "R1", 2)])
+    assert evaluator.evaluate_hard(parent)[0] == 0
+
+    mutated, stats = SoftGuidedMutation(dataset, evaluator=evaluator).mutate(
+        parent, mutation_rate=1.0, guided_probability=1.0, rng=random.Random(7)
+    )
+    active_days = {"D1", "D2"}
+    ts_map = {timeslot.id: timeslot for timeslot in timeslots}
+    assert stats["guided_targets_S1"] > 0
+    assert all(ts_map[gene.timeslot_id].day in active_days for gene in mutated.genes)
+    assert evaluator.evaluate_hard(mutated)[0] == 0

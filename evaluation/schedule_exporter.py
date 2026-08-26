@@ -8,11 +8,13 @@ from openpyxl.styles import Font, Alignment, PatternFill
 from openpyxl.utils import get_column_letter
 
 from domain import Schedule
-from constraints import ConstraintEvaluator
+from constraints import ConstraintEvaluator, SoftConstraintConfig
 
 CSV_HEADERS = [
     "section_id",
+    "class_code",
     "course_id",
+    "course_code",
     "lecturer_id",
     "student_group_id",
     "room_id",
@@ -31,6 +33,7 @@ def export_schedule_to_csv(
     dataset: dict,
     output_path: Union[str, Path],
     metadata: Optional[dict] = None,
+    soft_config: Optional[SoftConstraintConfig] = None,
 ) -> str:
     """Kiểm tra tính hợp lệ và xuất lịch học tốt nhất ra file CSV được sắp xếp theo Ngày, Tiết bắt đầu, Mã phòng."""
 
@@ -41,6 +44,7 @@ def export_schedule_to_csv(
         raise ValueError("Invalid dataset supplied to exporter.")
 
     section_map = {s.section_id: s for s in dataset["course_sections"]}
+    course_map = {c.course_id: c for c in dataset.get("courses", [])}
     room_map = {r.id: r for r in dataset["rooms"]}
     timeslot_map = {t.id: t for t in dataset["timeslots"]}
 
@@ -69,7 +73,7 @@ def export_schedule_to_csv(
         raise ValueError("Schedule is missing some course sections from dataset.")
 
     # Re-evaluate with ConstraintEvaluator
-    evaluator = ConstraintEvaluator(dataset)
+    evaluator = ConstraintEvaluator(dataset, soft_config=soft_config)
     _, hard_violations, _ = evaluator.calculate_fitness(schedule)
     if hard_violations > 0:
         raise ValueError(f"Cannot export schedule with hard violations (hard_violations={hard_violations}).")
@@ -104,7 +108,9 @@ def export_schedule_to_csv(
 
         row = {
             "section_id": sec.section_id,
+            "class_code": getattr(sec, "class_code", None) or "",
             "course_id": getattr(sec, "course_id", ""),
+            "course_code": getattr(course_map.get(sec.course_id), "course_code", None) or "",
             "lecturer_id": getattr(sec, "lecturer_id", ""),
             "student_group_id": getattr(sec, "group_id", ""),
             "room_id": room.id,
@@ -143,6 +149,7 @@ def export_schedule_to_excel(
     output_path: Union[str, Path],
     metadata: Optional[dict] = None,
     allow_infeasible_export: bool = False,
+    soft_config: Optional[SoftConstraintConfig] = None,
 ) -> str:
     """Xuất thời khóa biểu ra file Excel 7 sheet chuẩn hóa.
 
@@ -164,7 +171,7 @@ def export_schedule_to_excel(
         raise ValueError("Invalid dataset supplied to Excel exporter.")
 
     # Re-evaluate violations using unified evaluator
-    evaluator = ConstraintEvaluator(dataset)
+    evaluator = ConstraintEvaluator(dataset, soft_config=soft_config)
     unified = evaluator.evaluate_unified(schedule)
     hard_violations = unified.hard_violations
     soft_penalty = unified.soft_penalty
@@ -298,9 +305,9 @@ def export_schedule_to_excel(
 
         assignments.append({
             "section_id": sec.section_id,
-            "class_code": getattr(sec, "class_code", sec.section_id),
+            "class_code": getattr(sec, "class_code", None) or "",
             "course_id": sec.course_id,
-            "course_code": getattr(crs, "course_id", sec.course_id),
+            "course_code": getattr(crs, "course_code", None) or "",
             "course_name": getattr(sec, "course_name", getattr(crs, "name", sec.course_id)),
             "student_group_id": sec.group_id,
             "student_group_name": getattr(grp, "name", sec.group_id),
@@ -388,21 +395,23 @@ def export_schedule_to_excel(
         "raw_count",
         "weight",
         "weighted_penalty",
+        "denominator",
+        "normalized_penalty",
         "description"
     ]
     ws_viol.append(viol_cols)
 
     # 6a. Hard Violations
     if hard_violations == 0:
-        ws_viol.append(["INFO", "NONE", "hard_constraints", "-", "-", "-", "-", "-", "-", 0, 1000, 0, "No hard violations detected"])
+        ws_viol.append(["INFO", "NONE", "hard_constraints", "-", "-", "-", "-", "-", "-", 0, 1000, 0, "-", "-", "No hard violations detected"])
     else:
         for k, v in hard_details.items():
             if v > 0:
-                ws_viol.append(["HARD", "HIGH", k, "-", "-", "-", "-", "-", "-", v, 1000, v * 1000, f"Hard constraint violation: {k} (count={v})"])
+                ws_viol.append(["HARD", "HIGH", k, "-", "-", "-", "-", "-", "-", v, 1000, v * 1000, "-", "-", f"Hard constraint violation: {k} (count={v})"])
 
     # 6b. Soft Violations (Instance Breakdown)
     if len(instance_violations) == 0:
-        ws_viol.append(["INFO", "NONE", "soft_constraints", "-", "-", "-", "-", "-", "-", 0, 0, 0, "No soft constraint violations detected"])
+        ws_viol.append(["INFO", "NONE", "soft_constraints", "-", "-", "-", "-", "-", "-", 0, 0, 0, 0, 0, "No soft constraint violations detected"])
     else:
         for item in instance_violations:
             r_cnt = item.get("raw_count", 1)
@@ -421,6 +430,8 @@ def export_schedule_to_excel(
                 r_cnt,
                 w,
                 wp,
+                item.get("denominator", 0),
+                item.get("normalized_penalty", 0),
                 item.get("description", "")
             ])
 
@@ -439,6 +450,8 @@ def export_schedule_to_excel(
         total_raw_soft_count,
         "-",
         soft_penalty,
+        "-",
+        "-",
         f"TOTAL SOFT PENALTY (Sum of all soft constraint weighted penalties = {soft_penalty})"
     ])
 
@@ -459,8 +472,8 @@ def export_schedule_to_excel(
         ("hard_weight", meta.get("hard_weight", 1000)),
         ("soft_weight", meta.get("soft_weight", 1)),
         ("same_session_rule", True),
-        ("S1_weekly_distribution_weight", soft_cfg.get_weight("weekly_distribution")),
-        ("S1_weekly_distribution_enabled", soft_cfg.is_enabled("weekly_distribution")),
+        ("S1_compact_student_schedule_weight", soft_cfg.get_weight("compact_student_schedule")),
+        ("S1_compact_student_schedule_enabled", soft_cfg.is_enabled("compact_student_schedule")),
         ("S2_late_day_periods_weight", soft_cfg.get_weight("late_day_periods")),
         ("S2_late_day_periods_enabled", soft_cfg.is_enabled("late_day_periods")),
         ("S3_preferred_shift_mismatch_weight", soft_cfg.get_weight("preferred_shift_mismatch")),
@@ -469,6 +482,10 @@ def export_schedule_to_excel(
         ("S4_room_seat_waste_enabled", soft_cfg.is_enabled("room_seat_waste")),
         ("S5_consecutive_cross_campus_weight", soft_cfg.get_weight("consecutive_cross_campus")),
         ("S5_consecutive_cross_campus_enabled", soft_cfg.is_enabled("consecutive_cross_campus")),
+        ("S6_preferred_campus_mismatch_weight", soft_cfg.get_weight("preferred_campus_mismatch")),
+        ("S6_preferred_campus_mismatch_enabled", soft_cfg.is_enabled("preferred_campus_mismatch")),
+        ("S7_student_home_campus_mismatch_weight", soft_cfg.get_weight("student_home_campus_mismatch")),
+        ("S7_student_home_campus_mismatch_enabled", soft_cfg.is_enabled("student_home_campus_mismatch")),
         ("repair_enabled", meta.get("use_repair", True)),
     ]
     for k, v in cfg_rows:

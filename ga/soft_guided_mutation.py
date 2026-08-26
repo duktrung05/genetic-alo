@@ -1,6 +1,6 @@
 """Module đột biến định hướng ràng buộc mềm (Soft-Guided Mutation) cho thuật toán di truyền.
 
-Ưu tiên đột biến các gen vi phạm ràng buộc mềm cao (S1-S5) để giảm phạt soft,
+Ưu tiên đột biến các gen vi phạm ràng buộc mềm để giảm phạt soft,
 đồng thời kết hợp ngẫu nhiên nhằm duy trì tính đa dạng của quần thể.
 """
 
@@ -99,6 +99,7 @@ class SoftGuidedMutation:
             "guided_mutation_calls": 1,
             "guided_mutation_attempts": 0,
             "guided_mutation_successes": 0,
+            "guided_mutation_hard_rejections": 0,
             "guided_mutation_fallbacks": 0,
             "guided_targets_S1": 0,
             "guided_targets_S2": 0,
@@ -184,9 +185,12 @@ class SoftGuidedMutation:
                             rule_counts["S3"] += 1
 
             # --- S1: Weekly Distribution ---
-            elif key == "weekly_distribution":
+            elif key == "compact_student_schedule":
                 grp_id = item.get("student_group_ids") or item.get("group_id")
-                overloaded_day = item.get("day")
+                active_days = {
+                    day.strip() for day in str(item.get("day", "")).split(",")
+                    if day.strip() and day.strip() != "-"
+                }
                 if grp_id and grp_id in self.sections_by_group:
                     group_sections = self.sections_by_group[grp_id]
                     for sec in group_sections:
@@ -196,7 +200,7 @@ class SoftGuidedMutation:
 
                         alt_ts = [
                             t for t in self._valid_ts_by_duration.get(dur, [])
-                            if t.day != overloaded_day
+                            if t.day in active_days
                             and (avail_ts is None or all(
                                 self.day_period_to_ts_id.get((t.day, p)) in avail_ts
                                 for p in get_occupied_periods(t.period, dur)
@@ -238,12 +242,25 @@ class SoftGuidedMutation:
                 # Decide whether to use Guided Mutation or Fallback Random Mutation
                 if candidates and (random_gen.random() < guided_probability):
                     # Pick stochastic candidate from shortlist
+                    before_hard, _ = self.evaluator.evaluate_hard(
+                        mutated, category="internal"
+                    )
                     target_type, target_val = random_gen.choice(candidates)
+                    old_room_id = gene.room_id
+                    old_timeslot_id = gene.timeslot_id
                     if target_type == "room":
                         gene.room_id = target_val
                     elif target_type == "timeslot":
                         gene.timeslot_id = target_val
-                    stats["guided_mutation_successes"] += 1
+                    after_hard, _ = self.evaluator.evaluate_hard(
+                        mutated, category="internal"
+                    )
+                    if after_hard <= before_hard:
+                        stats["guided_mutation_successes"] += 1
+                    else:
+                        gene.room_id = old_room_id
+                        gene.timeslot_id = old_timeslot_id
+                        stats["guided_mutation_hard_rejections"] += 1
                 else:
                     # Fallback Random Mutation (50% room, 50% timeslot)
                     sec = self.section_map.get(sec_id)

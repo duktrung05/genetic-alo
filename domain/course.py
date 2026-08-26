@@ -9,6 +9,9 @@ class Course:
     name: str
     credits: int
     is_difficult: bool = False
+    # Optional only for legacy programmatic/JSON datasets. Canonical Excel
+    # input requires and preserves the official course code.
+    course_code: Optional[str] = None
 
 @dataclass
 class CourseSection:
@@ -24,8 +27,13 @@ class CourseSection:
     preferred_campus_id: Optional[str] = None
     preferred_shift: Optional[str] = None
     meetings_per_week: int = 1
+    # Optional only for legacy programmatic/JSON datasets. Canonical Excel
+    # input requires and preserves the official class code.
+    class_code: Optional[str] = None
 
     def __post_init__(self):
+        if self.student_count < 1:
+            raise ValueError(f"student_count must be >= 1, got {self.student_count}")
         if self.duration_periods < 1:
             raise ValueError(f"duration_periods must be >= 1, got {self.duration_periods}")
         if self.meetings_per_week < 1:
@@ -35,4 +43,3 @@ class CourseSection:
                 f"Invalid preferred_shift '{self.preferred_shift}' for section '{self.section_id}'. "
                 f"Allowed values: {sorted(VALID_SHIFTS)}"
             )
-

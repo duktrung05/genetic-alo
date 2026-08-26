@@ -1,9 +1,21 @@
 from collections import defaultdict
+from datetime import time
 from typing import Dict, Set, List, Tuple, Any
-from domain import CourseSection, Room, Timeslot, Lecturer, StudentGroup
+from domain import Campus, Course, CourseSection, Room, Timeslot, Lecturer, StudentGroup
 from .timeslot_factory import get_occupied_periods, is_valid_period_block
 
 VALID_SHIFTS = frozenset({"morning", "afternoon", "evening"})
+VALID_ROOM_TYPES = frozenset({"NORMAL", "LAB"})
+
+
+def _valid_hhmm(value: object) -> bool:
+    if not isinstance(value, str):
+        return False
+    try:
+        time.fromisoformat(value)
+        return True
+    except ValueError:
+        return False
 
 class DatasetValidator:
     @staticmethod
@@ -24,6 +36,8 @@ class DatasetValidator:
         timeslots: List[Timeslot] = dataset.get("timeslots", [])
         lecturers: List[Lecturer] = dataset.get("lecturers", [])
         groups: List[StudentGroup] = dataset.get("student_groups", [])
+        courses: List[Course] = dataset.get("courses", [])
+        campuses: List[Campus] = dataset.get("campuses", [])
 
         if not sections:
             errors.append("Dataset must contain course_sections.")
@@ -66,10 +80,55 @@ class DatasetValidator:
             grp_ids.add(grp.id)
 
         ts_ids = set()
+        ts_external_ids = set()
+        day_periods = set()
         for ts in timeslots:
             if ts.id in ts_ids:
                 errors.append(f"Duplicate timeslot ID found: '{ts.id}'.")
             ts_ids.add(ts.id)
+            external_id = getattr(ts, "external_id", None)
+            if external_id:
+                if external_id in ts_external_ids:
+                    errors.append(f"Duplicate external timeslot ID found: '{external_id}'.")
+                ts_external_ids.add(external_id)
+            day_period = (ts.day, ts.period)
+            if day_period in day_periods:
+                errors.append(f"Duplicate timeslot day/period found: {day_period!r}.")
+            day_periods.add(day_period)
+            if not isinstance(ts.period, int) or isinstance(ts.period, bool) or ts.period < 1:
+                errors.append(f"Timeslot '{ts.id}' has invalid period '{ts.period}'.")
+            if ts.session not in VALID_SHIFTS:
+                errors.append(f"Timeslot '{ts.id}' has invalid session '{ts.session}'.")
+            if not _valid_hhmm(ts.start_time) or not _valid_hhmm(ts.end_time):
+                errors.append(f"Timeslot '{ts.id}' has invalid start/end time.")
+            elif time.fromisoformat(ts.start_time) >= time.fromisoformat(ts.end_time):
+                errors.append(f"Timeslot '{ts.id}' must have start_time before end_time.")
+
+        course_ids = set()
+        course_codes = set()
+        for course in courses:
+            if course.course_id in course_ids:
+                errors.append(f"Duplicate course ID found: '{course.course_id}'.")
+            course_ids.add(course.course_id)
+            code = getattr(course, "course_code", None)
+            if code:
+                if code in course_codes:
+                    errors.append(f"Duplicate course_code found: '{code}'.")
+                course_codes.add(code)
+
+        class_codes = set()
+        for sec in sections:
+            code = getattr(sec, "class_code", None)
+            if code:
+                if code in class_codes:
+                    errors.append(f"Duplicate class_code found: '{code}'.")
+                class_codes.add(code)
+
+        campus_ids = set()
+        for campus in campuses:
+            if campus.id in campus_ids:
+                errors.append(f"Duplicate campus ID found: '{campus.id}'.")
+            campus_ids.add(campus.id)
 
         # 2. Foreign keys
         lecturer_map = {l.id: l for l in lecturers} if "lecturers" in dataset and lecturers else {}
@@ -83,6 +142,19 @@ class DatasetValidator:
             for sec in sections:
                 if sec.group_id and sec.group_id not in group_map:
                     errors.append(f"Section '{sec.section_id}' references non-existent group_id '{sec.group_id}'.")
+
+        if "courses" in dataset and courses:
+            for sec in sections:
+                if sec.course_id not in course_ids:
+                    errors.append(f"Section '{sec.section_id}' references non-existent course_id '{sec.course_id}'.")
+
+        # CAMPUSES is authoritative when present. Legacy programmatic datasets
+        # without a campus master remain supported, but Excel/normalized JSON
+        # always provide this key.
+        if "campuses" in dataset:
+            for room in rooms:
+                if room.campus_id is not None and room.campus_id not in campus_ids:
+                    errors.append(f"Room '{room.id}' references unknown campus_id='{room.campus_id}'.")
 
         # Maps for period validation
         day_available_periods: Dict[str, Set[int]] = defaultdict(set)
@@ -99,24 +171,23 @@ class DatasetValidator:
         lab_required_periods = 0
 
         # Section validations
-        # Build known campus IDs from rooms for reference checking
-        known_campus_ids: Set[str] = {r.campus_id for r in rooms if getattr(r, "campus_id", None)}
-
         for sec in sections:
             duration = getattr(sec, "duration_periods", 1)
-            if duration < 1:
+            if not isinstance(duration, int) or isinstance(duration, bool) or duration < 1:
                 errors.append(f"Section '{sec.section_id}' has invalid duration_periods {duration} (must be >= 1).")
                 continue
 
             meetings = getattr(sec, "meetings_per_week", 1)
-            if meetings < 1:
+            if not isinstance(meetings, int) or isinstance(meetings, bool) or meetings < 1:
                 errors.append(f"Section '{sec.section_id}' has invalid meetings_per_week {meetings} (must be >= 1).")
             elif meetings > 1:
-                warnings.append(
+                errors.append(
                     f"Section '{sec.section_id}' has meetings_per_week={meetings}. "
-                    f"Current chromosome model assigns exactly one timeslot per section; "
-                    f"multiple meetings per week are recorded but not enforced by the scheduler."
+                    "meetings_per_week > 1 is not supported by the current chromosome."
                 )
+
+            if not isinstance(sec.student_count, int) or isinstance(sec.student_count, bool) or sec.student_count < 1:
+                errors.append(f"Section '{sec.section_id}' has invalid student_count {sec.student_count}.")
 
             pref_shift = getattr(sec, "preferred_shift", None)
             if pref_shift is not None and pref_shift not in VALID_SHIFTS:
@@ -126,10 +197,10 @@ class DatasetValidator:
                 )
 
             pref_campus = getattr(sec, "preferred_campus_id", None)
-            if pref_campus is not None and known_campus_ids and pref_campus not in known_campus_ids:
+            if "campuses" in dataset and pref_campus is not None and pref_campus not in campus_ids:
                 errors.append(
                     f"Section '{sec.section_id}' references unknown preferred_campus_id='{pref_campus}'. "
-                    f"Known campuses from rooms: {sorted(known_campus_ids)}."
+                    f"Known campuses: {sorted(campus_ids)}."
                 )
 
             if sec.lecturer_id:
@@ -138,6 +209,8 @@ class DatasetValidator:
                 grp_required_periods[sec.group_id] += duration
 
             req_type = getattr(sec, "required_room_type", "NORMAL")
+            if req_type not in VALID_ROOM_TYPES:
+                errors.append(f"Section '{sec.section_id}' has invalid required_room_type='{req_type}'.")
             if req_type == "LAB":
                 lab_required_periods += duration
 
@@ -178,6 +251,10 @@ class DatasetValidator:
 
         # Check total lecturer load vs available periods
         for lec in lecturers:
+            if lec.available_timeslot_ids is not None:
+                unknown_ids = set(lec.available_timeslot_ids) - ts_ids
+                if unknown_ids:
+                    errors.append(f"Lecturer '{lec.id}' availability references unknown timeslot IDs: {sorted(unknown_ids)}.")
             req = lec_required_periods[lec.id]
             avail_count = len(lec.available_timeslot_ids) if lec.available_timeslot_ids is not None else total_timeslots
             if req > avail_count:
@@ -187,6 +264,8 @@ class DatasetValidator:
 
         # Check total student group load vs total timeslots
         for grp in groups:
+            if not isinstance(grp.student_count, int) or isinstance(grp.student_count, bool) or grp.student_count < 1:
+                errors.append(f"StudentGroup '{grp.id}' has invalid student_count {grp.student_count}.")
             req = grp_required_periods[grp.id]
             if req > total_timeslots:
                 errors.append(f"StudentGroup '{grp.id}' required periods ({req}) exceeds total available timeslots ({total_timeslots}).")
@@ -195,11 +274,17 @@ class DatasetValidator:
 
             # Validate home_campus_id reference
             home_campus = getattr(grp, "home_campus_id", None)
-            if home_campus is not None and known_campus_ids and home_campus not in known_campus_ids:
+            if "campuses" in dataset and home_campus is not None and home_campus not in campus_ids:
                 errors.append(
                     f"StudentGroup '{grp.id}' references unknown home_campus_id='{home_campus}'. "
-                    f"Known campuses from rooms: {sorted(known_campus_ids)}."
+                    f"Known campuses: {sorted(campus_ids)}."
                 )
+
+        for room in rooms:
+            if not isinstance(room.capacity, int) or isinstance(room.capacity, bool) or room.capacity < 1:
+                errors.append(f"Room '{room.id}' has invalid capacity {room.capacity}.")
+            if room.room_type not in VALID_ROOM_TYPES:
+                errors.append(f"Room '{room.id}' has invalid room_type='{room.room_type}'.")
 
         # Check total LAB demand vs LAB room supply
         lab_rooms = [r for r in rooms if getattr(r, "room_type", "NORMAL") == "LAB"]
@@ -213,6 +298,7 @@ class DatasetValidator:
             "lecturers": len(lecturers),
             "student_groups": len(groups),
             "rooms": len(rooms),
+            "campuses": len(campuses),
             "total_periods": total_timeslots,
         }
 
