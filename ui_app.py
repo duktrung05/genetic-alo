@@ -15,6 +15,7 @@ from dataset import DatasetValidator, ExcelDatasetLoader
 from domain import expand_scheduling_activities
 from evaluation import export_schedule_query_data, export_schedule_to_csv, export_schedule_to_excel
 from ga import GeneticAlgorithmEngine
+from schedule_assistant import QueryResult, ScheduleQuery, ScheduleQueryService
 
 
 ROOT = Path(__file__).resolve().parent
@@ -66,6 +67,12 @@ FILTER_FIELDS = {
     "Lecturer": ("lecturer_id", "lecturer_name"),
     "Room": ("room_id", "room_name"),
 }
+ASK_SCHEDULE_QUICK_PROMPTS = [
+    "Lịch CNTT1-K18",
+    "GV01 dạy khi nào?",
+    "IT2010 học ở đâu?",
+    "Phòng nào đang trống?",
+]
 
 
 @dataclass
@@ -94,6 +101,55 @@ def get_method_display_name(metadata: Optional[dict]) -> str:
 
 def should_run_text_query(submitted: bool, query: str) -> bool:
     return bool(submitted and query.strip())
+
+
+def query_active_timetable(demo_result: Optional[dict], question: str) -> QueryResult:
+    """Answer from the current session timetable only; never fall back to disk."""
+    if not demo_result:
+        return QueryResult(
+            ScheduleQuery(question, "missing_data"), False,
+            "No active timetable. Run the scheduler first to start asking questions.",
+        )
+    query_data = demo_result.get("exports", {}).get("query_data")
+    if not query_data:
+        return QueryResult(
+            ScheduleQuery(question, "missing_data"), False,
+            "No active timetable. Run the scheduler first to start asking questions.",
+        )
+    dataset = demo_result.get("dataset")
+    if dataset is None:
+        loaded = load_demo_dataset(demo_result.get("dataset_name", ""))
+        dataset = loaded.dataset if loaded.valid else None
+    return ScheduleQueryService(data=query_data, dataset=dataset).query(question)
+
+
+def ask_result_table(result: QueryResult) -> list[dict]:
+    """Return the small official-field table appropriate for a chat answer."""
+    if result.assignments:
+        rows = []
+        for item in sort_assignments(result.assignments):
+            start, end = item.get("start_period", 1), item.get("end_period", 1)
+            rows.append({
+                "Day": item.get("day", ""),
+                "Time": f"{item.get('start_time', '')}–{item.get('end_time', '')} (P{start}–{end})",
+                "Course code": item.get("course_code") or item.get("course_id", ""),
+                "Course": item.get("course_name", ""),
+                "Class code": item.get("class_code") or item.get("section_id", ""),
+                "Meeting": f"{item.get('meeting_index', 1)}/{item.get('meeting_count', 1)}",
+                "Lecturer": item.get("lecturer_name") or item.get("lecturer_id", ""),
+                "Room": item.get("room_id") or item.get("room_name", ""),
+            })
+        return rows
+    if result.details.get("free_rooms") is not None:
+        return list(result.details["free_rooms"])
+    if result.details.get("free_times") is not None:
+        return list(result.details["free_times"])
+    summary = result.details.get("summary")
+    if summary:
+        rows = [{"Metric": key.replace("_", " ").title(), "Value": value} for key, value in summary.items() if key != "activities_by_day"]
+        rows.extend({"Metric": f"Activities · {day}", "Value": count} for day, count in summary.get("activities_by_day", {}).items())
+        return rows
+    return []
 
 
 def load_production_data():
@@ -274,19 +330,25 @@ def load_benchmark_artifacts(benchmark_dir: Path = BENCHMARK_DIR) -> dict[str, A
 
 
 def _render_validation_card(result: DatasetLoadResult) -> None:
-    st.subheader(f"Dataset: {result.name}")
-    if result.counts:
-        columns = st.columns(6)
-        for column, (label, key) in zip(columns, [
-            ("Sections", "sections"), ("Activities", "activities"),
-            ("Lecturers", "lecturers"), ("Student groups", "student_groups"),
-            ("Rooms", "rooms"), ("Timeslots", "timeslots"),
-        ]):
-            column.metric(label, result.counts[key])
-    if result.valid:
-        st.success(f"✓ Valid · ✓ {len(result.errors)} errors · ✓ {len(result.warnings)} warnings")
-    else:
-        st.error(f"Validation failed with {len(result.errors)} error(s). Scheduling is disabled.")
+    with st.container(border=True):
+        heading, validation = st.columns([3, 1])
+        heading.markdown(f"#### {result.name} Dataset")
+        if result.valid:
+            validation.success("✓ Valid")
+        if result.counts:
+            metric_items = [
+                ("Sections", "sections"), ("Activities", "activities"),
+                ("Lecturers", "lecturers"), ("Student Groups", "student_groups"),
+                ("Rooms", "rooms"), ("Timeslots", "timeslots"),
+            ]
+            for row_start in (0, 3):
+                columns = st.columns(3)
+                for column, (label, key) in zip(columns, metric_items[row_start:row_start + 3]):
+                    column.metric(label, result.counts[key])
+        if result.valid:
+            st.caption(f"✓ Valid · {len(result.errors)} errors · {len(result.warnings)} warnings")
+        else:
+            st.error(f"Validation failed with {len(result.errors)} error(s). Scheduling is disabled.")
     if result.errors or result.warnings:
         with st.expander("Validation details"):
             for error in result.errors:
@@ -295,50 +357,114 @@ def _render_validation_card(result: DatasetLoadResult) -> None:
                 st.warning(warning)
 
 
-def _render_result_summary(run: dict[str, Any]) -> None:
-    st.subheader("Final Metrics")
+def _go_to_demo_page(page: str) -> None:
+    st.session_state["demo_page"] = page
+
+
+def _render_result_summary(run: dict[str, Any], exports: dict[str, Any]) -> None:
+    st.divider()
     if run["hard_violations"] == 0:
-        st.success("✓ Feasible timetable — all hard constraints are satisfied.")
+        st.success("### ✓ Feasible Timetable\nAll hard constraints are satisfied.")
     else:
         st.error("Timetable is not feasible. Inspect hard-constraint results below.")
     metrics = run["run_metrics"]
-    columns = st.columns(6)
+    columns = st.columns(4)
     columns[0].metric("Hard Violations", run["hard_violations"])
     columns[1].metric("Soft Score", f"{run['soft_score']:.4f}")
     columns[2].metric("Runtime", f"{metrics.runtime_seconds:.2f}s")
-    first = f"Gen {metrics.first_feasible_generation} / Eval {metrics.first_feasible_search_evaluation}" if metrics.first_feasible_generation is not None else "Not reached"
-    columns[3].metric("First Feasible", first)
-    columns[4].metric("Sections", f"{run['scheduled_section_count']} / {run['section_count']}")
-    columns[5].metric("Activities", f"{run['scheduled_count']} / {run['activity_count']}")
+    columns[3].metric("Scheduled", f"{run['scheduled_count']} / {run['activity_count']}")
+    if metrics.first_feasible_generation is not None:
+        st.caption(
+            "First feasible solution: "
+            f"Generation {metrics.first_feasible_generation} · "
+            f"Evaluation {metrics.first_feasible_search_evaluation}"
+        )
+    else:
+        st.caption("First feasible solution: Not reached")
+
+    st.markdown("#### Continue your demo")
+    actions = st.columns(3)
+    actions[0].button(
+        "View Timetable", on_click=_go_to_demo_page, args=("Timetable",),
+        use_container_width=True,
+    )
+    actions[1].button(
+        "Ask Schedule", on_click=_go_to_demo_page, args=("Ask Schedule",),
+        use_container_width=True,
+    )
+    actions[2].download_button(
+        "Export Excel", exports["excel_bytes"],
+        file_name=f"{exports.get('dataset_name', 'timetable').lower()}_best_timetable.xlsx",
+        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        use_container_width=True,
+    )
     with st.expander("Constraint results", expanded=False):
         st.markdown("**Hard Constraints**")
         for key, label in HARD_CONSTRAINT_LABELS.items():
             value = run["hard_details"].get(key, 0)
             st.write(f"{'✓' if value == 0 else '✗'} {label}: {value}")
         st.markdown(f"**Soft Score:** {run['soft_score']:.4f}")
-        with st.expander("S1–S7 breakdown"):
-            st.dataframe(pd.DataFrame([{
-                "Constraint": item.constraint_id, "Name": item.constraint_name,
-                "Raw": item.raw_count, "Normalized": item.normalized_penalty,
-                "Weight": item.weight, "Weighted": item.weighted_penalty,
-            } for item in run["soft_breakdown"]]), use_container_width=True, hide_index=True)
+        st.markdown("**S1–S7 breakdown**")
+        st.dataframe(pd.DataFrame([{
+            "Constraint": item.constraint_id, "Name": item.constraint_name,
+            "Raw": item.raw_count, "Normalized": item.normalized_penalty,
+            "Weight": item.weight, "Weighted": item.weighted_penalty,
+        } for item in run["soft_breakdown"]]), use_container_width=True, hide_index=True)
 
 
 def _render_scheduler_page() -> None:
-    st.title("Final Timetable Demo")
-    st.caption("Choose a frozen dataset, validate it, then run the Final Hybrid Method.")
+    st.markdown(
+        """
+        <style>
+        [data-testid="stAppViewContainer"] .main .block-container {
+            max-width: 1280px;
+            margin: 0 auto;
+            padding-top: 2.25rem;
+        }
+        .scheduler-ready {
+            display: inline-block;
+            padding: 0.3rem 0.65rem;
+            border: 1px solid rgba(72, 187, 120, 0.45);
+            border-radius: 999px;
+            color: #68d391;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+        div[data-testid="stButton"] button[kind="primary"] {
+            background-color: #2563eb;
+            border-color: #2563eb;
+        }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+    header, badge = st.columns([4, 1])
+    with header:
+        st.title("AI Timetable Scheduler")
+        st.caption("Generate a feasible university timetable using GA + Repair + SLS.")
+    with badge:
+        st.markdown('<div class="scheduler-ready">✓ System Ready</div>', unsafe_allow_html=True)
+
+    st.markdown("### Choose Dataset")
     dataset_name = st.selectbox("Choose dataset", list(DATASET_OPTIONS), index=0)
-    st.info(DATASET_OPTIONS[dataset_name]["description"])
+    st.caption(DATASET_OPTIONS[dataset_name]["description"])
     path = Path(DATASET_OPTIONS[dataset_name]["path"])
     result = cached_load_demo_dataset(dataset_name, path.stat().st_mtime_ns if path.exists() else 0)
     _render_validation_card(result)
-    st.markdown("#### Final Hybrid Method")
-    st.write("**GA** — global search · **Repair** — fixes hard violations · **SLS** — improves soft quality after feasibility")
+
+    st.markdown("### Final Hybrid Method")
+    with st.container(border=True):
+        method_columns = st.columns([2, 0.45, 2, 0.45, 2])
+        method_columns[0].markdown("#### GA\nGlobal search")
+        method_columns[1].markdown("### →")
+        method_columns[2].markdown("#### Repair\nFix hard violations")
+        method_columns[3].markdown("### →")
+        method_columns[4].markdown("#### SLS\nImprove soft quality")
     with st.expander("Advanced Settings", expanded=False):
         seed = int(st.number_input("Reproducible seed", min_value=0, value=0, step=1))
         st.caption("Frozen production configuration: population 60, GA budget 1,000, SLS enabled.")
     running = bool(st.session_state.get("scheduler_running", False))
-    if st.button("Run Scheduler", type="primary", disabled=(not result.valid or running), use_container_width=True):
+    if st.button("✨ Generate Timetable", type="primary", disabled=(not result.valid or running), use_container_width=True):
         st.session_state["scheduler_running"] = True
         progress = st.progress(0, text="Loading and validating dataset...")
         try:
@@ -346,7 +472,11 @@ def _render_scheduler_page() -> None:
             run = run_demo_scheduler(result.dataset, seed=seed)
             progress.progress(80, text="Improving soft constraints with SLS and evaluating final schedule...")
             exports = create_demo_exports(run, result.dataset, dataset_name)
-            st.session_state["demo_result"] = {"dataset_name": dataset_name, "run": run, "exports": exports}
+            st.session_state["demo_result"] = {
+                "dataset_name": dataset_name, "dataset": result.dataset,
+                "run": run, "exports": exports,
+            }
+            st.session_state["ask_schedule_messages"] = []
             progress.progress(100, text="Done.")
         except Exception as error:
             st.error("Scheduling failed. No result was exported.")
@@ -356,8 +486,8 @@ def _render_scheduler_page() -> None:
             st.session_state["scheduler_running"] = False
     demo_result = st.session_state.get("demo_result")
     if demo_result and demo_result["dataset_name"] == dataset_name:
-        _render_result_summary(demo_result["run"])
-        st.caption("Open Timetable to filter the result and download Excel/JSON exports.")
+        exports = {**demo_result["exports"], "dataset_name": demo_result["dataset_name"]}
+        _render_result_summary(demo_result["run"], exports)
 
 
 def _render_timetable_page() -> None:
@@ -394,6 +524,62 @@ def _render_timetable_page() -> None:
     )
 
 
+def _render_ask_schedule_page() -> None:
+    st.title("Ask Schedule")
+    st.caption("Ask questions about the generated timetable.")
+    result = st.session_state.get("demo_result")
+    if not result:
+        st.info("**No active timetable**\n\nRun the scheduler first to start asking questions.")
+        if st.button("Go to Scheduler", type="primary"):
+            st.session_state["demo_page"] = "Scheduler"
+            st.rerun()
+        return
+
+    run = result["run"]
+    status = "✓ Feasible" if run["hard_violations"] == 0 else f"✗ {run['hard_violations']} hard violations"
+    status_cols = st.columns(4)
+    status_cols[0].metric("Dataset", result["dataset_name"])
+    status_cols[1].metric("Status", status)
+    status_cols[2].metric("Activities", f"{run['scheduled_count']} / {run['activity_count']}")
+    status_cols[3].metric("Seed", run.get("seed", 0))
+
+    st.subheader("Schedule Assistant")
+    st.write("Ask about classes, lecturers, rooms, courses, or timetable availability.")
+    quick_columns = st.columns(4)
+    quick_prompt = None
+    for index, (column, prompt) in enumerate(zip(quick_columns, ASK_SCHEDULE_QUICK_PROMPTS)):
+        if column.button(prompt, key=f"ask_quick_{index}", use_container_width=True):
+            quick_prompt = prompt
+
+    messages = st.session_state.setdefault("ask_schedule_messages", [])
+    for message in messages:
+        with st.chat_message(message["role"]):
+            st.markdown(message["content"])
+            if message.get("table"):
+                st.dataframe(pd.DataFrame(message["table"]), use_container_width=True, hide_index=True)
+
+    typed_prompt = st.chat_input("Ask about the timetable...")
+    prompt = quick_prompt or typed_prompt
+    if prompt and prompt.strip():
+        prompt = prompt.strip()
+        user_message = {"role": "user", "content": prompt}
+        messages.append(user_message)
+        with st.chat_message("user"):
+            st.markdown(prompt)
+        answer = query_active_timetable(result, prompt)
+        assistant_message = {
+            "role": "assistant", "content": answer.message,
+            "table": ask_result_table(answer),
+        }
+        messages.append(assistant_message)
+        with st.chat_message("assistant"):
+            st.markdown(answer.message)
+            if assistant_message["table"]:
+                st.dataframe(pd.DataFrame(assistant_message["table"]), use_container_width=True, hide_index=True)
+            if answer.suggestions:
+                st.caption("Suggestions: " + " · ".join(answer.suggestions))
+
+
 def _render_benchmark_page() -> None:
     st.title("Final Benchmark")
     st.caption("Frozen Phase 3.1 results — this page never reruns experiments.")
@@ -424,11 +610,16 @@ def _render_about_page() -> None:
 
 def main() -> None:
     st.set_page_config(page_title="Genetic ALO — Final Demo", page_icon="📅", layout="wide", initial_sidebar_state="expanded")
-    page = st.sidebar.radio("Demo", ["Scheduler", "Timetable", "Benchmark", "About / Method"])
+    page = st.sidebar.radio(
+        "Demo", ["Scheduler", "Timetable", "Ask Schedule", "Benchmark", "About / Method"],
+        key="demo_page",
+    )
     if page == "Scheduler":
         _render_scheduler_page()
     elif page == "Timetable":
         _render_timetable_page()
+    elif page == "Ask Schedule":
+        _render_ask_schedule_page()
     elif page == "Benchmark":
         _render_benchmark_page()
     else:

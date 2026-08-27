@@ -14,7 +14,9 @@ class ScheduleQuery:
     lecturer: Optional[str] = None       # Mã hoặc tên giảng viên
     room: Optional[str] = None           # Mã hoặc tên phòng học
     course: Optional[str] = None         # Mã hoặc tên môn học
+    class_code: Optional[str] = None     # Mã lớp học phần chính thức
     campus: Optional[str] = None         # Mã cơ sở (ví dụ: "CS1", "CS2")
+    shift: Optional[str] = None          # morning / afternoon / evening
 
 
 @dataclass
@@ -25,4 +27,4 @@ class QueryResult:
     message: str
     assignments: List[Dict[str, Any]] = field(default_factory=list)
     suggestions: List[str] = field(default_factory=list)
-
+    details: Dict[str, Any] = field(default_factory=dict)

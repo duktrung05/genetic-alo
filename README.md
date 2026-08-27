@@ -202,6 +202,12 @@ docker compose up -d web-ui
 ```
 Truy cập trình duyệt tại: `http://localhost:8501`
 
+#### Ask Schedule
+
+Trang **Ask Schedule** tra cứu trực tiếp thời khóa biểu vừa được tạo trong phiên Streamlit.
+Trợ lý hoạt động offline bằng bộ phân tích ý định deterministic, không cần API/LLM,
+và chỉ đọc dữ liệu lịch hiện tại; nó không tạo mới hay thay đổi lịch.
+
 **Ví dụ câu hỏi tra cứu hỗ trợ:**
 - `Lịch thứ 2` (Tra cứu tất cả lớp học trong ngày Thứ 2)
 - `Lịch của lớp CNTT1` (Tra cứu lịch học của nhóm lớp)

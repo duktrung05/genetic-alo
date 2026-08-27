@@ -1,173 +1,315 @@
-"""Service truy vấn dữ liệu thời khóa biểu cho trợ lý cá nhân.
+"""Read-only queries against the active generated timetable."""
 
-Lọc dữ liệu tĩnh (chỉ đọc) từ file JSON đã xuất trước đó.
-Tách biệt hoàn toàn với thuật toán di truyền (GA) và engine sửa lỗi (Repair).
-"""
+from __future__ import annotations
 
+from dataclasses import replace
 import json
-import os
 from pathlib import Path
-from typing import Dict, List, Optional, Union, Any
+import re
+from typing import Any, Dict, Iterable, List, Optional, Union
 
-from .models import ScheduleQuery, QueryResult
-from .intent_parser import IntentParser
+from .intent_parser import NaturalLanguageParser, RuleBasedParser, normalized
+from .models import QueryResult, ScheduleQuery
 
 
 DEFAULT_QUERY_DATA_PATH = "outputs/production/schedule_query_data.json"
+SHIFT_LABELS = {"morning": "Sáng", "afternoon": "Chiều", "evening": "Tối"}
+ENTITY_FIELDS = {
+    "student_group": ("student_group_id", "student_group_name"),
+    "lecturer": ("lecturer_id", "lecturer_name"),
+    "room": ("room_id", "room_name"),
+    "course": ("course_code", "course_id", "course_name"),
+    "class_code": ("class_code", "section_id"),
+}
 
 
 def normalize_text(text: str) -> str:
-    """Chuyển chuỗi về dạng chữ thường và loại bỏ khoảng trắng thừa."""
-    if not text:
-        return ""
-    return " ".join(text.lower().strip().split())
+    return " ".join(str(text or "").lower().strip().split())
 
 
 class ScheduleQueryService:
-    """Dịch vụ truy vấn lịch (chỉ đọc) cho trợ lý tra cứu."""
+    """Query service whose only factual source is one timetable payload."""
 
-    def __init__(self, data_path: Union[str, Path] = DEFAULT_QUERY_DATA_PATH):
-        """Khởi tạo service truy vấn với đường dẫn file JSON dữ liệu."""
+    def __init__(
+        self,
+        data_path: Union[str, Path] = DEFAULT_QUERY_DATA_PATH,
+        *,
+        data: Optional[Dict[str, Any]] = None,
+        dataset: Optional[Dict[str, Any]] = None,
+        parser: Optional[NaturalLanguageParser] = None,
+    ):
         self.data_path = Path(data_path)
-        self.data: Optional[Dict[str, Any]] = None
-        self.parser: Optional[IntentParser] = None
-        self._load_data()
+        self.data = data
+        self.dataset = dataset
+        self.parser = parser
+        if self.data is None:
+            self._load_data()
+        else:
+            self.parser = self.parser or RuleBasedParser(self.data)
 
     def _load_data(self) -> bool:
-        """Tải dữ liệu từ file JSON nếu tồn tại."""
         if not self.data_path.exists():
             self.data = None
-            self.parser = IntentParser()
+            self.parser = self.parser or RuleBasedParser()
             return False
-
         try:
-            with open(self.data_path, "r", encoding="utf-8") as f:
-                self.data = json.load(f)
-            self.parser = IntentParser(dataset_index=self.data)
+            self.data = json.loads(self.data_path.read_text(encoding="utf-8"))
+            self.parser = self.parser or RuleBasedParser(self.data)
             return True
-        except Exception:
+        except (OSError, json.JSONDecodeError):
             self.data = None
-            self.parser = IntentParser()
+            self.parser = self.parser or RuleBasedParser()
             return False
 
     def is_data_available(self) -> bool:
-        """Kiểm tra xem dữ liệu thời khóa biểu đã sẵn sàng chưa."""
-        return self.data is not None and "assignments" in self.data
+        return self.data is not None and isinstance(self.data.get("assignments"), list)
 
     def query(self, query_input: Union[str, ScheduleQuery]) -> QueryResult:
-        """Thực thi truy vấn thời khóa biểu và trả về QueryResult."""
-        if not self.is_data_available():
-            # Thử tải lại dữ liệu
-            if not self._load_data():
-                return QueryResult(
-                    query=ScheduleQuery(raw_query=str(query_input), intent="missing_data"),
-                    success=False,
-                    message="Chưa có dữ liệu thời khóa biểu. Hãy chạy: python main.py để tạo lịch trước khi sử dụng chức năng tra cứu.",
-                    assignments=[],
-                    suggestions=[
-                        "python main.py",
-                        "Chạy main.py để sinh thời khóa biểu sản phẩm",
-                    ]
-                )
-
-        if isinstance(query_input, str):
-            parsed_query = self.parser.parse(query_input)
-        else:
-            parsed_query = query_input
-
-        if parsed_query.intent == "unknown_or_ambiguous":
+        if not self.is_data_available() and not self._load_data():
             return QueryResult(
-                query=parsed_query,
-                success=False,
-                message="Bạn muốn tra cứu theo ngày, lớp, giảng viên, phòng hay môn học?",
-                assignments=[],
-                suggestions=[
-                    "Lịch thứ 2",
-                    "Lịch của lớp CNTT1",
-                    "Giảng viên GV01 dạy khi nào?",
-                    "Phòng A9-205 được sử dụng khi nào?",
-                    "Môn Lập trình hướng đối tượng học lúc nào?",
-                ]
+                ScheduleQuery(str(query_input), "missing_data"), False,
+                "Chưa có dữ liệu thời khóa biểu. Hãy chạy Scheduler trước.",
+                suggestions=["Run the scheduler first"],
             )
 
-        assignments = self.data.get("assignments", [])
-        filtered = self._filter_assignments(assignments, parsed_query)
+        parsed = self.parser.parse(query_input) if isinstance(query_input, str) else query_input
+        if re.search(r"\b(?:thứ|thu)\s*(?:0|1|8|9)\b", normalized(parsed.raw_query)):
+            return QueryResult(parsed, False, "Invalid day. Please use Thứ 2 through Thứ 7.")
+        if parsed.intent in {"unsupported", "unknown_or_ambiguous"}:
+            return QueryResult(
+                parsed, False,
+                "Bạn muốn tra cứu theo lớp, giảng viên, phòng hay môn học? This assistant only answers questions about the generated timetable; use About / Method for algorithm information.",
+                suggestions=["Lịch CNTT1-K18", "GV01 dạy khi nào?", "IT2010 học ở đâu?"],
+            )
 
+        if parsed.intent == "schedule_summary":
+            return self._summary(parsed)
+        if parsed.intent == "free_room_search":
+            return self._free_rooms(parsed)
+
+        resolved, error = self._resolve_query(parsed)
+        if error:
+            return error
+        if resolved.intent == "lecturer_free_time":
+            return self._lecturer_free_time(resolved)
+
+        filtered = self._filter_assignments(self.data["assignments"], resolved)
         if not filtered:
-            return QueryResult(
-                query=parsed_query,
-                success=True,
-                message="Không tìm thấy lịch phù hợp với yêu cầu.",
-                assignments=[],
-                suggestions=[
-                    "Thử tra cứu theo ngày (VD: Lịch thứ 2)",
-                    "Thử tra cứu theo tên lớp (VD: Lịch lớp CNTT1)",
-                ]
-            )
+            return QueryResult(resolved, True, "Không tìm thấy lịch phù hợp với yêu cầu.")
 
+        subject = self._subject_label(resolved)
+        qualifier = ""
+        if resolved.day:
+            qualifier += f" on {resolved.day}"
+        if resolved.shift:
+            qualifier += f" ({SHIFT_LABELS[resolved.shift]})"
+        noun = "class" if len(filtered) == 1 else "classes"
         return QueryResult(
-            query=parsed_query,
-            success=True,
-            message=f"Tìm thấy {len(filtered)} lịch học phù hợp.",
+            resolved, True, f"{subject} has {len(filtered)} scheduled {noun}{qualifier}.",
             assignments=filtered,
-            suggestions=[]
         )
 
+    def _resolve_query(self, query: ScheduleQuery) -> tuple[ScheduleQuery, Optional[QueryResult]]:
+        updates: Dict[str, str] = {}
+        for attr, fields in ENTITY_FIELDS.items():
+            requested = getattr(query, attr)
+            if not requested:
+                continue
+            matches = self._resolve_entity(requested, fields)
+            label = attr.replace("_", " ")
+            if not matches:
+                # Legacy callers historically received a successful empty result.
+                return query, QueryResult(query, True, f"Không tìm thấy lịch. No matching {label} was found in the current timetable.")
+            if len(matches) > 1:
+                choices = [self._display_entity(item, fields) for item in matches]
+                return query, QueryResult(
+                    query, False,
+                    f"I found multiple matching {label}s. Please choose one:",
+                    suggestions=choices,
+                )
+            updates[attr] = str(matches[0].get(fields[0]) or matches[0].get(fields[1]) or requested)
+        return replace(query, **updates), None
+
+    def _resolve_entity(self, requested: str, fields: tuple[str, ...]) -> List[dict]:
+        entities: Dict[str, dict] = {}
+        for assignment in self.data.get("assignments", []):
+            identity = str(assignment.get(fields[0]) or assignment.get(fields[1]) or "")
+            if identity:
+                entities.setdefault(normalized(identity), assignment)
+        needle = normalized(requested)
+        exact = [item for item in entities.values() if any(normalized(item.get(field, "")) == needle for field in fields)]
+        if exact:
+            return exact
+        return [
+            item for item in entities.values()
+            if any(needle and (needle in normalized(item.get(field, "")) or normalized(item.get(field, "")) in needle) for field in fields)
+        ]
+
+    @staticmethod
+    def _display_entity(item: dict, fields: tuple[str, ...]) -> str:
+        values = []
+        for field in fields:
+            value = str(item.get(field) or "")
+            if value and value not in values:
+                values.append(value)
+        return " — ".join(values[:2])
+
     def _filter_assignments(self, assignments: List[Dict[str, Any]], query: ScheduleQuery) -> List[Dict[str, Any]]:
-        """Lọc danh sách phân công theo các tham số truy vấn (phép AND)."""
         filtered = list(assignments)
-
-        # 1. Lọc theo ngày
         if query.day:
-            norm_day = normalize_text(query.day)
-            filtered = [
-                a for a in filtered
-                if normalize_text(a.get("day", "")) == norm_day or norm_day in normalize_text(a.get("day_key", ""))
-            ]
+            filtered = [a for a in filtered if normalized(a.get("day", "")) == normalized(query.day)]
+        if query.shift:
+            filtered = [a for a in filtered if normalize_text(a.get("session", "")) == query.shift]
+        for attr, fields in ENTITY_FIELDS.items():
+            requested = getattr(query, attr)
+            if requested:
+                needle = normalized(requested)
+                filtered = [a for a in filtered if any(normalized(a.get(field, "")) == needle for field in fields)]
+        return sorted(filtered, key=lambda a: (self._day_index(a.get("day")), a.get("start_period", 0), a.get("room_id", "")))
 
-        # 2. Lọc theo cơ sở
-        if query.campus:
-            norm_campus = normalize_text(query.campus)
-            filtered = [
-                a for a in filtered
-                if norm_campus in normalize_text(a.get("campus_id", ""))
-            ]
+    def _free_rooms(self, query: ScheduleQuery) -> QueryResult:
+        rooms = self._resources("rooms")
+        timeslots = self._timeslots(query.day, query.shift)
+        if not rooms or not timeslots:
+            return QueryResult(query, False, "Room or timeslot data is unavailable for this active timetable.")
+        window = {(slot["day"], slot["period"]) for slot in timeslots}
+        occupied = set()
+        for assignment in self.data.get("assignments", []):
+            periods = assignment.get("occupied_periods") or range(assignment.get("start_period", 0), assignment.get("end_period", 0) + 1)
+            if any((assignment.get("day"), period) in window for period in periods):
+                occupied.add(assignment.get("room_id"))
+        free = [room for room in rooms if room["id"] not in occupied]
+        scope = self._scope_label(query)
+        message = f"{len(free)} rooms are free for the entire requested window ({scope})."
+        rows = [{"room_id": room["id"], "room_name": room.get("name", ""), "campus": room.get("campus_id", ""), "room_type": room.get("room_type", "")} for room in free]
+        return QueryResult(query, True, message, details={"free_rooms": rows, "semantic": "free_for_entire_requested_window"})
 
-        # 3. Lọc theo nhóm sinh viên
+    def _lecturer_free_time(self, query: ScheduleQuery) -> QueryResult:
+        lecturer_id = query.lecturer
+        lecturer = next((item for item in self._resources("lecturers") if normalized(item["id"]) == normalized(lecturer_id)), None)
+        if lecturer is None:
+            return QueryResult(query, True, "No matching lecturer was found in the current timetable.")
+        slots = self._timeslots(query.day, query.shift)
+        available_ids = lecturer.get("available_timeslot_ids")
+        if available_ids is not None:
+            available = {str(value) for value in available_ids}
+            slots = [slot for slot in slots if str(slot["id"]) in available]
+        occupied = set()
+        for assignment in self.data.get("assignments", []):
+            if normalized(assignment.get("lecturer_id")) != normalized(lecturer_id):
+                continue
+            for period in assignment.get("occupied_periods") or range(assignment.get("start_period", 0), assignment.get("end_period", 0) + 1):
+                occupied.add((assignment.get("day"), period))
+        free_slots = [slot for slot in slots if (slot["day"], slot["period"]) not in occupied]
+        blocks = self._compact_timeslots(free_slots)
+        display = lecturer.get("name") or lecturer_id
+        return QueryResult(
+            query, True,
+            f"{display} has {len(free_slots)} available, unscheduled periods{self._scope_suffix(query)}.",
+            details={"free_times": blocks, "lecturer_id": lecturer_id},
+        )
+
+    def _summary(self, query: ScheduleQuery) -> QueryResult:
+        assignments = self.data.get("assignments", [])
+        meta = self.data.get("meta", {})
+        values = lambda field: {a.get(field) for a in assignments if a.get(field)}
+        by_day: Dict[str, int] = {}
+        for assignment in assignments:
+            day = assignment.get("day", "Unknown")
+            by_day[day] = by_day.get(day, 0) + 1
+        summary = {
+            "dataset": meta.get("dataset", "Active"),
+            "sections": len(values("section_id")),
+            "activities": len(assignments),
+            "lecturers": len(values("lecturer_id")),
+            "student_groups": len(values("student_group_id")),
+            "rooms": len(values("room_id")),
+            "hard_violations": meta.get("hard_violations"),
+            "soft_score": meta.get("soft_penalty"),
+            "activities_by_day": dict(sorted(by_day.items(), key=lambda item: self._day_index(item[0]))),
+        }
+        status = "feasible" if summary["hard_violations"] == 0 else "not feasible"
+        return QueryResult(query, True, f"{summary['dataset']} timetable: {summary['activities']} activities; {status}.", details={"summary": summary})
+
+    def _resources(self, key: str) -> List[dict]:
+        if self.dataset and self.dataset.get(key):
+            return [self._object_dict(item) for item in self.dataset[key]]
+        singular = {"rooms": ("room_id", "room_name"), "lecturers": ("lecturer_id", "lecturer_name")}.get(key)
+        if not singular:
+            return []
+        unique = {}
+        for assignment in self.data.get("assignments", []):
+            item_id = assignment.get(singular[0])
+            if item_id:
+                unique[item_id] = {"id": item_id, "name": assignment.get(singular[1], "")}
+        return list(unique.values())
+
+    def _timeslots(self, day: Optional[str], shift: Optional[str]) -> List[dict]:
+        if self.dataset and self.dataset.get("timeslots"):
+            slots = [self._object_dict(item) for item in self.dataset["timeslots"]]
+        else:
+            slots = []
+            seen = set()
+            for assignment in self.data.get("assignments", []):
+                for period in assignment.get("occupied_periods", []):
+                    key = (assignment.get("day"), period)
+                    if key not in seen:
+                        seen.add(key)
+                        slots.append({"id": f"{key[0]}-{period}", "day": key[0], "period": period, "session": assignment.get("session", "")})
+        if day:
+            slots = [slot for slot in slots if normalized(slot.get("day")) == normalized(day)]
+        if shift:
+            slots = [slot for slot in slots if slot.get("session") == shift]
+        return sorted(slots, key=lambda slot: (self._day_index(slot.get("day")), slot.get("period", 0)))
+
+    @staticmethod
+    def _object_dict(item: Any) -> dict:
+        if isinstance(item, dict):
+            return dict(item)
+        result = dict(vars(item))
+        if result.get("available_timeslot_ids") is not None:
+            result["available_timeslot_ids"] = list(result["available_timeslot_ids"])
+        return result
+
+    @staticmethod
+    def _compact_timeslots(slots: List[dict]) -> List[dict]:
+        blocks: List[dict] = []
+        for slot in slots:
+            if blocks and blocks[-1]["day"] == slot.get("day") and blocks[-1]["shift"] == slot.get("session") and blocks[-1]["end_period"] + 1 == slot.get("period"):
+                blocks[-1]["end_period"] = slot.get("period")
+                blocks[-1]["end_time"] = slot.get("end_time", "")
+            else:
+                blocks.append({
+                    "day": slot.get("day", ""), "shift": SHIFT_LABELS.get(slot.get("session"), slot.get("session", "")),
+                    "start_period": slot.get("period"), "end_period": slot.get("period"),
+                    "start_time": slot.get("start_time", ""), "end_time": slot.get("end_time", ""),
+                })
+        return blocks
+
+    @staticmethod
+    def _subject_label(query: ScheduleQuery) -> str:
         if query.student_group:
-            norm_grp = normalize_text(query.student_group)
-            filtered = [
-                a for a in filtered
-                if norm_grp in normalize_text(a.get("student_group_id", ""))
-                or norm_grp in normalize_text(a.get("student_group_name", ""))
-            ]
-
-        # 4. Lọc theo giảng viên
+            return query.student_group
         if query.lecturer:
-            norm_lec = normalize_text(query.lecturer)
-            filtered = [
-                a for a in filtered
-                if norm_lec in normalize_text(a.get("lecturer_id", ""))
-                or norm_lec in normalize_text(a.get("lecturer_name", ""))
-            ]
-
-        # 5. Lọc theo phòng học
+            return query.lecturer
         if query.room:
-            norm_rm = normalize_text(query.room)
-            filtered = [
-                a for a in filtered
-                if norm_rm in normalize_text(a.get("room_id", ""))
-                or norm_rm in normalize_text(a.get("room_name", ""))
-            ]
-
-        # 6. Lọc theo môn học
+            return query.room
         if query.course:
-            norm_crs = normalize_text(query.course)
-            filtered = [
-                a for a in filtered
-                if norm_crs in normalize_text(a.get("course_id", ""))
-                or norm_crs in normalize_text(a.get("course_name", ""))
-            ]
+            return query.course
+        if query.class_code:
+            return query.class_code
+        return "The timetable"
 
-        return filtered
+    @staticmethod
+    def _day_index(day: Any) -> int:
+        match = re.search(r"\d+", str(day or ""))
+        return int(match.group(0)) if match else 99
 
+    @staticmethod
+    def _scope_label(query: ScheduleQuery) -> str:
+        parts = [query.day or "all teaching days", SHIFT_LABELS.get(query.shift, "all shifts")]
+        return ", ".join(parts)
+
+    @staticmethod
+    def _scope_suffix(query: ScheduleQuery) -> str:
+        return f" for {ScheduleQueryService._scope_label(query)}" if query.day or query.shift else ""

@@ -90,12 +90,13 @@ class ResponseFormatter:
                 "Ca/Tiết": f"{a.get('session', '')} / {p_str}",
                 "Thời gian": f"{start_t} – {end_t}",
                 "Môn học": a.get("course_name", ""),
-                "Mã môn": a.get("course_id", ""),
+                "Mã môn": a.get("course_code") or a.get("course_id", ""),
+                "Mã lớp": a.get("class_code") or a.get("section_id", ""),
+                "Buổi học": f"{a.get('meeting_index', 1)}/{a.get('meeting_count', 1)}",
                 "Lớp SV": a.get("student_group_name", ""),
-                "Giảng viên": a.get("lecturer_name", ""),
-                "Phòng": a.get("room_name", ""),
+                "Giảng viên": a.get("lecturer_name") or a.get("lecturer_id", ""),
+                "Phòng": a.get("room_id") or a.get("room_name", ""),
                 "Loại phòng": a.get("room_type", ""),
                 "Cơ sở": a.get("campus_id", ""),
             })
         return table_rows
-
