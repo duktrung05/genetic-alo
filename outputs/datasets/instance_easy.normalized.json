@@ -2,6 +2,7 @@
   "timeslots": [
     {
       "id": 0,
+      "external_id": "D1-P1",
       "day": "Thứ 2",
       "period": 1,
       "start_time": "07:00",
@@ -10,6 +11,7 @@
     },
     {
       "id": 1,
+      "external_id": "D1-P2",
       "day": "Thứ 2",
       "period": 2,
       "start_time": "07:50",
@@ -18,6 +20,7 @@
     },
     {
       "id": 2,
+      "external_id": "D1-P3",
       "day": "Thứ 2",
       "period": 3,
       "start_time": "08:50",
@@ -26,6 +29,7 @@
     },
     {
       "id": 3,
+      "external_id": "D1-P4",
       "day": "Thứ 2",
       "period": 4,
       "start_time": "09:40",
@@ -34,6 +38,7 @@
     },
     {
       "id": 4,
+      "external_id": "D1-P5",
       "day": "Thứ 2",
       "period": 5,
       "start_time": "10:40",
@@ -42,6 +47,7 @@
     },
     {
       "id": 5,
+      "external_id": "D1-P6",
       "day": "Thứ 2",
       "period": 6,
       "start_time": "11:30",
@@ -50,6 +56,7 @@
     },
     {
       "id": 6,
+      "external_id": "D1-P7",
       "day": "Thứ 2",
       "period": 7,
       "start_time": "13:00",
@@ -58,6 +65,7 @@
     },
     {
       "id": 7,
+      "external_id": "D1-P8",
       "day": "Thứ 2",
       "period": 8,
       "start_time": "13:50",
@@ -66,6 +74,7 @@
     },
     {
       "id": 8,
+      "external_id": "D1-P9",
       "day": "Thứ 2",
       "period": 9,
       "start_time": "14:50",
@@ -74,6 +83,7 @@
     },
     {
       "id": 9,
+      "external_id": "D1-P10",
       "day": "Thứ 2",
       "period": 10,
       "start_time": "15:40",
@@ -82,6 +92,7 @@
     },
     {
       "id": 10,
+      "external_id": "D1-P11",
       "day": "Thứ 2",
       "period": 11,
       "start_time": "16:40",
@@ -90,6 +101,7 @@
     },
     {
       "id": 11,
+      "external_id": "D1-P12",
       "day": "Thứ 2",
       "period": 12,
       "start_time": "17:30",
@@ -98,6 +110,7 @@
     },
     {
       "id": 12,
+      "external_id": "D1-P13",
       "day": "Thứ 2",
       "period": 13,
       "start_time": "18:30",
@@ -106,6 +119,7 @@
     },
     {
       "id": 13,
+      "external_id": "D1-P14",
       "day": "Thứ 2",
       "period": 14,
       "start_time": "19:20",
@@ -114,6 +128,7 @@
     },
     {
       "id": 14,
+      "external_id": "D1-P15",
       "day": "Thứ 2",
       "period": 15,
       "start_time": "20:20",
@@ -122,6 +137,7 @@
     },
     {
       "id": 15,
+      "external_id": "D1-P16",
       "day": "Thứ 2",
       "period": 16,
       "start_time": "21:10",
@@ -130,6 +146,7 @@
     },
     {
       "id": 16,
+      "external_id": "D2-P1",
       "day": "Thứ 3",
       "period": 1,
       "start_time": "07:00",
@@ -138,6 +155,7 @@
     },
     {
       "id": 17,
+      "external_id": "D2-P2",
       "day": "Thứ 3",
       "period": 2,
       "start_time": "07:50",
@@ -146,6 +164,7 @@
     },
     {
       "id": 18,
+      "external_id": "D2-P3",
       "day": "Thứ 3",
       "period": 3,
       "start_time": "08:50",
@@ -154,6 +173,7 @@
     },
     {
       "id": 19,
+      "external_id": "D2-P4",
       "day": "Thứ 3",
       "period": 4,
       "start_time": "09:40",
@@ -162,6 +182,7 @@
     },
     {
       "id": 20,
+      "external_id": "D2-P5",
       "day": "Thứ 3",
       "period": 5,
       "start_time": "10:40",
@@ -170,6 +191,7 @@
     },
     {
       "id": 21,
+      "external_id": "D2-P6",
       "day": "Thứ 3",
       "period": 6,
       "start_time": "11:30",
@@ -178,6 +200,7 @@
     },
     {
       "id": 22,
+      "external_id": "D2-P7",
       "day": "Thứ 3",
       "period": 7,
       "start_time": "13:00",
@@ -186,6 +209,7 @@
     },
     {
       "id": 23,
+      "external_id": "D2-P8",
       "day": "Thứ 3",
       "period": 8,
       "start_time": "13:50",
@@ -194,6 +218,7 @@
     },
     {
       "id": 24,
+      "external_id": "D2-P9",
       "day": "Thứ 3",
       "period": 9,
       "start_time": "14:50",
@@ -202,6 +227,7 @@
     },
     {
       "id": 25,
+      "external_id": "D2-P10",
       "day": "Thứ 3",
       "period": 10,
       "start_time": "15:40",
@@ -210,6 +236,7 @@
     },
     {
       "id": 26,
+      "external_id": "D2-P11",
       "day": "Thứ 3",
       "period": 11,
       "start_time": "16:40",
@@ -218,6 +245,7 @@
     },
     {
       "id": 27,
+      "external_id": "D2-P12",
       "day": "Thứ 3",
       "period": 12,
       "start_time": "17:30",
@@ -226,6 +254,7 @@
     },
     {
       "id": 28,
+      "external_id": "D2-P13",
       "day": "Thứ 3",
       "period": 13,
       "start_time": "18:30",
@@ -234,6 +263,7 @@
     },
     {
       "id": 29,
+      "external_id": "D2-P14",
       "day": "Thứ 3",
       "period": 14,
       "start_time": "19:20",
@@ -242,6 +272,7 @@
     },
     {
       "id": 30,
+      "external_id": "D2-P15",
       "day": "Thứ 3",
       "period": 15,
       "start_time": "20:20",
@@ -250,6 +281,7 @@
     },
     {
       "id": 31,
+      "external_id": "D2-P16",
       "day": "Thứ 3",
       "period": 16,
       "start_time": "21:10",
@@ -258,6 +290,7 @@
     },
     {
       "id": 32,
+      "external_id": "D3-P1",
       "day": "Thứ 4",
       "period": 1,
       "start_time": "07:00",
@@ -266,6 +299,7 @@
     },
     {
       "id": 33,
+      "external_id": "D3-P2",
       "day": "Thứ 4",
       "period": 2,
       "start_time": "07:50",
@@ -274,6 +308,7 @@
     },
     {
       "id": 34,
+      "external_id": "D3-P3",
       "day": "Thứ 4",
       "period": 3,
       "start_time": "08:50",
@@ -282,6 +317,7 @@
     },
     {
       "id": 35,
+      "external_id": "D3-P4",
       "day": "Thứ 4",
       "period": 4,
       "start_time": "09:40",
@@ -290,6 +326,7 @@
     },
     {
       "id": 36,
+      "external_id": "D3-P5",
       "day": "Thứ 4",
       "period": 5,
       "start_time": "10:40",
@@ -298,6 +335,7 @@
     },
     {
       "id": 37,
+      "external_id": "D3-P6",
       "day": "Thứ 4",
       "period": 6,
       "start_time": "11:30",
@@ -306,6 +344,7 @@
     },
     {
       "id": 38,
+      "external_id": "D3-P7",
       "day": "Thứ 4",
       "period": 7,
       "start_time": "13:00",
@@ -314,6 +353,7 @@
     },
     {
       "id": 39,
+      "external_id": "D3-P8",
       "day": "Thứ 4",
       "period": 8,
       "start_time": "13:50",
@@ -322,6 +362,7 @@
     },
     {
       "id": 40,
+      "external_id": "D3-P9",
       "day": "Thứ 4",
       "period": 9,
       "start_time": "14:50",
@@ -330,6 +371,7 @@
     },
     {
       "id": 41,
+      "external_id": "D3-P10",
       "day": "Thứ 4",
       "period": 10,
       "start_time": "15:40",
@@ -338,6 +380,7 @@
     },
     {
       "id": 42,
+      "external_id": "D3-P11",
       "day": "Thứ 4",
       "period": 11,
       "start_time": "16:40",
@@ -346,6 +389,7 @@
     },
     {
       "id": 43,
+      "external_id": "D3-P12",
       "day": "Thứ 4",
       "period": 12,
       "start_time": "17:30",
@@ -354,6 +398,7 @@
     },
     {
       "id": 44,
+      "external_id": "D3-P13",
       "day": "Thứ 4",
       "period": 13,
       "start_time": "18:30",
@@ -362,6 +407,7 @@
     },
     {
       "id": 45,
+      "external_id": "D3-P14",
       "day": "Thứ 4",
       "period": 14,
       "start_time": "19:20",
@@ -370,6 +416,7 @@
     },
     {
       "id": 46,
+      "external_id": "D3-P15",
       "day": "Thứ 4",
       "period": 15,
       "start_time": "20:20",
@@ -378,6 +425,7 @@
     },
     {
       "id": 47,
+      "external_id": "D3-P16",
       "day": "Thứ 4",
       "period": 16,
       "start_time": "21:10",
@@ -386,6 +434,7 @@
     },
     {
       "id": 48,
+      "external_id": "D4-P1",
       "day": "Thứ 5",
       "period": 1,
       "start_time": "07:00",
@@ -394,6 +443,7 @@
     },
     {
       "id": 49,
+      "external_id": "D4-P2",
       "day": "Thứ 5",
       "period": 2,
       "start_time": "07:50",
@@ -402,6 +452,7 @@
     },
     {
       "id": 50,
+      "external_id": "D4-P3",
       "day": "Thứ 5",
       "period": 3,
       "start_time": "08:50",
@@ -410,6 +461,7 @@
     },
     {
       "id": 51,
+      "external_id": "D4-P4",
       "day": "Thứ 5",
       "period": 4,
       "start_time": "09:40",
@@ -418,6 +470,7 @@
     },
     {
       "id": 52,
+      "external_id": "D4-P5",
       "day": "Thứ 5",
       "period": 5,
       "start_time": "10:40",
@@ -426,6 +479,7 @@
     },
     {
       "id": 53,
+      "external_id": "D4-P6",
       "day": "Thứ 5",
       "period": 6,
       "start_time": "11:30",
@@ -434,6 +488,7 @@
     },
     {
       "id": 54,
+      "external_id": "D4-P7",
       "day": "Thứ 5",
       "period": 7,
       "start_time": "13:00",
@@ -442,6 +497,7 @@
     },
     {
       "id": 55,
+      "external_id": "D4-P8",
       "day": "Thứ 5",
       "period": 8,
       "start_time": "13:50",
@@ -450,6 +506,7 @@
     },
     {
       "id": 56,
+      "external_id": "D4-P9",
       "day": "Thứ 5",
       "period": 9,
       "start_time": "14:50",
@@ -458,6 +515,7 @@
     },
     {
       "id": 57,
+      "external_id": "D4-P10",
       "day": "Thứ 5",
       "period": 10,
       "start_time": "15:40",
@@ -466,6 +524,7 @@
     },
     {
       "id": 58,
+      "external_id": "D4-P11",
       "day": "Thứ 5",
       "period": 11,
       "start_time": "16:40",
@@ -474,6 +533,7 @@
     },
     {
       "id": 59,
+      "external_id": "D4-P12",
       "day": "Thứ 5",
       "period": 12,
       "start_time": "17:30",
@@ -482,6 +542,7 @@
     },
     {
       "id": 60,
+      "external_id": "D4-P13",
       "day": "Thứ 5",
       "period": 13,
       "start_time": "18:30",
@@ -490,6 +551,7 @@
     },
     {
       "id": 61,
+      "external_id": "D4-P14",
       "day": "Thứ 5",
       "period": 14,
       "start_time": "19:20",
@@ -498,6 +560,7 @@
     },
     {
       "id": 62,
+      "external_id": "D4-P15",
       "day": "Thứ 5",
       "period": 15,
       "start_time": "20:20",
@@ -506,6 +569,7 @@
     },
     {
       "id": 63,
+      "external_id": "D4-P16",
       "day": "Thứ 5",
       "period": 16,
       "start_time": "21:10",
@@ -514,6 +578,7 @@
     },
     {
       "id": 64,
+      "external_id": "D5-P1",
       "day": "Thứ 6",
       "period": 1,
       "start_time": "07:00",
@@ -522,6 +587,7 @@
     },
     {
       "id": 65,
+      "external_id": "D5-P2",
       "day": "Thứ 6",
       "period": 2,
       "start_time": "07:50",
@@ -530,6 +596,7 @@
     },
     {
       "id": 66,
+      "external_id": "D5-P3",
       "day": "Thứ 6",
       "period": 3,
       "start_time": "08:50",
@@ -538,6 +605,7 @@
     },
     {
       "id": 67,
+      "external_id": "D5-P4",
       "day": "Thứ 6",
       "period": 4,
       "start_time": "09:40",
@@ -546,6 +614,7 @@
     },
     {
       "id": 68,
+      "external_id": "D5-P5",
       "day": "Thứ 6",
       "period": 5,
       "start_time": "10:40",
@@ -554,6 +623,7 @@
     },
     {
       "id": 69,
+      "external_id": "D5-P6",
       "day": "Thứ 6",
       "period": 6,
       "start_time": "11:30",
@@ -562,6 +632,7 @@
     },
     {
       "id": 70,
+      "external_id": "D5-P7",
       "day": "Thứ 6",
       "period": 7,
       "start_time": "13:00",
@@ -570,6 +641,7 @@
     },
     {
       "id": 71,
+      "external_id": "D5-P8",
       "day": "Thứ 6",
       "period": 8,
       "start_time": "13:50",
@@ -578,6 +650,7 @@
     },
     {
       "id": 72,
+      "external_id": "D5-P9",
       "day": "Thứ 6",
       "period": 9,
       "start_time": "14:50",
@@ -586,6 +659,7 @@
     },
     {
       "id": 73,
+      "external_id": "D5-P10",
       "day": "Thứ 6",
       "period": 10,
       "start_time": "15:40",
@@ -594,6 +668,7 @@
     },
     {
       "id": 74,
+      "external_id": "D5-P11",
       "day": "Thứ 6",
       "period": 11,
       "start_time": "16:40",
@@ -602,6 +677,7 @@
     },
     {
       "id": 75,
+      "external_id": "D5-P12",
       "day": "Thứ 6",
       "period": 12,
       "start_time": "17:30",
@@ -610,6 +686,7 @@
     },
     {
       "id": 76,
+      "external_id": "D5-P13",
       "day": "Thứ 6",
       "period": 13,
       "start_time": "18:30",
@@ -618,6 +695,7 @@
     },
     {
       "id": 77,
+      "external_id": "D5-P14",
       "day": "Thứ 6",
       "period": 14,
       "start_time": "19:20",
@@ -626,6 +704,7 @@
     },
     {
       "id": 78,
+      "external_id": "D5-P15",
       "day": "Thứ 6",
       "period": 15,
       "start_time": "20:20",
@@ -634,6 +713,7 @@
     },
     {
       "id": 79,
+      "external_id": "D5-P16",
       "day": "Thứ 6",
       "period": 16,
       "start_time": "21:10",
@@ -642,6 +722,7 @@
     },
     {
       "id": 80,
+      "external_id": "D6-P1",
       "day": "Thứ 7",
       "period": 1,
       "start_time": "07:00",
@@ -650,6 +731,7 @@
     },
     {
       "id": 81,
+      "external_id": "D6-P2",
       "day": "Thứ 7",
       "period": 2,
       "start_time": "07:50",
@@ -658,6 +740,7 @@
     },
     {
       "id": 82,
+      "external_id": "D6-P3",
       "day": "Thứ 7",
       "period": 3,
       "start_time": "08:50",
@@ -666,6 +749,7 @@
     },
     {
       "id": 83,
+      "external_id": "D6-P4",
       "day": "Thứ 7",
       "period": 4,
       "start_time": "09:40",
@@ -674,6 +758,7 @@
     },
     {
       "id": 84,
+      "external_id": "D6-P5",
       "day": "Thứ 7",
       "period": 5,
       "start_time": "10:40",
@@ -682,6 +767,7 @@
     },
     {
       "id": 85,
+      "external_id": "D6-P6",
       "day": "Thứ 7",
       "period": 6,
       "start_time": "11:30",
@@ -690,6 +776,7 @@
     },
     {
       "id": 86,
+      "external_id": "D6-P7",
       "day": "Thứ 7",
       "period": 7,
       "start_time": "13:00",
@@ -698,6 +785,7 @@
     },
     {
       "id": 87,
+      "external_id": "D6-P8",
       "day": "Thứ 7",
       "period": 8,
       "start_time": "13:50",
@@ -706,6 +794,7 @@
     },
     {
       "id": 88,
+      "external_id": "D6-P9",
       "day": "Thứ 7",
       "period": 9,
       "start_time": "14:50",
@@ -714,6 +803,7 @@
     },
     {
       "id": 89,
+      "external_id": "D6-P10",
       "day": "Thứ 7",
       "period": 10,
       "start_time": "15:40",
@@ -722,6 +812,7 @@
     },
     {
       "id": 90,
+      "external_id": "D6-P11",
       "day": "Thứ 7",
       "period": 11,
       "start_time": "16:40",
@@ -730,6 +821,7 @@
     },
     {
       "id": 91,
+      "external_id": "D6-P12",
       "day": "Thứ 7",
       "period": 12,
       "start_time": "17:30",
@@ -738,6 +830,7 @@
     },
     {
       "id": 92,
+      "external_id": "D6-P13",
       "day": "Thứ 7",
       "period": 13,
       "start_time": "18:30",
@@ -746,6 +839,7 @@
     },
     {
       "id": 93,
+      "external_id": "D6-P14",
       "day": "Thứ 7",
       "period": 14,
       "start_time": "19:20",
@@ -754,6 +848,7 @@
     },
     {
       "id": 94,
+      "external_id": "D6-P15",
       "day": "Thứ 7",
       "period": 15,
       "start_time": "20:20",
@@ -762,11 +857,22 @@
     },
     {
       "id": 95,
+      "external_id": "D6-P16",
       "day": "Thứ 7",
       "period": 16,
       "start_time": "21:10",
       "end_time": "22:00",
       "session": "evening"
+    }
+  ],
+  "campuses": [
+    {
+      "id": "CS1",
+      "name": "Cơ sở 1"
+    },
+    {
+      "id": "CS2",
+      "name": "Cơ sở 2"
     }
   ],
   "rooms": [
@@ -1437,120 +1543,140 @@
   "courses": [
     {
       "course_id": "C01",
+      "course_code": "IT2010",
       "name": "Lập trình hướng đối tượng",
       "credits": 3,
       "is_difficult": false
     },
     {
       "course_id": "C02",
+      "course_code": "IT2020",
       "name": "Cấu trúc dữ liệu và giải thuật",
       "credits": 3,
       "is_difficult": true
     },
     {
       "course_id": "C03",
+      "course_code": "IT2030",
       "name": "Cơ sở dữ liệu",
       "credits": 3,
       "is_difficult": false
     },
     {
       "course_id": "C04",
+      "course_code": "IT2040",
       "name": "Mạng máy tính",
       "credits": 3,
       "is_difficult": false
     },
     {
       "course_id": "C05",
+      "course_code": "IT2050",
       "name": "Hệ điều hành",
       "credits": 3,
       "is_difficult": true
     },
     {
       "course_id": "C06",
+      "course_code": "IT2060",
       "name": "Kiến trúc máy tính",
       "credits": 3,
       "is_difficult": false
     },
     {
       "course_id": "C07",
+      "course_code": "SE3010",
       "name": "Công nghệ phần mềm",
       "credits": 3,
       "is_difficult": false
     },
     {
       "course_id": "C08",
+      "course_code": "SE3020",
       "name": "Phân tích và thiết kế hệ thống",
       "credits": 3,
       "is_difficult": true
     },
     {
       "course_id": "C09",
+      "course_code": "AI3010",
       "name": "Trí tuệ nhân tạo",
       "credits": 3,
       "is_difficult": true
     },
     {
       "course_id": "C10",
+      "course_code": "AI3020",
       "name": "Học máy",
       "credits": 3,
       "is_difficult": true
     },
     {
       "course_id": "C11",
+      "course_code": "AI3030",
       "name": "Khai phá dữ liệu",
       "credits": 3,
       "is_difficult": true
     },
     {
       "course_id": "C12",
+      "course_code": "AT3010",
       "name": "An toàn thông tin",
       "credits": 3,
       "is_difficult": true
     },
     {
       "course_id": "C13",
+      "course_code": "WEB301",
       "name": "Lập trình Web",
       "credits": 3,
       "is_difficult": false
     },
     {
       "course_id": "C14",
+      "course_code": "DL301",
       "name": "Deeplearning",
       "credits": 3,
       "is_difficult": true
     },
     {
       "course_id": "C15",
+      "course_code": "PM3010",
       "name": "Quản lý dự án CNTT",
       "credits": 3,
       "is_difficult": false
     },
     {
       "course_id": "C16",
+      "course_code": "MA2010",
       "name": "Đại số tuyến tính",
       "credits": 3,
       "is_difficult": true
     },
     {
       "course_id": "C17",
+      "course_code": "ST2010",
       "name": "Xác suất thống kê",
       "credits": 3,
       "is_difficult": true
     },
     {
       "course_id": "C18",
+      "course_code": "ENG201",
       "name": "Tiếng Anh Công nghệ thông tin",
       "credits": 3,
       "is_difficult": false
     },
     {
       "course_id": "C19",
+      "course_code": "MM3010",
       "name": "Đồ họa và đa phương tiện",
       "credits": 3,
       "is_difficult": false
     },
     {
       "course_id": "C20",
+      "course_code": "PHI201",
       "name": "Triết học Mác-Lênin",
       "credits": 3,
       "is_difficult": false
@@ -1559,6 +1685,7 @@
   "course_sections": [
     {
       "section_id": "SEC-CNTT1-C01",
+      "class_code": "20231CNTT1010",
       "course_id": "C01",
       "course_name": "Lập trình hướng đối tượng",
       "lecturer_id": "GV01",
@@ -1573,6 +1700,7 @@
     },
     {
       "section_id": "SEC-CNTT1-C02",
+      "class_code": "20231CNTT1020",
       "course_id": "C02",
       "course_name": "Cấu trúc dữ liệu và giải thuật",
       "lecturer_id": "GV07",
@@ -1587,6 +1715,7 @@
     },
     {
       "section_id": "SEC-CNTT1-C03",
+      "class_code": "20231CNTT1030",
       "course_id": "C03",
       "course_name": "Cơ sở dữ liệu",
       "lecturer_id": "GV02",
@@ -1601,6 +1730,7 @@
     },
     {
       "section_id": "SEC-CNTT1-C04",
+      "class_code": "20231CNTT1040",
       "course_id": "C04",
       "course_name": "Mạng máy tính",
       "lecturer_id": "GV03",
@@ -1615,6 +1745,7 @@
     },
     {
       "section_id": "SEC-CNTT1-C13",
+      "class_code": "20231CNTT1301",
       "course_id": "C13",
       "course_name": "Lập trình Web",
       "lecturer_id": "GV13",
@@ -1629,6 +1760,7 @@
     },
     {
       "section_id": "SEC-CNTT2-C01",
+      "class_code": "20231CNTT2010",
       "course_id": "C01",
       "course_name": "Lập trình hướng đối tượng",
       "lecturer_id": "GV01",
@@ -1643,6 +1775,7 @@
     },
     {
       "section_id": "SEC-CNTT2-C02",
+      "class_code": "20231CNTT2020",
       "course_id": "C02",
       "course_name": "Cấu trúc dữ liệu và giải thuật",
       "lecturer_id": "GV07",
@@ -1657,6 +1790,7 @@
     },
     {
       "section_id": "SEC-CNTT2-C03",
+      "class_code": "20231CNTT2030",
       "course_id": "C03",
       "course_name": "Cơ sở dữ liệu",
       "lecturer_id": "GV08",
@@ -1671,6 +1805,7 @@
     },
     {
       "section_id": "SEC-CNTT2-C04",
+      "class_code": "20231CNTT2040",
       "course_id": "C04",
       "course_name": "Mạng máy tính",
       "lecturer_id": "GV09",
@@ -1685,6 +1820,7 @@
     },
     {
       "section_id": "SEC-CNTT2-C13",
+      "class_code": "20231CNTT2301",
       "course_id": "C13",
       "course_name": "Lập trình Web",
       "lecturer_id": "GV13",
@@ -1699,6 +1835,7 @@
     },
     {
       "section_id": "SEC-CNTT3-C01",
+      "class_code": "20231CNTT3010",
       "course_id": "C01",
       "course_name": "Lập trình hướng đối tượng",
       "lecturer_id": "GV01",
@@ -1713,6 +1850,7 @@
     },
     {
       "section_id": "SEC-CNTT3-C02",
+      "class_code": "20231CNTT3020",
       "course_id": "C02",
       "course_name": "Cấu trúc dữ liệu và giải thuật",
       "lecturer_id": "GV07",
@@ -1727,6 +1865,7 @@
     },
     {
       "section_id": "SEC-CNTT3-C03",
+      "class_code": "20231CNTT3030",
       "course_id": "C03",
       "course_name": "Cơ sở dữ liệu",
       "lecturer_id": "GV02",
@@ -1741,6 +1880,7 @@
     },
     {
       "section_id": "SEC-CNTT3-C04",
+      "class_code": "20231CNTT3040",
       "course_id": "C04",
       "course_name": "Mạng máy tính",
       "lecturer_id": "GV03",
@@ -1755,6 +1895,7 @@
     },
     {
       "section_id": "SEC-CNTT3-C13",
+      "class_code": "20231CNTT3301",
       "course_id": "C13",
       "course_name": "Lập trình Web",
       "lecturer_id": "GV13",
@@ -1769,6 +1910,7 @@
     },
     {
       "section_id": "SEC-CNTT4-C01",
+      "class_code": "20231CNTT4010",
       "course_id": "C01",
       "course_name": "Lập trình hướng đối tượng",
       "lecturer_id": "GV01",
@@ -1783,6 +1925,7 @@
     },
     {
       "section_id": "SEC-CNTT4-C02",
+      "class_code": "20231CNTT4020",
       "course_id": "C02",
       "course_name": "Cấu trúc dữ liệu và giải thuật",
       "lecturer_id": "GV07",
@@ -1797,6 +1940,7 @@
     },
     {
       "section_id": "SEC-CNTT4-C03",
+      "class_code": "20231CNTT4030",
       "course_id": "C03",
       "course_name": "Cơ sở dữ liệu",
       "lecturer_id": "GV08",
@@ -1811,6 +1955,7 @@
     },
     {
       "section_id": "SEC-CNTT4-C04",
+      "class_code": "20231CNTT4040",
       "course_id": "C04",
       "course_name": "Mạng máy tính",
       "lecturer_id": "GV09",
@@ -1825,6 +1970,7 @@
     },
     {
       "section_id": "SEC-CNTT4-C13",
+      "class_code": "20231CNTT4301",
       "course_id": "C13",
       "course_name": "Lập trình Web",
       "lecturer_id": "GV13",
@@ -1839,6 +1985,7 @@
     },
     {
       "section_id": "SEC-KHMT1-C16",
+      "class_code": "20231-KHMT1-C16",
       "course_id": "C16",
       "course_name": "Đại số tuyến tính",
       "lecturer_id": "GV10",
@@ -1853,6 +2000,7 @@
     },
     {
       "section_id": "SEC-KHMT1-C17",
+      "class_code": "20231-KHMT1-C17",
       "course_id": "C17",
       "course_name": "Xác suất thống kê",
       "lecturer_id": "GV10",
@@ -1867,6 +2015,7 @@
     },
     {
       "section_id": "SEC-KHMT1-C02",
+      "class_code": "20231-KHMT1-C02",
       "course_id": "C02",
       "course_name": "Cấu trúc dữ liệu và giải thuật",
       "lecturer_id": "GV01",
@@ -1881,6 +2030,7 @@
     },
     {
       "section_id": "SEC-KHMT1-C09",
+      "class_code": "20231-KHMT1-C09",
       "course_id": "C09",
       "course_name": "Trí tuệ nhân tạo",
       "lecturer_id": "GV06",
@@ -1895,6 +2045,7 @@
     },
     {
       "section_id": "SEC-KHMT1-C10",
+      "class_code": "20231-KHMT1-C10",
       "course_id": "C10",
       "course_name": "Học máy",
       "lecturer_id": "GV06",
@@ -1909,6 +2060,7 @@
     },
     {
       "section_id": "SEC-KHMT2-C16",
+      "class_code": "20231-KHMT2-C16",
       "course_id": "C16",
       "course_name": "Đại số tuyến tính",
       "lecturer_id": "GV10",
@@ -1923,6 +2075,7 @@
     },
     {
       "section_id": "SEC-KHMT2-C17",
+      "class_code": "20231-KHMT2-C17",
       "course_id": "C17",
       "course_name": "Xác suất thống kê",
       "lecturer_id": "GV10",
@@ -1937,6 +2090,7 @@
     },
     {
       "section_id": "SEC-KHMT2-C02",
+      "class_code": "20231-KHMT2-C02",
       "course_id": "C02",
       "course_name": "Cấu trúc dữ liệu và giải thuật",
       "lecturer_id": "GV07",
@@ -1951,6 +2105,7 @@
     },
     {
       "section_id": "SEC-KHMT2-C09",
+      "class_code": "20231-KHMT2-C09",
       "course_id": "C09",
       "course_name": "Trí tuệ nhân tạo",
       "lecturer_id": "GV06",
@@ -1965,6 +2120,7 @@
     },
     {
       "section_id": "SEC-KHMT2-C10",
+      "class_code": "20231-KHMT2-C10",
       "course_id": "C10",
       "course_name": "Học máy",
       "lecturer_id": "GV06",
@@ -1979,6 +2135,7 @@
     },
     {
       "section_id": "SEC-KTPM1-C01",
+      "class_code": "20231-KTPM1-C01",
       "course_id": "C01",
       "course_name": "Lập trình hướng đối tượng",
       "lecturer_id": "GV13",
@@ -1993,6 +2150,7 @@
     },
     {
       "section_id": "SEC-KTPM1-C07",
+      "class_code": "20231-KTPM1-C07",
       "course_id": "C07",
       "course_name": "Công nghệ phần mềm",
       "lecturer_id": "GV05",
@@ -2007,6 +2165,7 @@
     },
     {
       "section_id": "SEC-KTPM1-C03",
+      "class_code": "20231KTPM1030",
       "course_id": "C03",
       "course_name": "Cơ sở dữ liệu",
       "lecturer_id": "GV02",
@@ -2021,6 +2180,7 @@
     },
     {
       "section_id": "SEC-KTPM1-C08",
+      "class_code": "20231KTPM1020",
       "course_id": "C08",
       "course_name": "Phân tích và thiết kế hệ thống",
       "lecturer_id": "GV05",
@@ -2035,6 +2195,7 @@
     },
     {
       "section_id": "SEC-KTPM1-C15",
+      "class_code": "20231-KTPM1-C15",
       "course_id": "C15",
       "course_name": "Quản lý dự án CNTT",
       "lecturer_id": "GV14",
@@ -2049,6 +2210,7 @@
     },
     {
       "section_id": "SEC-KTPM2-C01",
+      "class_code": "20231-KTPM2-C01",
       "course_id": "C01",
       "course_name": "Lập trình hướng đối tượng",
       "lecturer_id": "GV01",
@@ -2063,6 +2225,7 @@
     },
     {
       "section_id": "SEC-KTPM2-C07",
+      "class_code": "20231-KTPM2-C07",
       "course_id": "C07",
       "course_name": "Công nghệ phần mềm",
       "lecturer_id": "GV14",
@@ -2077,6 +2240,7 @@
     },
     {
       "section_id": "SEC-KTPM2-C03",
+      "class_code": "20231KTPM2030",
       "course_id": "C03",
       "course_name": "Cơ sở dữ liệu",
       "lecturer_id": "GV08",
@@ -2091,6 +2255,7 @@
     },
     {
       "section_id": "SEC-KTPM2-C08",
+      "class_code": "20231KTPM2020",
       "course_id": "C08",
       "course_name": "Phân tích và thiết kế hệ thống",
       "lecturer_id": "GV05",
@@ -2105,6 +2270,7 @@
     },
     {
       "section_id": "SEC-KTPM2-C15",
+      "class_code": "20231-KTPM2-C15",
       "course_id": "C15",
       "course_name": "Quản lý dự án CNTT",
       "lecturer_id": "GV14",
@@ -2119,6 +2285,7 @@
     },
     {
       "section_id": "SEC-HTTT1-C03",
+      "class_code": "20231HTTT1030",
       "course_id": "C03",
       "course_name": "Cơ sở dữ liệu",
       "lecturer_id": "GV02",
@@ -2133,6 +2300,7 @@
     },
     {
       "section_id": "SEC-HTTT1-C08",
+      "class_code": "20231HTTT1020",
       "course_id": "C08",
       "course_name": "Phân tích và thiết kế hệ thống",
       "lecturer_id": "GV05",
@@ -2147,6 +2315,7 @@
     },
     {
       "section_id": "SEC-HTTT1-C13",
+      "class_code": "20231-HTTT1-C13",
       "course_id": "C13",
       "course_name": "Lập trình Web",
       "lecturer_id": "GV13",
@@ -2161,6 +2330,7 @@
     },
     {
       "section_id": "SEC-HTTT1-C14",
+      "class_code": "20231-HTTT1-C14",
       "course_id": "C14",
       "course_name": "Deeplearning",
       "lecturer_id": "GV11",
@@ -2175,6 +2345,7 @@
     },
     {
       "section_id": "SEC-HTTT1-C15",
+      "class_code": "20231HTTT1010",
       "course_id": "C15",
       "course_name": "Quản lý dự án CNTT",
       "lecturer_id": "GV14",
@@ -2189,6 +2360,7 @@
     },
     {
       "section_id": "SEC-ATTT1-C04",
+      "class_code": "20231ATTT1040",
       "course_id": "C04",
       "course_name": "Mạng máy tính",
       "lecturer_id": "GV03",
@@ -2203,6 +2375,7 @@
     },
     {
       "section_id": "SEC-ATTT1-C05",
+      "class_code": "20231ATTT1050",
       "course_id": "C05",
       "course_name": "Hệ điều hành",
       "lecturer_id": "GV04",
@@ -2217,6 +2390,7 @@
     },
     {
       "section_id": "SEC-ATTT1-C12",
+      "class_code": "20231ATTT1010",
       "course_id": "C12",
       "course_name": "An toàn thông tin",
       "lecturer_id": "GV09",
@@ -2231,6 +2405,7 @@
     },
     {
       "section_id": "SEC-ATTT1-C06",
+      "class_code": "20231ATTT1060",
       "course_id": "C06",
       "course_name": "Kiến trúc máy tính",
       "lecturer_id": "GV04",
@@ -2245,6 +2420,7 @@
     },
     {
       "section_id": "SEC-ATTT1-C13",
+      "class_code": "20231ATTT1301",
       "course_id": "C13",
       "course_name": "Lập trình Web",
       "lecturer_id": "GV01",
@@ -2259,6 +2435,7 @@
     },
     {
       "section_id": "SEC-TTDPT1-C19",
+      "class_code": "20231-TTDPT1-C19",
       "course_id": "C19",
       "course_name": "Đồ họa và đa phương tiện",
       "lecturer_id": "GV13",
@@ -2273,6 +2450,7 @@
     },
     {
       "section_id": "SEC-TTDPT1-C13",
+      "class_code": "20231TTDPT1301",
       "course_id": "C13",
       "course_name": "Lập trình Web",
       "lecturer_id": "GV01",
@@ -2287,6 +2465,7 @@
     },
     {
       "section_id": "SEC-TTDPT1-C01",
+      "class_code": "20231-TTDPT1-C01",
       "course_id": "C01",
       "course_name": "Lập trình hướng đối tượng",
       "lecturer_id": "GV13",
@@ -2301,6 +2480,7 @@
     },
     {
       "section_id": "SEC-TTDPT1-C03",
+      "class_code": "20231TTDPT1030",
       "course_id": "C03",
       "course_name": "Cơ sở dữ liệu",
       "lecturer_id": "GV08",
@@ -2315,6 +2495,7 @@
     },
     {
       "section_id": "SEC-TTDPT1-C18",
+      "class_code": "20231TTDPT1201",
       "course_id": "C18",
       "course_name": "Tiếng Anh Công nghệ thông tin",
       "lecturer_id": "GV12",
@@ -2329,6 +2510,7 @@
     },
     {
       "section_id": "SEC-HTTT2-C04",
+      "class_code": "20231HTTT2040",
       "course_id": "C04",
       "course_name": "Mạng máy tính",
       "lecturer_id": "GV03",
@@ -2343,6 +2525,7 @@
     },
     {
       "section_id": "SEC-HTTT2-C05",
+      "class_code": "20231HTTT2050",
       "course_id": "C05",
       "course_name": "Hệ điều hành",
       "lecturer_id": "GV04",
@@ -2357,6 +2540,7 @@
     },
     {
       "section_id": "SEC-HTTT2-C06",
+      "class_code": "20231HTTT2060",
       "course_id": "C06",
       "course_name": "Kiến trúc máy tính",
       "lecturer_id": "GV04",
@@ -2371,6 +2555,7 @@
     },
     {
       "section_id": "SEC-HTTT2-C14",
+      "class_code": "20231HTTT2301",
       "course_id": "C14",
       "course_name": "Deeplearning",
       "lecturer_id": "GV11",
@@ -2385,6 +2570,7 @@
     },
     {
       "section_id": "SEC-HTTT2-C01",
+      "class_code": "20231HTTT2010",
       "course_id": "C01",
       "course_name": "Lập trình hướng đối tượng",
       "lecturer_id": "GV01",
@@ -2399,6 +2585,7 @@
     },
     {
       "section_id": "SEC-KHMT1-C11",
+      "class_code": "20231-KHMT1-C11",
       "course_id": "C11",
       "course_name": "Khai phá dữ liệu",
       "lecturer_id": "GV07",
@@ -2413,6 +2600,7 @@
     },
     {
       "section_id": "SEC-ATTT1-C20",
+      "class_code": "20231-ATTT1-C20",
       "course_id": "C20",
       "course_name": "Triết học Mác-Lênin",
       "lecturer_id": "GV15",
@@ -2486,7 +2674,7 @@
     {
       "constraint_id": "S1",
       "constraint_type": "SOFT",
-      "constraint_name": "Phân bố môn học của mỗi nhóm đều trong tuần",
+      "constraint_name": "Giảm số ngày sinh viên phải đến trường",
       "weight": 10,
       "enabled": true
     },
@@ -2507,15 +2695,29 @@
     {
       "constraint_id": "S4",
       "constraint_type": "SOFT",
-      "constraint_name": "Giảm số ghế trống trong phòng",
+      "constraint_name": "Giảm tỷ lệ ghế trống trong phòng",
       "weight": 2,
       "enabled": true
     },
     {
       "constraint_id": "S5",
       "constraint_type": "SOFT",
-      "constraint_name": "Hạn chế giảng viên di chuyển liên tiếp giữa hai cơ sở",
+      "constraint_name": "Hạn chế giảng viên chuyển cơ sở liên tiếp",
       "weight": 8,
+      "enabled": true
+    },
+    {
+      "constraint_id": "S6",
+      "constraint_type": "SOFT",
+      "constraint_name": "Ưu tiên cơ sở mong muốn của lớp học phần",
+      "weight": 3,
+      "enabled": true
+    },
+    {
+      "constraint_id": "S7",
+      "constraint_type": "SOFT",
+      "constraint_name": "Ưu tiên cơ sở chính của nhóm sinh viên",
+      "weight": 4,
       "enabled": true
     }
   ]

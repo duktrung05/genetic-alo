@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Optional
@@ -38,6 +39,19 @@ PRODUCTION_CONFIG = {
     "soft_local_search_max_passes": 2,
     "soft_local_search_max_candidate_checks": 5000,
 }
+try:
+    DEMO_EVALUATION_BUDGET = int(
+        os.environ.get(
+            "GA_DEMO_EVALUATION_BUDGET",
+            str(PRODUCTION_CONFIG["evaluation_budget"]),
+        )
+    )
+except ValueError:
+    DEMO_EVALUATION_BUDGET = PRODUCTION_CONFIG["evaluation_budget"]
+DEMO_EVALUATION_BUDGET = max(
+    PRODUCTION_CONFIG["population_size"],
+    DEMO_EVALUATION_BUDGET,
+)
 DAY_ORDER = {
     "Thứ 2": 1, "Monday": 1, "Thứ 3": 2, "Tuesday": 2,
     "Thứ 4": 3, "Wednesday": 3, "Thứ 5": 4, "Thursday": 4,
@@ -258,6 +272,7 @@ def run_demo_scheduler(dataset: dict, seed: int = 0, *, evaluation_budget: int =
         "section_count": len(dataset["course_sections"]),
         "scheduled_section_count": len(scheduled_sections),
         "activity_count": len(activities), "scheduled_count": len(schedule.genes), "seed": seed,
+        "evaluation_budget": evaluation_budget,
     }
 
 
@@ -275,7 +290,9 @@ def create_demo_exports(run: dict[str, Any], dataset: dict, dataset_name: str, o
         "method": "GA + Repair + SLS (Production)", "primary_method": "ga_repair_sls",
         "dataset": dataset_name, "seed": run["seed"],
         "population_size": PRODUCTION_CONFIG["population_size"],
-        "evaluation_budget": PRODUCTION_CONFIG["evaluation_budget"],
+        "evaluation_budget": run.get(
+            "evaluation_budget", PRODUCTION_CONFIG["evaluation_budget"]
+        ),
         "hard_violations": run["hard_violations"], "soft_penalty": run["soft_score"],
         "runtime_seconds": run["run_metrics"].runtime_seconds,
     }
@@ -462,14 +479,21 @@ def _render_scheduler_page() -> None:
         method_columns[4].markdown("#### SLS\nImprove soft quality")
     with st.expander("Advanced Settings", expanded=False):
         seed = int(st.number_input("Reproducible seed", min_value=0, value=0, step=1))
-        st.caption("Frozen production configuration: population 60, GA budget 1,000, SLS enabled.")
+        st.caption(
+            "Frozen production method: population 60, "
+            f"GA budget {DEMO_EVALUATION_BUDGET:,}, SLS enabled."
+        )
     running = bool(st.session_state.get("scheduler_running", False))
     if st.button("✨ Generate Timetable", type="primary", disabled=(not result.valid or running), use_container_width=True):
         st.session_state["scheduler_running"] = True
         progress = st.progress(0, text="Loading and validating dataset...")
         try:
             progress.progress(15, text="Validation passed. Running Genetic Algorithm with Repair...")
-            run = run_demo_scheduler(result.dataset, seed=seed)
+            run = run_demo_scheduler(
+                result.dataset,
+                seed=seed,
+                evaluation_budget=DEMO_EVALUATION_BUDGET,
+            )
             progress.progress(80, text="Improving soft constraints with SLS and evaluating final schedule...")
             exports = create_demo_exports(run, result.dataset, dataset_name)
             st.session_state["demo_result"] = {

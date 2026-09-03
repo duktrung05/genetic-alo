@@ -36,8 +36,8 @@ DATASETS = {
     "MEDIUM": ROOT / "data" / "instances" / "instance_medium.xlsx",
 }
 EXPECTED_HASHES = {
-    "EASY": "dfbff415600ff0a1a2cba8b55c90ab52dbcd7b3db3b090f16f1b49cee2bc6e6d",
-    "MEDIUM": "409c375ed82490cedaeac258b90c6bae7d9e26ad9c50fd01aafc763b324b9d1b",
+    "EASY": "5ddc4d9447ac5a43d95c5f2854eb2f6982dd5c84f7843b64d648a0ca6cff5c45",
+    "MEDIUM": "78e7c324db8c667130df4e261b6fe729c64c0bf001d836197dd466fc44caf9ef",
 }
 METHODS = ("ga", "ga_repair", "ga_repair_sls")
 SEEDS = tuple(range(10))

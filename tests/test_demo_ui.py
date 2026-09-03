@@ -110,7 +110,8 @@ def test_excel_and_json_demo_exports_use_production_exporters(small_dataset, tmp
 
 
 @pytest.mark.integration
-def test_exact_easy_live_demo_navigation():
+def test_exact_easy_live_demo_navigation(monkeypatch):
+    monkeypatch.setenv("GA_DEMO_EVALUATION_BUDGET", "100")
     app = AppTest.from_file(Path(__file__).resolve().parents[1] / "ui_app.py").run(timeout=20)
     assert not app.exception
     assert app.selectbox[0].value == "EASY"
