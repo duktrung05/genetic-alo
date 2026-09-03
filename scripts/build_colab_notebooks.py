@@ -372,7 +372,7 @@ for ten_sheet in tep_excel.sheet_names:
             code(
                 r'''
 #@title Chạy toàn bộ pytest
-CHAY_TOAN_BO_TEST = True #@param {type:"boolean"}
+CHAY_TOAN_BO_TEST = False #@param {type:"boolean"}
 
 if CHAY_TOAN_BO_TEST:
     subprocess.run(
@@ -498,7 +498,7 @@ gồm `raw_runs.csv` và `summary.json`, sau đó được lưu sang Google Driv
             code(
                 r'''
 #@title Chạy phân tích độ nhạy
-CHAY_PHAN_TICH_DO_NHAY = True #@param {type:"boolean"}
+CHAY_PHAN_TICH_DO_NHAY = False #@param {type:"boolean"}
 TEN_DATASET = "easy" #@param ["easy", "medium"]
 
 thu_muc_do_nhay = THU_MUC_DU_AN / "outputs/benchmark/phase1_1_weight_sensitivity"
@@ -563,7 +563,7 @@ Checkpoint được đồng bộ sang Drive nên có thể tiếp tục sau khi 
             code(
                 r'''
 #@title Benchmark nhanh
-CHAY_BENCHMARK_NHANH = True #@param {type:"boolean"}
+CHAY_BENCHMARK_NHANH = False #@param {type:"boolean"}
 CAC_PHUONG_PHAP = "ga_repair_sls,ga_repair,ga" #@param {type:"string"}
 CAC_SEED = "0-2" #@param {type:"string"}
 TEN_DATASET = "easy" #@param ["easy", "medium"]
@@ -763,30 +763,82 @@ trình bày kết quả trực tiếp từ notebook 02.
     )
 
 
+def build_combined_notebook() -> Path:
+    """Merge the generated sections into one Colab notebook."""
+    section_files = [
+        "00_Thiet_Lap_Du_An_Colab.ipynb",
+        "01_Kiem_Thu_Va_Du_Lieu.ipynb",
+        "02_Chay_GA_Va_Xuat_Lich.ipynb",
+        "03_Phan_Tich_Do_Nhay.ipynb",
+        "04_Benchmark_So_Sanh.ipynb",
+        "05_Streamlit_Demo.ipynb",
+    ]
+    sections = [
+        json.loads((OUTPUT_DIR / filename).read_text(encoding="utf-8"))
+        for filename in section_files
+    ]
+
+    cells = [
+        markdown(
+            """
+# Genetic ALO — Toàn bộ dự án trên Google Colab
+
+Notebook duy nhất cho toàn bộ quy trình: clone source từ GitHub, cài thư viện,
+xem dataset Excel, chạy kiểm thử, tạo thời khóa biểu bằng GA + Repair + SLS,
+phân tích độ nhạy, benchmark và mở giao diện Streamlit.
+
+## Cách chạy nhanh khi trình bày
+
+1. Chọn **Runtime → Run all**.
+2. Cấp quyền Google Drive để lưu output.
+3. Chờ phần production tạo lịch và phần cuối cấp link **MỞ WEB DEMO**.
+
+Pytest, sensitivity và benchmark mặc định tắt để buổi demo không phải chờ lâu.
+Có thể bật từng công tắc trong các phần tương ứng khi cần báo cáo chi tiết.
+"""
+        ),
+        sections[0]["cells"][1],
+    ]
+
+    # Keep each section heading and its task cells, but remove repeated clone cells.
+    for section in sections[1:]:
+        cells.append(section["cells"][0])
+        cells.extend(section["cells"][2:])
+
+    filename = "Genetic_ALO_Colab.ipynb"
+    path = OUTPUT_DIR / filename
+    path.write_text(
+        json.dumps(notebook(filename, cells), ensure_ascii=False, indent=1) + "\n",
+        encoding="utf-8",
+    )
+
+    for filename_to_remove in section_files:
+        (OUTPUT_DIR / filename_to_remove).unlink()
+    return path
+
+
 def write_readme(checksum: str, file_count: int) -> None:
     del checksum
-    content = f"""# Bộ Google Colab Genetic ALO
+    content = f"""# Genetic ALO trên Google Colab
 
-## Thứ tự chạy
+Chỉ cần một file: `Genetic_ALO_Colab.ipynb`.
 
-1. `00_Thiet_Lap_Du_An_Colab.ipynb` — clone source/data từ GitHub và kiểm tra môi trường.
-2. `01_Kiem_Thu_Va_Du_Lieu.ipynb` — hiển thị Excel, kiểm tra dataset và chạy pytest.
-3. `02_Chay_GA_Va_Xuat_Lich.ipynb` — chạy GA + Repair + SLS, xuất lịch.
-4. `03_Phan_Tich_Do_Nhay.ipynb` — thí nghiệm độ nhạy trọng số.
-5. `04_Benchmark_So_Sanh.ipynb` — benchmark nhanh hoặc benchmark 60 lượt.
-6. `05_Streamlit_Demo.ipynb` — mở đúng giao diện `ui_app.py` qua link tạm thời.
+Notebook gồm các phần:
 
-Repository hiện có khoảng **{file_count} file source, dataset Excel và output**.
-Mỗi notebook tự clone nhánh `main` vào `/content/genetic-alo`, sau đó khôi phục
-output mới nhất từ Google Drive nếu có. Dataset thật nằm trong `data/instances`.
+- Clone nhánh `main` từ GitHub và cài `requirements.txt`.
+- Hiển thị, kiểm tra dataset EASY/MEDIUM và chạy pytest tùy chọn.
+- Chạy production GA + Repair + SLS và xuất lịch.
+- Chạy sensitivity và benchmark tùy chọn.
+- Mở đúng giao diện Streamlit qua link tạm thời.
 
-## Cách nộp/chạy
+Repository hiện có khoảng **{file_count} file source, dataset và output**.
+Sau khi clone, dataset Excel thật nằm trong `data/instances`.
 
-- Giải nén bộ bàn giao và upload sáu file `.ipynb` lên Google Drive hoặc Colab.
-- Mở và chạy theo thứ tự 00 → 05.
+- Mở notebook từ GitHub bằng Google Colab.
+- Chọn `Runtime → Run all`.
 - Dùng runtime CPU; không cần GPU.
-- Chạy notebook 02 trước notebook 05 để giao diện dùng output mới nhất.
-- Quick Tunnel của notebook 05 chỉ dùng cho buổi demo; giữ tab Colab hoạt động.
+- Pytest, sensitivity và benchmark mặc định tắt để chạy demo nhanh.
+- Quick Tunnel chỉ dùng cho buổi demo; giữ tab Colab hoạt động.
 """
     (OUTPUT_DIR / "README.md").write_text(content, encoding="utf-8")
 
@@ -822,12 +874,11 @@ def main() -> None:
     build_sensitivity_notebook(checksum)
     build_benchmark_notebook(checksum)
     build_demo_notebook(checksum)
+    notebook_path = build_combined_notebook()
     write_readme(checksum, file_count)
-    archive_path = build_archive()
 
-    print(f"Built 6 notebooks in: {OUTPUT_DIR}")
+    print(f"Built combined notebook: {notebook_path}")
     print(f"Project files represented by the GitHub clone: {file_count}")
-    print(f"Upload bundle: {archive_path}")
 
 
 if __name__ == "__main__":
