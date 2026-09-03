@@ -125,7 +125,7 @@ class ScheduleRepairEngine:
         for ts in self.timeslots:
             self.day_available_periods[ts.day].add(ts.period)
 
-        # Pre-cache valid rooms per section
+        # Lưu đệm trước các phòng hợp lệ cho từng lớp học phần
         self._valid_rooms_cache: Dict[str, List[Room]] = {}
         for sec in self.section_map.values():
             req_type = getattr(sec, "required_room_type", "NORMAL")
@@ -134,7 +134,7 @@ class ScheduleRepairEngine:
                 if r.capacity >= sec.student_count and getattr(r, "room_type", "NORMAL") == req_type
             ], key=lambda r: (r.capacity, r.id))
 
-        # Pre-cache valid start timeslots per duration
+        # Lưu đệm trước các khung giờ bắt đầu hợp lệ theo thời lượng
         self._valid_ts_by_duration: Dict[int, List[Timeslot]] = {}
         unique_durations = {getattr(s, "duration_periods", 1) for s in self.section_map.values()}
         for dur in unique_durations:
@@ -143,7 +143,7 @@ class ScheduleRepairEngine:
                 if is_valid_period_block(t.period, dur, self.day_available_periods.get(t.day))
             ]
 
-        # Pre-calculate candidate count per section for tightness priority key
+        # Tính trước số ứng viên của từng lớp học phần để làm khóa ưu tiên theo độ chặt
         self._section_cand_count: Dict[str, int] = {}
         for sec in self.section_map.values():
             dur = getattr(sec, "duration_periods", 1)
@@ -202,9 +202,9 @@ class ScheduleRepairEngine:
             and set(gene_section_ids) == expected_section_ids
         )
 
-        # Repair transforms assignments only. Missing, duplicate, unknown, or
-        # non-Gene chromosome entries violate the representation contract and
-        # are rejected instead of being silently invented or discarded.
+        # Repair chỉ biến đổi các phân công. Những mục nhiễm sắc thể bị thiếu, trùng,
+        # không xác định hoặc không phải Gene sẽ vi phạm hợp đồng biểu diễn và bị từ
+        # chối thay vì được âm thầm tạo thêm hoặc loại bỏ.
         if not structurally_valid:
             input_hard, _ = self.evaluator.evaluate_hard(
                 schedule, category="internal"
@@ -273,7 +273,7 @@ class ScheduleRepairEngine:
                 current_gene = input_gene_map.get(sec_id)
                 chosen_ts, chosen_room = None, None
 
-                # Check if current assignment is 100% valid & conflict-free
+                # Kiểm tra phân công hiện tại có hoàn toàn hợp lệ và không xung đột hay không
                 if current_gene:
                     ts_id, rm_id = current_gene
                     ts = self.timeslot_map.get(ts_id)
@@ -291,7 +291,7 @@ class ScheduleRepairEngine:
                                 chosen_ts = ts
                                 chosen_room = room
 
-                # 3-Tier Candidate Search Hierarchy
+                # Cấu trúc tìm kiếm ứng viên gồm 3 tầng
                 if chosen_ts is None:
                     candidate_rooms = self._valid_rooms_cache.get(sec_id, [])
                     valid_ts_list = self._valid_ts_by_duration.get(duration, [])
@@ -299,7 +299,7 @@ class ScheduleRepairEngine:
                     curr_ts = self.timeslot_map.get(current_gene[0]) if current_gene else None
                     curr_rm = self.room_map.get(current_gene[1]) if current_gene else None
 
-                    # Tier 1: Keep timeslot, change room
+                    # Tầng 1: Giữ khung giờ, đổi phòng
                     if curr_ts and (section.section_id, curr_ts.day) not in used_section_days and is_valid_period_block(curr_ts.period, duration, self.day_available_periods.get(curr_ts.day)):
                         occ = get_occupied_periods(curr_ts.period, duration)
                         if avail_ts is None or all(self.day_period_to_ts_id.get((curr_ts.day, p)) in avail_ts for p in occ):
@@ -312,7 +312,7 @@ class ScheduleRepairEngine:
                                         chosen_room = r
                                         break
 
-                    # Tier 2: Change timeslot, keep current room
+                    # Tầng 2: Đổi khung giờ, giữ phòng hiện tại
                     if chosen_ts is None and curr_rm and curr_rm.capacity >= section.student_count and getattr(curr_rm, "room_type", "NORMAL") == req_type:
                         for ts in valid_ts_list:
                             self.stats.candidate_checks += 1
@@ -330,7 +330,7 @@ class ScheduleRepairEngine:
                                 chosen_room = curr_rm
                                 break
 
-                    # Tier 3: Change both timeslot and room
+                    # Tầng 3: Đổi cả khung giờ và phòng
                     if chosen_ts is None:
                         shuffled_ts = list(valid_ts_list)
                         if attempt > 0:
@@ -375,7 +375,7 @@ class ScheduleRepairEngine:
                     if current_gene:
                         repaired_genes_dict[sec_id] = Gene(sec_id, current_gene[1], current_gene[0])
 
-            # Reconstruct candidate schedule
+            # Tái tạo thời khóa biểu ứng viên
             final_genes = [
                 repaired_genes_dict.get(
                     activity.activity_id,
@@ -393,13 +393,13 @@ class ScheduleRepairEngine:
             cand_soft, _ = self.evaluator.evaluate_soft(cand_schedule, category="internal")
 
 
-            # Update best_schedule on attempt 0 or when strictly better than best schedule found so far
+            # Cập nhật best_schedule ở lần thử 0 hoặc khi tốt hơn hẳn lịch tốt nhất đã tìm thấy
             if attempt == 0 or (cand_hard, cand_soft) < (best_hard, best_soft):
                 best_schedule = cand_schedule
                 best_hard = cand_hard
                 best_soft = cand_soft
                 best_failed_sections = sorted(list(failed_sections))
-                # Count sections that ACTUALLY changed from input
+                # Đếm các lớp học phần THỰC SỰ thay đổi so với đầu vào
                 best_repaired_count = sum(
                     1 for g in final_genes
                     if (g.timeslot_id, g.room_id) != input_gene_map.get(g.section_id)
@@ -408,7 +408,7 @@ class ScheduleRepairEngine:
             if best_hard == 0:
                 break
 
-        # Classify status based on (best_hard, best_soft) vs (input_hard, input_soft)
+        # Phân loại trạng thái bằng cách so sánh (best_hard, best_soft) với (input_hard, input_soft)
         if (best_hard, best_soft) < (input_hard, input_soft):
             status = RepairStatus.IMPROVED
             self.stats.repair_improved += 1

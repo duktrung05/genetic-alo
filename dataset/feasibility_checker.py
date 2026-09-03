@@ -39,7 +39,7 @@ class FeasibilityChecker:
         """Find a schedule with 0 hard violations on dataset, or None if impossible."""
         sorted_sections = sorted(self.sections, key=self._get_priority_key)
 
-        # Pre-compute candidate (ts, room) options per section
+        # Tính trước các phương án ứng viên (khung giờ, phòng) cho từng lớp học phần
         sec_candidates: Dict[str, List[Tuple[Timeslot, Room]]] = {}
         for sec in sorted_sections:
             duration = getattr(sec, "duration_periods", 1)
@@ -87,7 +87,7 @@ class FeasibilityChecker:
                 if (sec.section_id, day) in used_section_days:
                     continue
 
-                # Check overlaps
+                # Kiểm tra trùng lịch
                 lec_conflict = False
                 if sec.lecturer_id:
                     for p in occupied:
@@ -114,7 +114,7 @@ class FeasibilityChecker:
                 if rm_conflict:
                     continue
 
-                # Make assignment
+                # Thực hiện phân công
                 if sec.lecturer_id:
                     for p in occupied:
                         used_lec_time.add((sec.lecturer_id, day, p))
@@ -130,7 +130,7 @@ class FeasibilityChecker:
                 if backtrack(index + 1):
                     return True
 
-                # Undo assignment
+                # Hoàn tác phân công
                 assigned_genes.pop()
                 if sec.lecturer_id:
                     for p in occupied:
@@ -145,7 +145,7 @@ class FeasibilityChecker:
             return False
 
         if backtrack(0):
-            # Maintain original section ordering
+            # Giữ nguyên thứ tự lớp học phần ban đầu
             sec_order = {s.activity_id: i for i, s in enumerate(self.sections)}
             assigned_genes.sort(key=lambda g: sec_order[g.section_id])
             return Schedule(genes=assigned_genes)

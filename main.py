@@ -34,9 +34,9 @@ def parse_args():
     parser.add_argument(
         "--input",
         type=str,
-        default="data/01_data_timetable.xlsx",
+        default="data/instances/instance_easy.xlsx",
         help="Input Excel dataset path "
-        "(default: data/01_data_timetable.xlsx)",
+        "(default: data/instances/instance_easy.xlsx)",
     )
 
     parser.add_argument(
@@ -106,11 +106,11 @@ def main():
     print("=" * 80)
 
     # ==================================================================
-    # 1. LOAD DATASET
+    # 1. NẠP BỘ DỮ LIỆU
     # ==================================================================
 
     input_path = args.input
-    snapshot_path = "outputs/datasets/01_data_timetable.normalized.json"
+    snapshot_path = "outputs/datasets/instance_easy.normalized.json"
 
     if os.path.exists(input_path):
         print(
@@ -135,7 +135,7 @@ def main():
         )
 
     # ==================================================================
-    # 2. RUN GA + REPAIR
+    # 2. CHẠY GA + REPAIR
     # ==================================================================
 
     print(f"\n[Phase 2] Đang chạy thuật toán chính: {method_name}...")
@@ -178,36 +178,36 @@ def main():
     )
 
     # ------------------------------------------------------------------
-    # IMPORTANT:
-    # best_schedule ở đây phải là schedule cuối cùng do engine trả về.
-    # Nếu SLS được bật, đây phải là schedule AFTER SLS.
+    # QUAN TRỌNG:
+    # best_schedule ở đây phải là lịch cuối cùng do engine trả về.
+    # Nếu SLS được bật, đây phải là lịch SAU SLS.
     # ------------------------------------------------------------------
 
     best_schedule = run_result["best_schedule"]
     metrics = run_result["run_metrics"]
 
     # ==================================================================
-    # 3. FINAL INDEPENDENT RE-EVALUATION
+    # 3. ĐÁNH GIÁ LẠI ĐỘC LẬP LẦN CUỐI
     # ==================================================================
     #
-    # KHÔNG dùng run_result["soft_penalty"] làm source of truth
-    # cho production output.
+    # KHÔNG dùng run_result["soft_penalty"] làm nguồn dữ liệu chuẩn
+    # cho đầu ra production.
     #
-    # Luôn evaluate lại chính best_schedule cuối cùng.
+    # Luôn đánh giá lại chính best_schedule cuối cùng.
     #
-    # Đây là fix chính cho bug:
+    # Đây là bản sửa chính cho lỗi:
     #
     #   GA + Repair = 2063
     #   SLS         = 1671
-    #   metadata    = 2063  <-- OLD BUG
+    #   metadata    = 2063  <-- LỖI CŨ
     #
-    # Sau fix:
+    # Sau khi sửa:
     #
-    #   Final Schedule
+    #   Lịch cuối cùng
     #       ↓
-    #   Evaluator
+    #   Bộ đánh giá
     #       ↓
-    #   Excel / Query JSON / Metadata / UI đều cùng final score.
+    #   Excel / JSON truy vấn / siêu dữ liệu / UI đều có cùng điểm cuối.
     # ==================================================================
 
     evaluator = ConstraintEvaluator(dataset, soft_config=soft_config)
@@ -216,15 +216,15 @@ def main():
     hard_violations = unified.hard_violations
     soft_penalty = unified.soft_penalty
 
-    # Audit information cho SLS
+    # Thông tin kiểm tra cho SLS
     soft_before_sls = getattr(metrics, "soft_before_sls", None)
 
-    # Source of truth của "after SLS" luôn là final schedule
-    # vừa được evaluator kiểm tra độc lập.
+    # Nguồn dữ liệu chuẩn của "sau SLS" luôn là lịch cuối cùng
+    # vừa được bộ đánh giá kiểm tra độc lập.
     soft_after_sls = soft_penalty
 
     # ==================================================================
-    # 4. PRINT FINAL PRODUCTION RESULT
+    # 4. IN KẾT QUẢ PRODUCTION CUỐI CÙNG
     # ==================================================================
 
     print("\n" + "=" * 80)
@@ -270,7 +270,7 @@ def main():
     )
 
     # ==================================================================
-    # 5. SOFT CONSTRAINT BREAKDOWN
+    # 5. PHÂN TÍCH RÀNG BUỘC MỀM
     # ==================================================================
 
     print("\n  CHI TIẾT RÀNG BUỘC MỀM CHUẨN HÓA (S1–S7):")
@@ -304,7 +304,7 @@ def main():
     print("=" * 80)
 
     # ==================================================================
-    # 6. PREPARE OUTPUT DIRECTORY
+    # 6. CHUẨN BỊ THƯ MỤC ĐẦU RA
     # ==================================================================
 
     output_path = Path(args.output)
@@ -319,14 +319,14 @@ def main():
     )
 
     # ==================================================================
-    # 7. SYNCHRONIZE RUN METRICS FOR EXPORT
+    # 7. ĐỒNG BỘ CHỈ SỐ LẦN CHẠY ĐỂ XUẤT
     # ==================================================================
     #
     # metrics.to_dict() có thể vẫn chứa final_soft_penalty
     # từ trước khi SLS chạy.
     #
-    # Ta tạo một bản dictionary rồi override các field FINAL
-    # bằng kết quả từ independent re-evaluation.
+    # Ta tạo một từ điển rồi ghi đè các trường CUỐI CÙNG
+    # bằng kết quả từ lần đánh giá lại độc lập.
     # ==================================================================
 
     metrics_dict = metrics.to_dict()
@@ -344,8 +344,8 @@ def main():
     metrics_dict["feasible"] = hard_violations == 0
     metrics_dict["is_hard_feasible"] = hard_violations == 0
 
-    # Nếu score tồn tại và Hard = 0 thì score cuối
-    # phải phản ánh final Soft Penalty.
+    # Nếu score tồn tại và Hard = 0 thì điểm cuối
+    # phải phản ánh điểm phạt mềm cuối cùng.
     if "score" in metrics_dict:
         metrics_dict["score"] = (
             float(soft_penalty)
@@ -354,7 +354,7 @@ def main():
         )
 
     # ==================================================================
-    # 8. BUILD FINAL METADATA
+    # 8. TẠO SIÊU DỮ LIỆU CUỐI CÙNG
     # ==================================================================
 
     meta_export = {
@@ -401,7 +401,7 @@ def main():
             args.soft_local_search,
 
         # --------------------------------------------------------------
-        # FINAL PRODUCTION RESULT
+        # KẾT QUẢ PRODUCTION CUỐI CÙNG
         # --------------------------------------------------------------
 
         "hard_violations":
@@ -420,7 +420,7 @@ def main():
             hard_violations == 0,
 
         # --------------------------------------------------------------
-        # SLS AUDIT
+        # KIỂM TRA SLS
         # --------------------------------------------------------------
 
         "soft_before_sls":
@@ -430,7 +430,7 @@ def main():
             soft_after_sls,
 
         # --------------------------------------------------------------
-        # RUNTIME
+        # THỜI GIAN CHẠY
         # --------------------------------------------------------------
 
         "runtime_seconds":
@@ -440,7 +440,7 @@ def main():
             metrics.time_to_first_feasible_seconds,
 
         # --------------------------------------------------------------
-        # RUN METRICS
+        # CHỈ SỐ LẦN CHẠY
         # --------------------------------------------------------------
 
         "all_runs_flat": [
@@ -449,7 +449,7 @@ def main():
     }
 
     # ==================================================================
-    # 9. EXPORT OFFICIAL TIMETABLE EXCEL
+    # 9. XUẤT THỜI KHÓA BIỂU EXCEL CHÍNH THỨC
     # ==================================================================
 
     exported_file = export_schedule_to_excel(
@@ -467,7 +467,7 @@ def main():
     )
 
     # ==================================================================
-    # 10. EXPORT QUERY JSON
+    # 10. XUẤT JSON TRUY VẤN
     # ==================================================================
 
     if hard_violations == 0:
@@ -487,7 +487,7 @@ def main():
         )
 
     # ==================================================================
-    # 11. EXPORT FINAL METADATA JSON
+    # 11. XUẤT JSON SIÊU DỮ LIỆU CUỐI CÙNG
     # ==================================================================
     #
     # Đây là phần trước đây main.py bị thiếu.
@@ -507,7 +507,7 @@ def main():
     )
 
     # ==================================================================
-    # 12. FINAL EXPORT CONSISTENCY SUMMARY
+    # 12. TỔNG KẾT TÍNH NHẤT QUÁN CỦA ĐẦU RA CUỐI
     # ==================================================================
 
     print("\n" + "=" * 80)
@@ -542,13 +542,13 @@ def main():
     print("=" * 80)
 
     # ==================================================================
-    # 13. PLOT GA CONVERGENCE CHART
+    # 13. VẼ BIỂU ĐỒ HỘI TỤ GA
     # ==================================================================
     #
     # Lưu ý:
-    # history là quá trình GLOBAL GA SEARCH.
-    # SLS là post-search nên final SLS score có thể thấp hơn
-    # điểm cuối trên convergence curve.
+    # history là quá trình TÌM KIẾM GA TOÀN CỤC.
+    # SLS chạy sau tìm kiếm nên điểm SLS cuối có thể thấp hơn
+    # điểm cuối trên đường cong hội tụ.
     # ==================================================================
 
     history = run_result.get("history", [])

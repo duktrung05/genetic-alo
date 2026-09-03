@@ -76,7 +76,7 @@ def parse_args():
     parser.add_argument(
         "--input",
         type=str,
-        default="data/01_data_timetable.xlsx",
+        default="data/instances/instance_easy.xlsx",
         help="Path to Excel dataset file when data-source is 'excel'",
     )
     parser.add_argument(
@@ -217,8 +217,8 @@ def main():
     print("=" * 80)
 
 
-    # 1. Load Dataset ONCE
-    json_norm_path = "outputs/datasets/01_data_timetable.normalized.json"
+    # 1. Chỉ nạp bộ dữ liệu MỘT LẦN
+    json_norm_path = "outputs/datasets/instance_easy.normalized.json"
     if args.data_source == "excel":
         excel_path = args.input
         if os.path.exists(excel_path):
@@ -243,7 +243,7 @@ def main():
     dataset_snap_file = benchmark_run_dir / "dataset_snapshot.json"
     ExcelDatasetLoader.export_normalized_json(dataset, str(dataset_snap_file))
 
-    # Print loaded soft constraints
+    # In các ràng buộc mềm đã nạp
     if "constraints" in dataset and dataset["constraints"]:
         soft_defs = [c for c in dataset["constraints"] if c.constraint_type == "SOFT"]
         print("\nSOFT CONSTRAINTS LOADED FROM EXCEL:")
@@ -253,7 +253,7 @@ def main():
     else:
         print("\nSOFT CONSTRAINTS LOADED: DEFAULT CONFIG (S1=10, S2=5, S3=4, S4=2, S5=8)")
 
-    # Save config.json
+    # Lưu config.json
     config_data = {
         "benchmark_id": f"benchmark_{timestamp}",
         "generated_at": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
@@ -272,7 +272,7 @@ def main():
     with open(benchmark_run_dir / "config.json", "w", encoding="utf-8") as f:
         json.dump(config_data, f, ensure_ascii=False, indent=2)
 
-    # 2. Run ONLY Selected Methods
+    # 2. CHỈ chạy các phương pháp đã chọn
     runs_by_method: dict = {}
     all_runs_flat = []
 
@@ -282,7 +282,7 @@ def main():
         print(f"\n[Phase 2] Running method '{display_name}' ({METHOD_ROLES[method_id]})...")
 
         if method_id == "greedy":
-            # Deterministic heuristic baseline runs ONCE
+            # Đường cơ sở heuristic xác định chỉ chạy MỘT LẦN
             run_res = runner(dataset, ga_config, evaluation_budget, 0)
             runs_by_method[method_id] = [run_res]
             all_runs_flat.append(run_res)
@@ -296,14 +296,14 @@ def main():
                     print(f"  Completed seed {run_idx + 1}/{num_runs} (seed={seed})")
             runs_by_method[method_id] = method_runs
 
-    # Validate search budget for stochastic methods
+    # Kiểm tra ngân sách tìm kiếm cho các phương pháp ngẫu nhiên
     for method_id in selected_methods:
         if method_id != "greedy":
             for r in runs_by_method[method_id]:
                 if "run_metrics" in r:
                     validate_search_budget(r["run_metrics"], evaluation_budget)
 
-    # 3. Compute Aggregated Statistics ONLY for selected methods
+    # 3. CHỈ tính thống kê tổng hợp cho các phương pháp đã chọn
     summary_list = []
     for method_id in selected_methods:
         runs = runs_by_method[method_id]
@@ -311,10 +311,10 @@ def main():
         stat = aggregate_run_results(METHOD_DISPLAY_NAMES[method_id], runs, is_deterministic=is_det)
         summary_list.append(stat)
 
-    # 4. Print Summary Tables
+    # 4. In các bảng tổng kết
     BenchmarkEvaluator.print_summary_table(summary_list)
 
-    # 5. Save raw_runs.json & raw_runs.csv (Selected methods ONLY)
+    # 5. Lưu raw_runs.json và raw_runs.csv (CHỈ các phương pháp đã chọn)
     with open(benchmark_run_dir / "raw_runs.json", "w", encoding="utf-8") as f:
         json.dump(make_json_serializable(all_runs_flat), f, ensure_ascii=False, indent=2)
 
@@ -338,7 +338,7 @@ def main():
             row_dict = {c: r.get(c, "") for c in raw_csv_cols}
             writer.writerow(row_dict)
 
-    # 6. Save summary.json & summary.csv (Selected methods ONLY)
+    # 6. Lưu summary.json và summary.csv (CHỈ các phương pháp đã chọn)
     with open(benchmark_run_dir / "summary.json", "w", encoding="utf-8") as f:
         json.dump(make_json_serializable(summary_list), f, ensure_ascii=False, indent=2)
 
@@ -359,7 +359,7 @@ def main():
 
 
 
-    # 7. Generate Convergence Charts (Only for methods with history)
+    # 7. Tạo biểu đồ hội tụ (chỉ cho phương pháp có lịch sử)
     ga_no_rep_runs = runs_by_method.get("ga", [])
     ga_repair_runs = runs_by_method.get("ga_repair", [])
     if not ga_repair_runs:
@@ -378,7 +378,7 @@ def main():
             evaluation_budget=evaluation_budget
         )
 
-    # 8. Independently verify feasibility, then export the best valid schedule.
+    # 8. Kiểm tra độc lập tính khả thi, sau đó xuất lịch hợp lệ tốt nhất.
     best_overall_run = select_best_feasible_run(all_runs_flat, dataset)
 
     if best_overall_run and best_overall_run.get("best_schedule"):

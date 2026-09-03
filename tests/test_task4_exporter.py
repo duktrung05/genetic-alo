@@ -13,7 +13,7 @@ from evaluation import export_schedule_to_excel, GreedyScheduler, ConvergenceVis
 from evaluation.benchmark_statistics import aggregate_run_results
 
 
-EXCEL_PATH = "data/01_data_timetable.xlsx"
+EXCEL_PATH = "data/instances/instance_easy.xlsx"
 
 @pytest.fixture
 def sample_dataset():
@@ -23,7 +23,7 @@ def sample_dataset():
 def feasible_schedule(sample_dataset):
     return find_feasible_schedule(sample_dataset)
 
-# 1. Export workbook có đúng 7 sheet
+# 1. Sổ làm việc xuất ra có đúng 7 trang tính
 def test_export_workbook_has_7_sheets(sample_dataset, feasible_schedule, tmp_path):
     out_file = str(tmp_path / "test_7_sheets.xlsx")
     export_schedule_to_excel(feasible_schedule, sample_dataset, out_file)
@@ -31,7 +31,7 @@ def test_export_workbook_has_7_sheets(sample_dataset, feasible_schedule, tmp_pat
     expected_sheets = ["SUMMARY", "RAW_ASSIGNMENTS", "SCHEDULE_BY_GROUP", "SCHEDULE_BY_LECTURER", "SCHEDULE_BY_ROOM", "VIOLATIONS", "RUN_CONFIG"]
     assert wb.sheetnames == expected_sheets
 
-# 2. Không có Sheet1
+# 2. Không có trang tính Sheet1
 def test_no_sheet1(sample_dataset, feasible_schedule, tmp_path):
     out_file = str(tmp_path / "test_no_sheet1.xlsx")
     export_schedule_to_excel(feasible_schedule, sample_dataset, out_file)
@@ -39,7 +39,7 @@ def test_no_sheet1(sample_dataset, feasible_schedule, tmp_path):
     assert "Sheet1" not in wb.sheetnames
     assert "Sheet" not in wb.sheetnames
 
-# 3. Không có sheet rỗng
+# 3. Không có trang tính rỗng
 def test_no_empty_sheets(sample_dataset, feasible_schedule, tmp_path):
     out_file = str(tmp_path / "test_no_empty.xlsx")
     export_schedule_to_excel(feasible_schedule, sample_dataset, out_file)
@@ -48,7 +48,7 @@ def test_no_empty_sheets(sample_dataset, feasible_schedule, tmp_path):
         ws = wb[name]
         assert ws.max_row >= 2, f"Sheet {name} must have header and at least 1 data row"
 
-# 4. RAW_ASSIGNMENTS có đúng số section
+# 4. RAW_ASSIGNMENTS có đúng số lớp học phần
 def test_raw_assignments_row_count(sample_dataset, feasible_schedule, tmp_path):
     out_file = str(tmp_path / "test_raw_count.xlsx")
     export_schedule_to_excel(feasible_schedule, sample_dataset, out_file)
@@ -57,7 +57,7 @@ def test_raw_assignments_row_count(sample_dataset, feasible_schedule, tmp_path):
     assert ws.max_row - 1 == len(sample_dataset["course_sections"])
 
 
-# 5. Duration 4 start 8 xuất "Tiết 8-11"
+# 5. Thời lượng 4 bắt đầu từ tiết 8 xuất thành "Tiết 8-11"
 def test_periods_string_duration_4_start_8(sample_dataset, feasible_schedule, tmp_path):
     out_file = str(tmp_path / "test_periods.xlsx")
     export_schedule_to_excel(feasible_schedule, sample_dataset, out_file)
@@ -73,7 +73,7 @@ def test_periods_string_duration_4_start_8(sample_dataset, feasible_schedule, tm
     if not found_d4:
         assert True
 
-# 6. Start/end time lấy đúng từ period đầu/cuối
+# 6. Thời gian bắt đầu/kết thúc lấy đúng từ tiết đầu/cuối
 def test_start_end_time_mapping(sample_dataset, feasible_schedule, tmp_path):
     out_file = str(tmp_path / "test_time_mapping.xlsx")
     export_schedule_to_excel(feasible_schedule, sample_dataset, out_file)
@@ -86,7 +86,7 @@ def test_start_end_time_mapping(sample_dataset, feasible_schedule, tmp_path):
         assert row[start_t_idx] != ""
         assert row[end_t_idx] != ""
 
-# 7. Lịch theo group được sort đúng
+# 7. Lịch theo nhóm được sắp xếp đúng
 def test_schedule_by_group_sorted(sample_dataset, feasible_schedule, tmp_path):
     out_file = str(tmp_path / "test_group_sort.xlsx")
     export_schedule_to_excel(feasible_schedule, sample_dataset, out_file)
@@ -100,7 +100,7 @@ def test_schedule_by_group_sorted(sample_dataset, feasible_schedule, tmp_path):
         assert curr_grp >= prev_grp
         prev_grp = curr_grp
 
-# 8. Lịch theo lecturer được sort đúng
+# 8. Lịch theo giảng viên được sắp xếp đúng
 def test_schedule_by_lecturer_sorted(sample_dataset, feasible_schedule, tmp_path):
     out_file = str(tmp_path / "test_lec_sort.xlsx")
     export_schedule_to_excel(feasible_schedule, sample_dataset, out_file)
@@ -114,7 +114,7 @@ def test_schedule_by_lecturer_sorted(sample_dataset, feasible_schedule, tmp_path
         assert curr_lec >= prev_lec
         prev_lec = curr_lec
 
-# 9. Lịch theo room được sort đúng
+# 9. Lịch theo phòng được sắp xếp đúng
 def test_schedule_by_room_sorted(sample_dataset, feasible_schedule, tmp_path):
     out_file = str(tmp_path / "test_room_sort.xlsx")
     export_schedule_to_excel(feasible_schedule, sample_dataset, out_file)
@@ -128,7 +128,7 @@ def test_schedule_by_room_sorted(sample_dataset, feasible_schedule, tmp_path):
         assert curr_rm >= prev_rm
         prev_rm = curr_rm
 
-# 10. Feasible schedule có VIOLATIONS sheet hợp lệ (13 cột, "No hard violations detected")
+# 10. Lịch khả thi có trang tính VIOLATIONS hợp lệ (13 cột, "No hard violations detected")
 def test_violations_sheet_feasible(sample_dataset, feasible_schedule, tmp_path):
     out_file = str(tmp_path / "test_viol_feasible.xlsx")
     export_schedule_to_excel(feasible_schedule, sample_dataset, out_file)
@@ -144,7 +144,7 @@ def test_violations_sheet_feasible(sample_dataset, feasible_schedule, tmp_path):
     desc_cell = ws.cell(row=2, column=15).value
     assert "No hard violations detected" in str(desc_cell)
 
-# 11. Infeasible schedule có hậu tố hoặc bị reject
+# 11. Lịch không khả thi có hậu tố hoặc bị từ chối
 def test_infeasible_schedule_handling(sample_dataset, tmp_path):
     infeasible_genes = [Gene(sec.section_id, sample_dataset["rooms"][0].id, sample_dataset["timeslots"][0].id) for sec in sample_dataset["course_sections"]]
     infeasible_sched = Schedule(genes=infeasible_genes)
@@ -155,7 +155,7 @@ def test_infeasible_schedule_handling(sample_dataset, tmp_path):
     exported_path = export_schedule_to_excel(infeasible_sched, sample_dataset, out_file, allow_infeasible_export=True)
     assert "_INFEASIBLE" in exported_path
 
-# 12. Config sheet và SUMMARY sheet chứa đầy đủ keys bắt buộc
+# 12. Trang tính cấu hình và SUMMARY chứa đầy đủ các khóa bắt buộc
 def test_summary_and_config_sheet_values(sample_dataset, feasible_schedule, tmp_path):
     out_file = str(tmp_path / "test_config_sheet.xlsx")
     export_schedule_to_excel(feasible_schedule, sample_dataset, out_file, metadata={"seed": 42, "pop_size": 60})
@@ -174,7 +174,7 @@ def test_summary_and_config_sheet_values(sample_dataset, feasible_schedule, tmp_
     config_map = {ws_cfg.cell(r, 1).value: ws_cfg.cell(r, 2).value for r in range(2, ws_cfg.max_row + 1)}
     assert str(config_map.get("population_size")) == "60"
 
-# 13. Benchmark tạo thư mục timestamp riêng
+# 13. Benchmark tạo thư mục dấu thời gian riêng
 def test_benchmark_creates_timestamp_directory(tmp_path):
     import datetime
     timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -182,7 +182,7 @@ def test_benchmark_creates_timestamp_directory(tmp_path):
     os.makedirs(benchmark_dir, exist_ok=True)
     assert os.path.exists(benchmark_dir)
 
-# 14. Benchmark không ghi đè run cũ
+# 14. Benchmark không ghi đè lần chạy cũ
 def test_benchmark_does_not_overwrite_previous_runs(tmp_path):
     dir1 = tmp_path / "benchmark_run1"
     dir2 = tmp_path / "benchmark_run2"
@@ -190,28 +190,28 @@ def test_benchmark_does_not_overwrite_previous_runs(tmp_path):
     dir2.mkdir()
     assert dir1 != dir2
 
-# 15. Excel chỉ load một lần
+# 15. Excel chỉ được nạp một lần
 def test_excel_loaded_once():
     _real_load = openpyxl.load_workbook
     with patch("openpyxl.load_workbook", side_effect=_real_load) as mock_load:
         ExcelDatasetLoader.load_and_validate(EXCEL_PATH)
         assert mock_load.call_count == 1
 
-# 16. 30 seed dùng cùng dataset snapshot
+# 16. 30 seed dùng cùng bản chụp bộ dữ liệu
 def test_snapshot_shared_across_seeds(sample_dataset):
-    snap1 = ExcelDatasetLoader.export_normalized_json(sample_dataset, "outputs/datasets/01_data_timetable.normalized.json")
+    snap1 = ExcelDatasetLoader.export_normalized_json(sample_dataset, "outputs/datasets/instance_easy.normalized.json")
     ds1 = ExcelDatasetLoader.load_normalized_json(snap1)
     ds2 = ExcelDatasetLoader.load_normalized_json(snap1)
     assert len(ds1["course_sections"]) == len(ds2["course_sections"])
 
 
-# 17. Engine không reuse mutable state
+# 17. Engine không tái sử dụng trạng thái có thể thay đổi
 def test_ga_engine_isolated_instances(sample_dataset):
     ga1 = GeneticAlgorithmEngine(sample_dataset, pop_size=10)
     ga2 = GeneticAlgorithmEngine(sample_dataset, pop_size=10)
     assert ga1 is not ga2
 
-# 18. Repair stats không cộng dồn giữa seed
+# 18. Thống kê Repair không cộng dồn giữa các seed
 def test_repair_stats_reset_per_run(sample_dataset):
     evaluator = ConstraintEvaluator(sample_dataset)
     repairer = ScheduleRepairEngine(sample_dataset, evaluator=evaluator)
@@ -221,7 +221,7 @@ def test_repair_stats_reset_per_run(sample_dataset):
     repairer.stats.reset()
     assert repairer.stats.repair_calls == 0
 
-# 19. Convergence history có hard và soft riêng
+# 19. Lịch sử hội tụ có hard và soft riêng
 def test_convergence_history_separate_hard_soft(sample_dataset):
     ga = GeneticAlgorithmEngine(sample_dataset, pop_size=10)
     res = ga.run(generations=2, use_repair=False)
@@ -230,14 +230,14 @@ def test_convergence_history_separate_hard_soft(sample_dataset):
         assert "best_hard" in record or "hard_violations" in record
         assert "best_soft_penalty" in record or "soft_penalty" in record
 
-# 20. Greedy reproducible (100% deterministic)
+# 20. Greedy có thể tái lập (100% xác định)
 def test_greedy_is_deterministic(sample_dataset):
     g1 = GreedyScheduler(sample_dataset, seed=1).run()
     g2 = GreedyScheduler(sample_dataset, seed=2).run()
     assert g1["best_score"] == g2["best_score"]
     assert g1["hard_violations"] == g2["hard_violations"]
 
-# 21. Soft feasible metrics có trong aggregate_run_results
+# 21. Các chỉ số mềm khả thi có trong aggregate_run_results
 def test_soft_feasible_metrics_in_aggregate():
     runs = [
         {"hard_violations": 0, "soft_penalty": 50, "score": 50.0, "runtime_seconds": 1.0, "fitness_evaluations": 100, "is_hard_feasible": True},
@@ -252,17 +252,17 @@ def test_soft_feasible_metrics_in_aggregate():
     assert stats["soft_feasible_min"] == 30
     assert stats["soft_feasible_max"] == 50
 
-# 22. Soft constraint default config
+# 22. Cấu hình mặc định của ràng buộc mềm
 def test_soft_constraint_default_config():
     config = SoftConstraintConfig.default()
     assert config.get_weight("compact_student_schedule") == 5
-    assert config.get_weight("weekly_distribution") == 5  # legacy lookup alias
+    assert config.get_weight("weekly_distribution") == 5  # bí danh tra cứu cũ
     assert config.get_weight("late_day_periods") == 4
     assert config.get_weight("preferred_campus_mismatch") == 3
     assert config.get_weight("student_home_campus_mismatch") == 4
 
 
-# 23. Output Excel mở lại được bằng openpyxl
+# 23. Đầu ra Excel mở lại được bằng openpyxl
 def test_output_excel_reopenable(sample_dataset, feasible_schedule, tmp_path):
     out_file = str(tmp_path / "reopen_test.xlsx")
     export_schedule_to_excel(feasible_schedule, sample_dataset, out_file)

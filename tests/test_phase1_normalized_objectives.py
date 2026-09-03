@@ -120,7 +120,7 @@ def test_s4_large_absolute_seat_count_no_longer_dominates_normalized_objective()
     )
     breakdown = {item.constraint_id: item for item in result.soft_breakdown}
 
-    # Historical raw unused seats would be 150. New S4 is a bounded 0.75 ratio.
+    # Số ghế trống thô theo cách cũ là 150. S4 mới là tỷ lệ 0,75 có giới hạn.
     assert breakdown["S4"].raw_count == pytest.approx(0.75)
     assert breakdown["S4"].normalized_penalty == pytest.approx(0.75)
     assert breakdown["S4"].weighted_penalty == pytest.approx(3.0)
@@ -147,7 +147,7 @@ def test_legacy_workbook_config_gets_default_s6_s7():
 @pytest.mark.unit
 def test_hard_first_ranking_prefers_feasible_schedule(monkeypatch):
     dataset = _dataset(room_capacity=100, student_count=50)
-    dataset.pop("lecturers")  # Lecturer references are outside this ranking test.
+    dataset.pop("lecturers")  # Tham chiếu giảng viên nằm ngoài kiểm thử xếp hạng này.
     second = CourseSection(
         "SEC2", "C2", "Course 2", "GV2", "G2", 50,
         preferred_campus_id="CS1", preferred_shift="morning",
@@ -155,12 +155,12 @@ def test_hard_first_ranking_prefers_feasible_schedule(monkeypatch):
     dataset["course_sections"].append(second)
     dataset["student_groups"].append(StudentGroup("G2", "Group 2", 50, "CS1"))
 
-    # Infeasible has a room overlap but excellent soft preferences.
+    # Lịch không khả thi bị trùng phòng nhưng có các ưu tiên mềm rất tốt.
     infeasible = Schedule([
         Gene("SEC1", "R-CS1", 0),
         Gene("SEC2", "R-CS1", 0),
     ])
-    # Feasible intentionally pays higher campus penalties.
+    # Lịch khả thi được chủ ý cho chịu điểm phạt cơ sở cao hơn.
     feasible = Schedule([
         Gene("SEC1", "R-CS2", 0),
         Gene("SEC2", "R-CS2", 1),

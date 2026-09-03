@@ -12,8 +12,8 @@ SUPPORTED_METHODS: Tuple[str, ...] = (
     "random",
 )
 
-# Backward-compatible CLI spellings. Aliases are normalized before execution so
-# reports never contain two identifiers for the same algorithm.
+# Các cách viết CLI tương thích ngược. Bí danh được chuẩn hóa trước khi thực thi
+# để báo cáo không bao giờ chứa hai mã định danh cho cùng một thuật toán.
 METHOD_ALIASES: Dict[str, str] = {"hybrid": "ga_repair"}
 
 METHOD_DISPLAY_NAMES: Dict[str, str] = {

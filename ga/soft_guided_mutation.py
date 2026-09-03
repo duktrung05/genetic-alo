@@ -48,7 +48,7 @@ class SoftGuidedMutation:
         for ts in self.timeslots:
             self.day_available_periods[ts.day].add(ts.period)
 
-        # Index sections by group and lecturer
+        # Lập chỉ mục các lớp học phần theo nhóm và giảng viên
         self.sections_by_group: Dict[str, List[SchedulingActivity]] = defaultdict(list)
         self.sections_by_lecturer: Dict[str, List[SchedulingActivity]] = defaultdict(list)
         for sec in self.sections:
@@ -57,7 +57,7 @@ class SoftGuidedMutation:
             if sec.lecturer_id:
                 self.sections_by_lecturer[sec.lecturer_id].append(sec)
 
-        # Pre-cache valid candidate rooms per section sorted by seat waste (capacity - student_count)
+        # Lưu đệm trước các phòng ứng viên hợp lệ theo lớp, sắp theo số ghế lãng phí (capacity - student_count)
         self._valid_rooms_by_waste: Dict[str, List[Room]] = {}
         for sec in self.sections:
             req_type = getattr(sec, "required_room_type", "NORMAL")
@@ -69,12 +69,12 @@ class SoftGuidedMutation:
                 r for r in self.rooms if r.capacity >= st_count
             ] or self.rooms
 
-            # Sort candidate rooms ascending by seat waste: (r.capacity - st_count, r.id)
+            # Sắp xếp phòng ứng viên tăng dần theo số ghế lãng phí: (r.capacity - st_count, r.id)
             self._valid_rooms_by_waste[sec.activity_id] = sorted(
                 valid, key=lambda r: (r.capacity - st_count, r.id)
             )
 
-        # Pre-cache valid start timeslots per duration sorted by id
+        # Lưu đệm trước các khung giờ bắt đầu hợp lệ theo thời lượng, sắp theo id
         self._valid_ts_by_duration: Dict[int, List[Timeslot]] = {}
         unique_durations = {getattr(s, "duration_periods", 1) for s in self.sections}
         for dur in unique_durations:
@@ -113,18 +113,18 @@ class SoftGuidedMutation:
             "guided_targets_S5": 0,
         }
 
-        # Clone schedule to prevent aliasing
+        # Sao chép lịch để tránh dùng chung tham chiếu
         mutated = Schedule(genes=[
             Gene(g.section_id, g.room_id, g.timeslot_id)
             for g in schedule.genes
         ])
 
-        # Evaluate soft breakdown
+        # Đánh giá bảng phân tích ràng buộc mềm
         unified = self.evaluator.evaluate_unified(schedule)
         instance_items = unified.instance_violations
 
-        # Build guided targets and shortlisted candidates per section
-        # Format: section_id -> list of candidate tuples: ("room", room_id) or ("timeslot", ts_id)
+        # Tạo mục tiêu định hướng và danh sách rút gọn ứng viên cho từng lớp học phần
+        # Định dạng: section_id -> danh sách bộ ứng viên: ("room", room_id) hoặc ("timeslot", ts_id)
         guided_targets: Dict[str, List[Tuple[str, Any]]] = defaultdict(list)
         rule_counts: Dict[str, int] = defaultdict(int)
 
@@ -133,11 +133,11 @@ class SoftGuidedMutation:
             sec_ids_raw = item.get("section_ids") or item.get("section_id") or ""
             sec_id_list = [s.strip() for s in sec_ids_raw.split(",") if s.strip() and s.strip() in self.section_map]
 
-            # --- S4: Room Seat Waste ---
+            # --- S4: Lãng phí chỗ ngồi trong phòng ---
             if key == "room_seat_waste":
                 for sec_id in sec_id_list:
                     candidate_rooms = self._valid_rooms_by_waste.get(sec_id, [])
-                    # Top 3 rooms with minimum seat waste
+                    # 3 phòng có số ghế lãng phí ít nhất
                     top_rooms = candidate_rooms[:3]
                     for r in top_rooms:
                         if r.id != item.get("room_id"):
@@ -145,7 +145,7 @@ class SoftGuidedMutation:
                     if guided_targets[sec_id]:
                         rule_counts["S4"] += 1
 
-            # --- S2: Late Day Periods ---
+            # --- S2: Các tiết học muộn trong ngày ---
             elif key == "late_day_periods":
                 for sec_id in sec_id_list:
                     sec = self.section_map[sec_id]
@@ -166,7 +166,7 @@ class SoftGuidedMutation:
                     if guided_targets[sec_id]:
                         rule_counts["S2"] += 1
 
-            # --- S3: Preferred Shift Mismatch ---
+            # --- S3: Không khớp ca học ưu tiên ---
             elif key == "preferred_shift_mismatch":
                 for sec_id in sec_id_list:
                     sec = self.section_map[sec_id]
@@ -189,7 +189,7 @@ class SoftGuidedMutation:
                         if guided_targets[sec_id]:
                             rule_counts["S3"] += 1
 
-            # --- S1: Weekly Distribution ---
+            # --- S1: Phân bố trong tuần ---
             elif key == "compact_student_schedule":
                 grp_id = item.get("student_group_ids") or item.get("group_id")
                 active_days = {
@@ -216,7 +216,7 @@ class SoftGuidedMutation:
                         if guided_targets[sec.activity_id]:
                             rule_counts["S1"] += 1
 
-            # --- S5: Consecutive Cross-Campus ---
+            # --- S5: Di chuyển liên tiếp giữa các cơ sở ---
             elif key == "consecutive_cross_campus":
                 for sec_id in sec_id_list:
                     sec = self.section_map.get(sec_id)
@@ -244,7 +244,7 @@ class SoftGuidedMutation:
         stats["guided_targets_S4"] = rule_counts["S4"]
         stats["guided_targets_S5"] = rule_counts["S5"]
 
-        # Mutate genes with per-gene probability mutation_rate
+        # Đột biến từng gene với xác suất mutation_rate
         for gene in mutated.genes:
             if random_gen.random() < mutation_rate:
                 stats["guided_mutation_attempts"] += 1
@@ -267,9 +267,9 @@ class SoftGuidedMutation:
                         or self.timeslot_map[candidate[1]].day not in sibling_days
                     ]
 
-                # Decide whether to use Guided Mutation or Fallback Random Mutation
+                # Quyết định dùng Đột biến định hướng hay Đột biến ngẫu nhiên dự phòng
                 if candidates and (random_gen.random() < guided_probability):
-                    # Pick stochastic candidate from shortlist
+                    # Chọn ngẫu nhiên một ứng viên từ danh sách rút gọn
                     before_hard, _ = self.evaluator.evaluate_hard(
                         mutated, category="internal"
                     )
@@ -290,7 +290,7 @@ class SoftGuidedMutation:
                         gene.timeslot_id = old_timeslot_id
                         stats["guided_mutation_hard_rejections"] += 1
                 else:
-                    # Fallback Random Mutation (50% room, 50% timeslot)
+                    # Đột biến ngẫu nhiên dự phòng (50% phòng, 50% khung giờ)
                     dur = getattr(sec, "duration_periods", 1) if sec else 1
                     req_type = getattr(sec, "required_room_type", "NORMAL") if sec else "NORMAL"
                     st_cnt = getattr(sec, "student_count", 0) if sec else 0

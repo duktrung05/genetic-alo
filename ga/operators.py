@@ -78,7 +78,7 @@ class GAOperators:
                 for g in parent.genes
             ])
 
-        # There is no valid one-point crossover boundary for 0 or 1 gene.
+        # Không có điểm cắt lai ghép một điểm hợp lệ khi chỉ có 0 hoặc 1 gene.
         if len(parent1.genes) < 2:
             return clone(parent1), clone(parent2)
 
@@ -141,6 +141,7 @@ class GAOperators:
                 avail_ts = getattr(lec, "available_timeslot_ids", None) if lec else None
 
                 if random.random() < 0.5:
+                    # đổi phòng ngẫu nhiên trong số các phòng hợp lệ
                     valid_rooms = [
                         r for r in rooms
                         if r.capacity >= student_count and getattr(r, "room_type", "NORMAL") == req_type
@@ -149,6 +150,7 @@ class GAOperators:
                     ] or rooms
                     gene.room_id = random.choice(valid_rooms).id
                 else:
+                    # đổi khung giờ ngẫu nhiên trong số các khung giờ hợp lệ
                     preferred_ts = [
                         t for t in timeslots
                         if is_valid_period_block(t.period, duration, day_available_periods.get(t.day))

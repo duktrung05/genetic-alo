@@ -99,8 +99,8 @@ def test_guided_mutation_falls_back_to_random(sample_dataset):
     evaluator = ConstraintEvaluator(sample_dataset)
     sgm = SoftGuidedMutation(sample_dataset, evaluator=evaluator)
 
-    # SEC-01 at R50 (ts 0, waste 8, preferred shift morning), SEC-02 at R50 (ts 5, waste 20)
-    # Minimal soft penalty schedule
+    # SEC-01 ở R50 (ts 0, lãng phí 8, ưu tiên ca sáng), SEC-02 ở R50 (ts 5, lãng phí 20)
+    # Lịch có điểm phạt mềm tối thiểu
     initial_sched = Schedule(genes=[Gene("SEC-01", "R50", 0), Gene("SEC-02", "R50", 5)])
 
     rng = random.Random(42)
@@ -121,7 +121,7 @@ def test_s4_guided_mutation_prefers_lower_seat_waste(sample_dataset):
 
     assert stats["guided_targets_S4"] > 0
     assert stats["guided_mutation_successes"] > 0
-    # At least one of the mutated genes should have selected a lower seat waste room
+    # Ít nhất một gene đột biến phải chọn phòng có số ghế lãng phí thấp hơn
     mut_rooms = {g.room_id for g in mut.genes}
     assert ("R50" in mut_rooms or "R80" in mut_rooms or mut.genes[0].timeslot_id != 0)
 
@@ -132,7 +132,7 @@ def test_s3_guided_mutation_targets_preferred_shift(sample_dataset):
     evaluator = ConstraintEvaluator(sample_dataset)
     sgm = SoftGuidedMutation(sample_dataset, evaluator=evaluator)
 
-    # SEC-01 assigned to evening timeslot (id 4)
+    # SEC-01 được gán vào khung giờ buổi tối (id 4)
     initial_sched = Schedule(genes=[Gene("SEC-01", "R50", 4), Gene("SEC-02", "R50", 5)])
 
     rng = random.Random(42)
@@ -227,7 +227,7 @@ def test_mutation_does_not_modify_parent_schedule(sample_dataset):
     rng = random.Random(42)
     mutated_sched, _ = sgm.mutate(parent_sched, mutation_rate=1.0, guided_probability=1.0, rng=rng)
 
-    # Mutate mutated_sched gene
+    # Thay đổi gene của mutated_sched
     mutated_sched.genes[0].room_id = "R50"
     mutated_sched.genes[0].timeslot_id = 2
 

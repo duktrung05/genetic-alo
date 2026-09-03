@@ -11,7 +11,7 @@ from dataset.excel_loader import ExcelValidationError
 
 
 # ============================================================
-# 11.1  Domain model — field preservation
+# 11.1  Mô hình miền — bảo toàn trường
 # ============================================================
 
 @pytest.mark.unit
@@ -73,7 +73,7 @@ def test_course_section_invalid_meetings_per_week_raises():
 
 
 # ============================================================
-# Helper: build minimal in-memory xlsx
+# Hàm hỗ trợ: tạo xlsx tối thiểu trong bộ nhớ
 # ============================================================
 
 def _build_test_xlsx(
@@ -136,7 +136,7 @@ def _build_test_xlsx(
 
 
 # ============================================================
-# 11.2  Loader tests
+# 11.2  Kiểm thử bộ nạp
 # ============================================================
 
 @pytest.mark.unit
@@ -236,7 +236,7 @@ def test_normalize_optional_str(raw, expected):
 
 
 # ============================================================
-# 11.4  Validator
+# 11.4  Bộ kiểm tra
 # ============================================================
 
 @pytest.mark.unit
@@ -375,7 +375,7 @@ def test_validator_meetings_per_week_zero_is_error(small_dataset):
 
 
 # ============================================================
-# 11.5  Exporter round-trip tests
+# 11.5  Kiểm thử lượt xuất-nạp của bộ xuất
 # ============================================================
 
 @pytest.mark.unit
@@ -437,12 +437,12 @@ def test_exporter_none_campus_exported_as_empty_not_cs1(tmp_path):
     pref_shift_idx = header.index("preferred_shift")
 
     for row in ws.iter_rows(min_row=2, values_only=True):
-        # openpyxl returns None for empty cells, "" for cells written with empty string
-        # Both are acceptable — the key assertion is NO hard-coded "CS1"/"morning"
+        # openpyxl trả về None cho ô trống, "" cho ô được ghi bằng chuỗi rỗng
+        # Cả hai đều chấp nhận được — điều cần xác nhận là KHÔNG mã hóa cứng "CS1"/"morning"
         assert row[campus_idx] != "CS1", "Hard-coded 'CS1' found — should be empty/None"
         assert row[pref_campus_idx] != "CS1", "Hard-coded 'CS1' found in preferred_campus_id"
         assert row[pref_shift_idx] != "morning", "Hard-coded 'morning' found in preferred_shift"
-        # Must be either None or empty string (not a hardcoded value)
+        # Phải là None hoặc chuỗi rỗng (không phải giá trị mã hóa cứng)
         assert row[campus_idx] in (None, ""), f"Unexpected campus_id: '{row[campus_idx]}'"
         assert row[pref_campus_idx] in (None, ""), f"Unexpected preferred_campus_id: '{row[pref_campus_idx]}'"
         assert row[pref_shift_idx] in (None, ""), f"Unexpected preferred_shift: '{row[pref_shift_idx]}'"
@@ -450,7 +450,7 @@ def test_exporter_none_campus_exported_as_empty_not_cs1(tmp_path):
 
 
 # ============================================================
-# 11.8  Mock dataset verification
+# 11.8  Xác minh bộ dữ liệu giả lập
 # ============================================================
 
 @pytest.mark.unit

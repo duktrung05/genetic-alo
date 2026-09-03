@@ -130,7 +130,7 @@ def _summarize(rows: list[dict]) -> dict:
 
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--input", default="data/01_data_timetable.xlsx")
+    parser.add_argument("--input", default="data/instances/instance_easy.xlsx")
     parser.add_argument(
         "--output-dir", default="outputs/benchmark/phase1_1_weight_sensitivity"
     )

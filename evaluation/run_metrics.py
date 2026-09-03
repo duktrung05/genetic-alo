@@ -68,7 +68,7 @@ class RunMetrics:
     score: float = 0.0
     raw_soft_violations: float = 0.0
 
-    # Categorized evaluation breakdown fields
+    # Các trường phân tích đánh giá theo từng loại
     search_hard_constraint_evaluations: int = 0
     search_soft_constraint_evaluations: int = 0
     search_constraint_evaluations: int = 0
@@ -84,14 +84,14 @@ class RunMetrics:
     total_hard_constraint_evaluations: int = 0
     total_soft_constraint_evaluations: int = 0
 
-    # Soft Local Search metrics
+    # Các chỉ số Tìm kiếm cục bộ mềm
     soft_ls_calls: int = 0
     soft_ls_candidate_checks: int = 0
     soft_ls_accepted_moves: int = 0
     soft_ls_improvement: float = 0.0
     soft_ls_runtime_seconds: float = 0.0
 
-    # Soft-Guided Mutation & Pre/Post SLS metrics
+    # Các chỉ số Đột biến định hướng mềm và trước/sau SLS
     soft_before_sls: Optional[float] = None
     soft_after_sls: Optional[float] = None
     guided_mutation_calls: int = 0
@@ -102,7 +102,7 @@ class RunMetrics:
 
 
     def __post_init__(self):
-        # Auto-compute breakdown properties if not passed explicitly
+        # Tự động tính các thuộc tính phân tích nếu không được truyền tường minh
         if self.search_constraint_evaluations == 0:
             self.search_constraint_evaluations = (
                 self.search_hard_constraint_evaluations + self.search_soft_constraint_evaluations
@@ -197,7 +197,7 @@ class RunMetrics:
         d["is_hard_feasible"] = self.is_hard_feasible
         d["is_perfect"] = self.is_perfect
         d["repair_improvement_rate"] = self.repair_improvement_rate
-        # Legacy compatibility aliases
+        # Các bí danh tương thích ngược
         d["fitness_evaluations"] = self.search_fitness_evaluations
         d["hard_violations"] = self.final_hard_violations
         d["soft_penalty"] = self.final_soft_penalty
@@ -225,7 +225,7 @@ def validate_search_budget(metrics: RunMetrics, expected_budget: Optional[int]) 
         "GA + Repair",
         "GA + Repair + SLS (Production)",
         "Repair-only Random Restart",
-        "Hybrid GA + Repair",  # Legacy result compatibility.
+        "Hybrid GA + Repair",  # Tương thích với kết quả cũ.
         "Random Search",
     )
     if metrics.method in exact_budget_methods:
@@ -282,7 +282,7 @@ class AggregateRunMetrics:
 
     def to_dict(self) -> Dict[str, Any]:
         d = asdict(self)
-        # Legacy key aliases for backwards compatibility
+        # Các bí danh khóa cũ để tương thích ngược
         d["runs"] = self.run_count
         d["hard_feasible_rate"] = self.feasible_rate
         d["perfect_solution_rate"] = self.perfect_rate

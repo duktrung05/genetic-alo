@@ -16,7 +16,7 @@ from evaluation.baselines import RandomSearchScheduler, GreedyScheduler
 
 
 # ============================================================
-# 1. Parse Methods Unit Tests (Requirement 19.1)
+# 1. Kiểm thử đơn vị việc đọc phương pháp (Yêu cầu 19.1)
 # ============================================================
 
 @pytest.mark.unit
@@ -62,14 +62,14 @@ def test_parse_methods_empty_raises():
 
 
 # ============================================================
-# 2. Selected Runner Isolation Tests (Requirement 19.2)
+# 2. Kiểm thử tính cô lập của trình chạy đã chọn (Yêu cầu 19.2)
 # ============================================================
 
 @pytest.mark.unit
 def test_selected_runner_isolation(small_dataset):
     ga_config = {"pop_size": 10, "generations": 5, "crossover_rate": 0.8, "mutation_rate": 0.2}
 
-    # Execute only GA + Repair and plain GA runners.
+    # Chỉ thực thi trình chạy GA + Repair và GA thuần.
     selected = parse_methods("ga_repair,ga")
 
     executed_methods = []
@@ -86,7 +86,7 @@ def test_selected_runner_isolation(small_dataset):
 
 
 # ============================================================
-# 3. Hybrid Only Benchmark Test (Requirement 19.3)
+# 3. Kiểm thử benchmark chỉ dùng Hybrid (Yêu cầu 19.3)
 # ============================================================
 
 @pytest.mark.integration
@@ -105,7 +105,7 @@ def test_ga_repair_sls_matches_production_flow(small_dataset):
 
 
 # ============================================================
-# 4. Hybrid + GA Benchmark Test (Requirement 19.4)
+# 4. Kiểm thử benchmark Hybrid + GA (Yêu cầu 19.4)
 # ============================================================
 
 @pytest.mark.integration
@@ -156,13 +156,13 @@ def test_best_timetable_selection_rechecks_feasibility(small_dataset):
             {
                 "method": "GA + Repair + SLS (Production)",
                 "best_schedule": infeasible_schedule,
-                "hard_violations": 0,  # Deliberately stale metric.
+                "hard_violations": 0,  # Chỉ số cũ được cố ý giữ lại.
                 "soft_penalty": 0,
             },
             {
                 "method": "GA without Repair",
                 "best_schedule": feasible_schedule,
-                "hard_violations": 99,  # Must be replaced by re-evaluation.
+                "hard_violations": 99,  # Phải được thay bằng kết quả đánh giá lại.
                 "soft_penalty": 9999,
             },
         ],
@@ -239,7 +239,7 @@ def test_benchmark_completes_without_export_when_no_run_is_feasible(
 
 
 # ============================================================
-# 5. Greedy Optional Test (Requirement 19.5)
+# 5. Kiểm thử Greedy tùy chọn (Yêu cầu 19.5)
 # ============================================================
 
 @pytest.mark.unit
@@ -253,7 +253,7 @@ def test_greedy_optional_single_run(small_dataset):
 
 
 # ============================================================
-# 6. Random Search Optional Test (Requirement 19.6)
+# 6. Kiểm thử tìm kiếm ngẫu nhiên tùy chọn (Yêu cầu 19.6)
 # ============================================================
 
 @pytest.mark.unit
@@ -267,7 +267,7 @@ def test_random_search_optional_execution(small_dataset):
 
 
 # ============================================================
-# 7. Production Main Test (Requirement 19.7)
+# 7. Kiểm thử hàm main production (Yêu cầu 19.7)
 # ============================================================
 
 @pytest.mark.unit
@@ -287,7 +287,7 @@ def test_production_method_identity_matches_sls_flag():
 def test_production_main_execution(tmp_path, small_dataset):
     from dataset import ExcelDatasetLoader
 
-    # Mock load_and_validate to return small_dataset
+    # Giả lập load_and_validate để trả về small_dataset
     out_file = tmp_path / "test_production_timetable.xlsx"
 
     with patch.object(ExcelDatasetLoader, "load_and_validate", return_value=small_dataset):
@@ -302,7 +302,7 @@ def test_production_main_execution(tmp_path, small_dataset):
     assert "RUN_CONFIG" in wb.sheetnames
 
 
-    # Check RUN_CONFIG metadata
+    # Kiểm tra siêu dữ liệu RUN_CONFIG
     ws_cfg = wb["RUN_CONFIG"]
     rows = dict(list(ws_cfg.iter_rows(values_only=True))[1:])
     assert rows.get("primary_method") == "ga_repair"
@@ -316,7 +316,7 @@ def test_production_main_execution(tmp_path, small_dataset):
 
 
 # ============================================================
-# 8. Dynamic Export Verification (Requirement 19.8)
+# 8. Xác minh đầu ra động (Yêu cầu 19.8)
 # ============================================================
 
 @pytest.mark.unit
@@ -348,14 +348,14 @@ def test_dynamic_export_verification(tmp_path, small_dataset):
 
     wb = openpyxl.load_workbook(out_path)
 
-    # Check RUN_CONFIG
+    # Kiểm tra RUN_CONFIG
     ws_cfg = wb["RUN_CONFIG"]
     cfg_dict = dict(list(ws_cfg.iter_rows(values_only=True))[1:])
     assert cfg_dict.get("primary_method") == "hybrid"
     assert cfg_dict.get("selected_methods") == "hybrid,ga"
 
-    # Check BENCHMARK_SUMMARY contains only 1 row
+    # Kiểm tra BENCHMARK_SUMMARY chỉ chứa 1 hàng
     ws_sum = wb["BENCHMARK_SUMMARY"]
     rows = list(ws_sum.iter_rows(values_only=True))
-    assert len(rows) == 2  # header + 1 data row
+    assert len(rows) == 2  # tiêu đề + 1 hàng dữ liệu
     assert rows[1][0] == "Hybrid GA + Repair"

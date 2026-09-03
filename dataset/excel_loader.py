@@ -19,7 +19,7 @@ class ExcelValidationError(ValueError):
 class ExcelDatasetLoader:
     """Loader responsible for reading timetable scheduling entities from Excel workbooks."""
 
-    # Canonical mapping from Excel constraint_id to internal technical key
+    # Ánh xạ chuẩn từ constraint_id trong Excel sang khóa kỹ thuật nội bộ
     SOFT_CONSTRAINT_KEY_BY_ID: Dict[str, str] = {
         "S1": "compact_student_schedule",
         "S2": "late_day_periods",
@@ -265,7 +265,7 @@ class ExcelDatasetLoader:
         if not rows:
             return []
 
-        # Validate header
+        # Kiểm tra tiêu đề
         req_cols = ["constraint_id", "constraint_type", "constraint_name", "weight", "enabled"]
         header = [str(h).strip() if h is not None else "" for h in rows[0]]
         for col in req_cols:
@@ -285,7 +285,7 @@ class ExcelDatasetLoader:
         for row_idx, row in enumerate(rows[1:], start=2):
             if not row or row[0] is None:
                 continue
-            # Normalize row to dict by header
+            # Chuẩn hóa hàng thành từ điển theo tiêu đề
             row_dict = {
                 h: (row[i] if i < len(row) else None)
                 for i, h in enumerate(header) if h
@@ -306,7 +306,7 @@ class ExcelDatasetLoader:
                 )
             seen_ids.add(c_id)
 
-            # Normalize constraint_type
+            # Chuẩn hóa constraint_type
             c_type_raw = cls._normalize_optional_str(row_dict.get("constraint_type"))
             if not c_type_raw:
                 raise ExcelValidationError(
@@ -320,7 +320,7 @@ class ExcelDatasetLoader:
                     f"Value '{c_type_raw}': Must be 'SOFT' or 'HARD'"
                 )
 
-            # Validate soft constraint IDs
+            # Kiểm tra các mã ràng buộc mềm
             if c_type == "SOFT" and c_id not in cls.SUPPORTED_SOFT_IDS:
                 raise ExcelValidationError(
                     f"Sheet 'CONSTRAINTS', Row {row_idx}, Column 'constraint_id', "
@@ -337,11 +337,11 @@ class ExcelDatasetLoader:
                 row_dict.get("enabled"), "CONSTRAINTS", row_idx, "enabled"
             )
 
-            # Phase 2.2 does not redesign HardConstraintChecker. HARD rows are
-            # declarative/audit metadata: their workbook weights do not scale
-            # individual hard checks, and every hard check remains mandatory.
-            # Rejecting disabled HARD rows prevents the workbook from claiming
-            # semantics the checker cannot honor.
+            # Giai đoạn 2.2 không thiết kế lại HardConstraintChecker. Các hàng HARD
+            # là siêu dữ liệu khai báo/kiểm tra: trọng số trong sổ làm việc không điều
+            # chỉnh từng phép kiểm tra cứng và mọi phép kiểm tra cứng vẫn bắt buộc.
+            # Việc từ chối hàng HARD bị tắt ngăn sổ làm việc khai báo những ngữ nghĩa
+            # mà bộ kiểm tra không thể đáp ứng.
             if c_type == "HARD" and not enabled:
                 raise ExcelValidationError(
                     f"Sheet 'CONSTRAINTS', Row {row_idx}, Column 'enabled', "
@@ -360,7 +360,7 @@ class ExcelDatasetLoader:
         return definitions
 
     @classmethod
-    def load(cls, excel_path: str = "data/01_data_timetable.xlsx") -> dict:
+    def load(cls, excel_path: str = "data/instances/instance_easy.xlsx") -> dict:
         """Load and parse dataset dictionary from specified Excel file path.
 
         Args:
@@ -375,10 +375,10 @@ class ExcelDatasetLoader:
 
         wb = openpyxl.load_workbook(excel_path, data_only=True)
 
-        # 0. Parse CONSTRAINTS sheet (before other sheets)
+        # 0. Đọc trang tính CONSTRAINTS (trước các trang tính khác)
         constraint_definitions = cls._parse_constraints_sheet(wb)
 
-        # CAMPUS master is authoritative for every campus foreign key.
+        # Danh mục CAMPUS là nguồn chuẩn cho mọi khóa ngoại về cơ sở.
         if "CAMPUSES" not in wb.sheetnames:
             raise ExcelValidationError(
                 "Sheet 'CAMPUSES', Row 0, Column 'sheet': Sheet is missing from workbook"
@@ -412,13 +412,13 @@ class ExcelDatasetLoader:
             campus_ids.add(campus_id)
             campuses.append(Campus(id=campus_id, name=campus_name))
 
-        # Log ignored sheets if present
+        # Ghi nhật ký các trang tính bị bỏ qua nếu có
         for sheet_name in wb.sheetnames:
             if sheet_name in cls.IGNORED_SHEETS:
-                # Intentionally ignored output/documentation sheet
+                # Trang tính đầu ra/tài liệu được chủ ý bỏ qua
                 pass
 
-        # 1. Parse TIMESLOTS
+        # 1. Đọc TIMESLOTS
         if "TIMESLOTS" not in wb.sheetnames:
             raise ExcelValidationError("Sheet 'TIMESLOTS', Row 0, Column 'sheet': Sheet is missing from workbook")
         ws_ts = wb["TIMESLOTS"]
@@ -490,7 +490,7 @@ class ExcelDatasetLoader:
             )
             timeslots.append(ts)
 
-        # 2. Parse ROOMS
+        # 2. Đọc ROOMS
         if "ROOMS" not in wb.sheetnames:
             raise ExcelValidationError("Sheet 'ROOMS', Row 0, Column 'sheet': Sheet is missing from workbook")
         ws_rm = wb["ROOMS"]
@@ -547,7 +547,7 @@ class ExcelDatasetLoader:
             )
             rooms.append(room)
 
-        # 3. Parse LECTURER_AVAILABILITY
+        # 3. Đọc LECTURER_AVAILABILITY
         lec_avail_map: Dict[str, Optional[frozenset]] = {}
         if "LECTURER_AVAILABILITY" not in wb.sheetnames:
             raise ExcelValidationError(
@@ -567,9 +567,9 @@ class ExcelDatasetLoader:
                 "'lecturer_id', 'lecturer_name'"
             )
         actual_timeslot_columns = avail_header[2:]
-        # Excel templates may carry formatting in unused columns, causing
-        # openpyxl to expose trailing None headers. They are worksheet padding,
-        # not availability columns. Internal blanks remain invalid.
+        # Mẫu Excel có thể chứa định dạng ở các cột không dùng, khiến openpyxl
+        # trả về các tiêu đề None ở cuối. Đây là phần đệm của trang tính, không
+        # phải cột thời gian rảnh. Ô trống ở giữa vẫn không hợp lệ.
         while actual_timeslot_columns and not actual_timeslot_columns[-1]:
             actual_timeslot_columns.pop()
         expected_timeslot_columns = list(code_to_ts_id)
@@ -626,7 +626,7 @@ class ExcelDatasetLoader:
                 None if len(avail_ts_set) == len(timeslots) else frozenset(avail_ts_set)
             )
 
-        # 4. Parse LECTURERS
+        # 4. Đọc LECTURERS
         if "LECTURERS" not in wb.sheetnames:
             raise ExcelValidationError("Sheet 'LECTURERS', Row 0, Column 'sheet': Sheet is missing from workbook")
         ws_lec = wb["LECTURERS"]
@@ -687,7 +687,7 @@ class ExcelDatasetLoader:
                 f"{missing_availability_lecturers}"
             )
 
-        # 5. Parse STUDENT_GROUPS
+        # 5. Đọc STUDENT_GROUPS
         if "STUDENT_GROUPS" not in wb.sheetnames:
             raise ExcelValidationError("Sheet 'STUDENT_GROUPS', Row 0, Column 'sheet': Sheet is missing from workbook")
         ws_grp = wb["STUDENT_GROUPS"]
@@ -736,7 +736,7 @@ class ExcelDatasetLoader:
             )
             student_groups.append(grp)
 
-        # 6. Parse COURSES
+        # 6. Đọc COURSES
         if "COURSES" not in wb.sheetnames:
             raise ExcelValidationError("Sheet 'COURSES', Row 0, Column 'sheet': Sheet is missing from workbook")
         ws_crs = wb["COURSES"]
@@ -802,7 +802,7 @@ class ExcelDatasetLoader:
             course_by_id[c_id] = crs
             difficulty_by_course_id[c_id] = diff
 
-        # 7. Parse COURSE_SECTIONS
+        # 7. Đọc COURSE_SECTIONS
         if "COURSE_SECTIONS" not in wb.sheetnames:
             raise ExcelValidationError("Sheet 'COURSE_SECTIONS', Row 0, Column 'sheet': Sheet is missing from workbook")
         ws_sec = wb["COURSE_SECTIONS"]
@@ -907,7 +907,7 @@ class ExcelDatasetLoader:
                     )
                 diff = supplied_difficulty
 
-            # Optional preference fields
+            # Các trường tùy chọn về ưu tiên
             preferred_campus_id = cls._normalize_optional_str(
                 r[header_sec.index("preferred_campus_id")] if "preferred_campus_id" in header_sec else None
             )
@@ -938,7 +938,7 @@ class ExcelDatasetLoader:
                         "does not match LECTURERS master"
                     )
 
-            # Normalize preferred_shift via SHIFT_MAP then validate
+            # Chuẩn hóa preferred_shift qua SHIFT_MAP rồi kiểm tra
             raw_shift = cls._normalize_optional_str(
                 r[header_sec.index("preferred_shift")] if "preferred_shift" in header_sec else None
             )
@@ -986,7 +986,7 @@ class ExcelDatasetLoader:
         }
 
     @classmethod
-    def load_and_validate(cls, excel_path: str = "data/01_data_timetable.xlsx") -> dict:
+    def load_and_validate(cls, excel_path: str = "data/instances/instance_easy.xlsx") -> dict:
         """Load dataset from Excel file and run DatasetValidator validation.
 
         Args:
@@ -1000,7 +1000,7 @@ class ExcelDatasetLoader:
         return dataset
 
     @classmethod
-    def export_normalized_json(cls, dataset: dict, output_path: str = "outputs/datasets/01_data_timetable.normalized.json") -> str:
+    def export_normalized_json(cls, dataset: dict, output_path: str = "outputs/datasets/instance_easy.normalized.json") -> str:
         """Serialize dataset dictionary into normalized JSON snapshot file.
 
         Args:
@@ -1106,7 +1106,7 @@ class ExcelDatasetLoader:
         return os.path.abspath(output_path)
 
     @classmethod
-    def load_normalized_json(cls, json_path: str = "outputs/datasets/01_data_timetable.normalized.json") -> dict:
+    def load_normalized_json(cls, json_path: str = "outputs/datasets/instance_easy.normalized.json") -> dict:
         """Deserialize dataset dictionary from normalized JSON snapshot file."""
         if not os.path.exists(json_path):
             raise FileNotFoundError(f"JSON snapshot file not found: '{json_path}'")
@@ -1119,9 +1119,9 @@ class ExcelDatasetLoader:
         if "campuses" in data:
             campuses = [Campus(**campus) for campus in data["campuses"]]
         else:
-            # Legacy normalized snapshots predate the campus master. Preserve
-            # compatibility by materializing only the campus IDs already stored
-            # on rooms; canonical Excel never uses this fallback.
+            # Các bản chụp chuẩn hóa cũ có trước danh mục cơ sở. Duy trì tương
+            # thích bằng cách chỉ tạo các mã cơ sở đã lưu trên phòng; Excel chuẩn
+            # không bao giờ dùng phương án dự phòng này.
             legacy_ids = sorted({room.campus_id for room in rooms if room.campus_id})
             campuses = [Campus(id=campus_id, name=campus_id) for campus_id in legacy_ids]
         lecturers = [
@@ -1172,7 +1172,7 @@ class ExcelDatasetLoader:
         rooms = dataset["rooms"]
         timeslots = dataset["timeslots"]
 
-        # Duration distribution
+        # Phân bố thời lượng
         dur_dist = {2: 0, 3: 0, 4: 0}
         lab_count = 0
         for s in sections:
@@ -1181,7 +1181,7 @@ class ExcelDatasetLoader:
             if getattr(s, "required_room_type", "NORMAL") == "LAB":
                 lab_count += 1
 
-        # Teaching load per lecturer (sections & total periods)
+        # Khối lượng giảng dạy theo giảng viên (lớp học phần và tổng số tiết)
         lec_load = {}
         for l in lecturers:
             l_secs = [s for s in sections if s.lecturer_id == l.id]
@@ -1192,7 +1192,7 @@ class ExcelDatasetLoader:
             )
             lec_load[l.id] = {"name": l.name, "sections": len(l_secs), "total_periods": total_p}
 
-        # Study load per student group
+        # Khối lượng học tập theo nhóm sinh viên
         grp_load = {}
         for g in groups:
             g_secs = [s for s in sections if s.group_id == g.id]
@@ -1203,7 +1203,7 @@ class ExcelDatasetLoader:
             )
             grp_load[g.id] = {"name": g.name, "sections": len(g_secs), "total_periods": total_p}
 
-        # Candidate count min / max / mean
+        # Số lượng ứng viên nhỏ nhất / lớn nhất / trung bình
         from .timeslot_factory import get_occupied_periods, is_valid_period_block
         from collections import defaultdict
         day_period_to_ts_id = {(ts.day, ts.period): ts.id for ts in timeslots}

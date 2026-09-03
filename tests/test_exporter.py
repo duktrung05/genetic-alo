@@ -30,8 +30,8 @@ def exporter_dataset():
 def test_csv_exporter_multi_period_fields(exporter_dataset, tmp_path):
     output_path = tmp_path / "test_timetable.csv"
     sched = Schedule(genes=[
-        Gene(section_id="LHP01", timeslot_id=0, room_id="P101"),  # Mon P1..P2 (07:00..08:40)
-        Gene(section_id="LHP02", timeslot_id=2, room_id="LAB01"), # Mon P3..P5 (08:45..11:25)
+        Gene(section_id="LHP01", timeslot_id=0, room_id="P101"),  # Thứ Hai, tiết 1..2 (07:00..08:40)
+        Gene(section_id="LHP02", timeslot_id=2, room_id="LAB01"), # Thứ Hai, tiết 3..5 (08:45..11:25)
     ])
 
     path = export_schedule_to_csv(sched, exporter_dataset, output_path)
@@ -43,7 +43,7 @@ def test_csv_exporter_multi_period_fields(exporter_dataset, tmp_path):
 
     assert len(rows) == 2
 
-    # Check columns
+    # Kiểm tra các cột
     expected_headers = [
         "activity_id", "section_id", "meeting_index", "meeting_count", "meeting",
         "class_code", "course_id", "course_code",
@@ -53,7 +53,7 @@ def test_csv_exporter_multi_period_fields(exporter_dataset, tmp_path):
     ]
     assert reader.fieldnames == expected_headers
 
-    # Row 1 (LHP01, duration 2, P1..P2, 07:00..08:40)
+    # Hàng 1 (LHP01, thời lượng 2, tiết 1..2, 07:00..08:40)
     row1 = rows[0]
     assert row1["section_id"] == "LHP01"
     assert row1["start_period"] == "1"
@@ -62,7 +62,7 @@ def test_csv_exporter_multi_period_fields(exporter_dataset, tmp_path):
     assert row1["end_time"] == "08:40"
     assert row1["duration_periods"] == "2"
 
-    # Row 2 (LHP02, duration 3, P3..P5, 08:45..11:25)
+    # Hàng 2 (LHP02, thời lượng 3, tiết 3..5, 08:45..11:25)
     row2 = rows[1]
     assert row2["section_id"] == "LHP02"
     assert row2["start_period"] == "3"
@@ -74,7 +74,7 @@ def test_csv_exporter_multi_period_fields(exporter_dataset, tmp_path):
 @pytest.mark.unit
 def test_csv_exporter_rejects_hard_violations(exporter_dataset, tmp_path):
     output_path = tmp_path / "invalid_timetable.csv"
-    # Overlapping schedule in P101
+    # Lịch trùng nhau ở P101
     bad_sched = Schedule(genes=[
         Gene(section_id="LHP01", timeslot_id=0, room_id="P101"),
         Gene(section_id="LHP02", timeslot_id=0, room_id="P101"),
@@ -98,15 +98,15 @@ def test_excel_exporter_creates_valid_file(exporter_dataset, tmp_path):
 
     output_path = tmp_path / "test_timetable.xlsx"
     sched = Schedule(genes=[
-        Gene(section_id="LHP01", timeslot_id=0, room_id="P101"),  # Mon P1..P2 (07:00..08:40)
-        Gene(section_id="LHP02", timeslot_id=2, room_id="LAB01"), # Mon P3..P5 (08:45..11:25)
+        Gene(section_id="LHP01", timeslot_id=0, room_id="P101"),  # Thứ Hai, tiết 1..2 (07:00..08:40)
+        Gene(section_id="LHP02", timeslot_id=2, room_id="LAB01"), # Thứ Hai, tiết 3..5 (08:45..11:25)
     ])
 
     path = export_schedule_to_excel(sched, exporter_dataset, output_path)
     assert os.path.exists(path)
     assert path.endswith(".xlsx")
 
-    # Verify Excel contents (Requirements #2, #4, #6, #7, #8, #11)
+    # Xác minh nội dung Excel (Yêu cầu #2, #4, #6, #7, #8, #11)
     wb = openpyxl.load_workbook(path)
     assert "SUMMARY" in wb.sheetnames
     assert "RAW_ASSIGNMENTS" in wb.sheetnames
@@ -119,7 +119,7 @@ def test_excel_exporter_creates_valid_file(exporter_dataset, tmp_path):
 
     assert ws.freeze_panes == "A2"
 
-    # Check cell value formats
+    # Kiểm tra định dạng giá trị ô
     row2_vals = [cell.value for cell in ws[2]]
     assert "LHP01" in row2_vals
 
@@ -129,7 +129,7 @@ def test_excel_exporter_rejects_hard_violations_and_deletes_old_file(exporter_da
     from evaluation import export_schedule_to_excel
     output_path = tmp_path / "test_timetable.xlsx"
 
-    # Create dummy old file first
+    # Tạo tệp cũ giả lập trước
     output_path.write_text("old content")
     assert output_path.exists()
 
@@ -141,7 +141,7 @@ def test_excel_exporter_rejects_hard_violations_and_deletes_old_file(exporter_da
     with pytest.raises(ValueError, match="Cannot export Excel schedule with hard violations"):
         export_schedule_to_excel(bad_sched, exporter_dataset, output_path)
 
-    # Verify old file was deleted (Requirement #14)
+    # Xác minh tệp cũ đã bị xóa (Yêu cầu #14)
     assert not output_path.exists()
 
 @pytest.mark.integration

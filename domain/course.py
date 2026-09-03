@@ -9,8 +9,8 @@ class Course:
     name: str
     credits: int
     is_difficult: bool = False
-    # Optional only for legacy programmatic/JSON datasets. Canonical Excel
-    # input requires and preserves the official course code.
+    # Chỉ tùy chọn đối với các bộ dữ liệu lập trình/JSON cũ. Đầu vào Excel chuẩn
+    # yêu cầu và giữ nguyên mã học phần chính thức.
     course_code: Optional[str] = None
 
 @dataclass
@@ -27,8 +27,8 @@ class CourseSection:
     preferred_campus_id: Optional[str] = None
     preferred_shift: Optional[str] = None
     meetings_per_week: int = 1
-    # Optional only for legacy programmatic/JSON datasets. Canonical Excel
-    # input requires and preserves the official class code.
+    # Chỉ tùy chọn đối với các bộ dữ liệu lập trình/JSON cũ. Đầu vào Excel chuẩn
+    # yêu cầu và giữ nguyên mã lớp chính thức.
     class_code: Optional[str] = None
 
     def __post_init__(self):

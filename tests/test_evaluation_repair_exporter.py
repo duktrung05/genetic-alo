@@ -47,7 +47,7 @@ def test_unified_evaluation_result_breakdown_identity(sample_dataset):
     random.seed(42)
     evaluator = ConstraintEvaluator(sample_dataset)
     sched = Schedule(genes=[
-        Gene("SEC01", "R101", 7),  # Difficult afternoon
+        Gene("SEC01", "R101", 7),  # Buổi chiều khó xếp
         Gene("SEC02", "R101", 1),
         Gene("SEC03", "R102", 2),
     ])
@@ -80,7 +80,7 @@ def test_workbook_violations_total_equals_summary(sample_dataset, tmp_path):
 
     wb = openpyxl.load_workbook(out_file)
 
-    # Read SUMMARY soft_penalty
+    # Đọc soft_penalty trong SUMMARY
     ws_sum = wb["SUMMARY"]
     sum_soft_penalty = None
     for row in ws_sum.iter_rows(values_only=True):
@@ -91,12 +91,12 @@ def test_workbook_violations_total_equals_summary(sample_dataset, tmp_path):
     assert sum_soft_penalty is not None
     assert sum_soft_penalty == unified.soft_penalty
 
-    # Read VIOLATIONS TOTAL SOFT PENALTY
+    # Đọc TOTAL SOFT PENALTY trong VIOLATIONS
     ws_viol = wb["VIOLATIONS"]
     viol_total_penalty = None
     for row in ws_viol.iter_rows(values_only=True):
         if row[0] == "SUMMARY" and row[2] == "TOTAL_SOFT_PENALTY":
-            viol_total_penalty = float(row[11])  # weighted_penalty remains column 12
+            viol_total_penalty = float(row[11])  # weighted_penalty vẫn ở cột 12
             break
 
     assert viol_total_penalty is not None
@@ -110,7 +110,7 @@ def test_repair_engine_direct_hard_conflict(sample_dataset):
     repairer = ScheduleRepairEngine(sample_dataset)
     evaluator = ConstraintEvaluator(sample_dataset)
 
-    # Conflicting schedule: SEC01 & SEC02 share same lecturer (LEC01) at same timeslot 1
+    # Lịch xung đột: SEC01 và SEC02 cùng giảng viên (LEC01) tại khung giờ 1
     conflicting_sched = Schedule(genes=[
         Gene("SEC01", "R101", 1),
         Gene("SEC02", "R102", 1),
@@ -138,11 +138,11 @@ def test_ga_engine_calls_repair_on_conflicting_offspring(sample_dataset, monkeyp
     random.seed(42)
     ga = GeneticAlgorithmEngine(sample_dataset, pop_size=4)
 
-    # Inject a guaranteed conflicting offspring via GAOperators.mutate monkeypatch
+    # Chèn một cá thể con chắc chắn xung đột bằng cách thay tạm GAOperators.mutate
     def mock_mutate(sched, rooms, timeslots, rate, **kwargs):
         return Schedule(genes=[
             Gene("SEC01", "R101", 1),
-            Gene("SEC02", "R101", 1),  # Hard conflict on R101, period 1
+            Gene("SEC02", "R101", 1),  # Xung đột cứng tại R101, tiết 1
             Gene("SEC03", "R102", 1),
         ])
 
@@ -186,7 +186,7 @@ def test_export_prohibits_infeasible_schedule_unless_allowed(sample_dataset, tmp
     random.seed(42)
     infeasible_sched = Schedule(genes=[
         Gene("SEC01", "R101", 1),
-        Gene("SEC02", "R101", 1),  # Hard conflict
+        Gene("SEC02", "R101", 1),  # Xung đột cứng
         Gene("SEC03", "R102", 1),
     ])
 
@@ -200,7 +200,7 @@ def test_export_prohibits_infeasible_schedule_unless_allowed(sample_dataset, tmp
             allow_infeasible_export=False
         )
 
-    # Should succeed with allow_infeasible_export=True
+    # Phải thành công khi allow_infeasible_export=True
     exported_path = export_schedule_to_excel(
         schedule=infeasible_sched,
         dataset=sample_dataset,

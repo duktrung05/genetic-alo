@@ -43,7 +43,7 @@ def test_ga_mutation_operator_preserves_valid_blocks(medium_dataset):
     for gene in mutated.genes:
         sec = section_map[gene.section_id]
         ts = timeslot_map[gene.timeslot_id]
-        # Must fit within day bounds (max 16 periods)
+        # Phải nằm trong giới hạn ngày (tối đa 16 tiết)
         assert ts.period + sec.duration_periods - 1 <= 16
 
 @pytest.mark.unit
@@ -64,12 +64,12 @@ def test_ga_mutation_preserves_session_bounds_near_end_of_session(medium_dataset
 
 @pytest.mark.integration
 def test_ga_modes_with_and_without_repair(small_dataset):
-    # Hybrid GA + Repair
+    # GA lai + Repair
     ga_repair = GeneticAlgorithmEngine(small_dataset, pop_size=20)
     res_repair = ga_repair.run(generations=10, evaluation_budget=200, use_repair=True)
     assert res_repair["hard_violations"] == 0
 
-    # GA without Repair
+    # GA không có Repair
     ga_norepair = GeneticAlgorithmEngine(small_dataset, pop_size=20)
     res_norepair = ga_norepair.run(generations=10, evaluation_budget=200, use_repair=False)
     assert "hard_violations" in res_norepair
@@ -83,7 +83,7 @@ def test_evaluation_budget_enforcement(medium_dataset):
     assert res["history"][-1]["fitness_evaluations"] <= budget
     assert len(res["history"]) > 0
 
-    # Monotonic evaluation counts in history
+    # Số lần đánh giá trong lịch sử tăng đơn điệu
     eval_counts = [h["fitness_evaluations"] for h in res["history"]]
     assert eval_counts == sorted(eval_counts)
 
@@ -108,19 +108,19 @@ def test_crossover_does_not_mutate_parents_and_child_genes_are_independent(mediu
     p1 = ga.create_random_schedule()
     p2 = ga.create_random_schedule()
 
-    # Capture state before crossover
+    # Ghi lại trạng thái trước khi lai ghép
     p1_genes_before = [(g.section_id, g.room_id, g.timeslot_id) for g in p1.genes]
     p2_genes_before = [(g.section_id, g.room_id, g.timeslot_id) for g in p2.genes]
 
     c1, c2 = GAOperators.crossover(p1, p2)
 
-    # Verify parents were not mutated
+    # Xác minh các cá thể cha mẹ không bị thay đổi
     p1_genes_after = [(g.section_id, g.room_id, g.timeslot_id) for g in p1.genes]
     p2_genes_after = [(g.section_id, g.room_id, g.timeslot_id) for g in p2.genes]
     assert p1_genes_before == p1_genes_after
     assert p2_genes_before == p2_genes_after
 
-    # Verify child genes list and objects are independent
+    # Xác minh danh sách gene con và các đối tượng độc lập
     assert c1.genes is not p1.genes
     assert c1.genes is not p2.genes
     assert c2.genes is not p1.genes
@@ -128,7 +128,7 @@ def test_crossover_does_not_mutate_parents_and_child_genes_are_independent(mediu
     assert c1.genes[0] is not p1.genes[0]
     assert c1.genes[0] is not p2.genes[0]
 
-    # Mutate child gene and verify parents unaffected
+    # Thay đổi gene con và xác minh cha mẹ không bị ảnh hưởng
     c1.genes[0].room_id = "MODIFIED_ROOM"
     assert p1.genes[0].room_id != "MODIFIED_ROOM"
     assert p2.genes[0].room_id != "MODIFIED_ROOM"

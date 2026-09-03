@@ -1,23 +1,23 @@
 from typing import List, Optional, Dict, Any, Set
 from domain import Timeslot
 
-# HaUI 2025-2026 Theory Class Period Configuration (Cơ sở 1, 2)
+# Cấu hình tiết học lý thuyết HaUI 2025-2026 (Cơ sở 1, 2)
 THEORY_PERIODS: tuple[Dict[str, Any], ...] = (
-    # Ca sáng (Morning)
+    # Ca sáng
     {"period": 1, "start_time": "07:00", "end_time": "07:50", "session": "morning"},
     {"period": 2, "start_time": "07:50", "end_time": "08:40", "session": "morning"},
     {"period": 3, "start_time": "08:45", "end_time": "09:35", "session": "morning"},
     {"period": 4, "start_time": "09:40", "end_time": "10:30", "session": "morning"},
     {"period": 5, "start_time": "10:35", "end_time": "11:25", "session": "morning"},
     {"period": 6, "start_time": "11:25", "end_time": "12:15", "session": "morning"},
-    # Ca chiều (Afternoon)
+    # Ca chiều
     {"period": 7, "start_time": "12:30", "end_time": "13:20", "session": "afternoon"},
     {"period": 8, "start_time": "13:20", "end_time": "14:10", "session": "afternoon"},
     {"period": 9, "start_time": "14:15", "end_time": "15:05", "session": "afternoon"},
     {"period": 10, "start_time": "15:10", "end_time": "16:00", "session": "afternoon"},
     {"period": 11, "start_time": "16:05", "end_time": "16:55", "session": "afternoon"},
     {"period": 12, "start_time": "16:55", "end_time": "17:45", "session": "afternoon"},
-    # Ca tối (Evening)
+    # Ca tối
     {"period": 13, "start_time": "18:00", "end_time": "18:50", "session": "evening"},
     {"period": 14, "start_time": "18:50", "end_time": "19:40", "session": "evening"},
     {"period": 15, "start_time": "19:45", "end_time": "20:35", "session": "evening"},

@@ -78,7 +78,7 @@ def test_soft_local_search_never_increases_hard(sample_dataset):
     evaluator = ConstraintEvaluator(sample_dataset)
     sls = SoftLocalSearch(sample_dataset, evaluator=evaluator, max_passes=2)
 
-    # Initial feasible schedule: SEC-01 at ts 0 R120, SEC-02 at ts 4 R50
+    # Lịch khả thi ban đầu: SEC-01 ở ts 0 R120, SEC-02 ở ts 4 R50
     initial_sched = Schedule(genes=[
         Gene("SEC-01", "R120", 0),
         Gene("SEC-02", "R50", 4),
@@ -137,7 +137,7 @@ def test_soft_local_search_rejects_hard_violation(sample_dataset):
     evaluator = ConstraintEvaluator(sample_dataset)
     sls = SoftLocalSearch(sample_dataset, evaluator=evaluator, max_passes=2)
 
-    # SEC-01 at R120 (ts 0), SEC-02 at R50 (ts 0). Hard = 0.
+    # SEC-01 ở R120 (ts 0), SEC-02 ở R50 (ts 0). Hard = 0.
     initial_sched = Schedule(genes=[
         Gene("SEC-01", "R120", 0),
         Gene("SEC-02", "R50", 0),

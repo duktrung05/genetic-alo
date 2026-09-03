@@ -9,7 +9,7 @@ def aggregate_run_results(method_name: str, runs: List[Dict[str, Any]], is_deter
     if not runs:
         raise ValueError(f"No run data available for method: {method_name}")
 
-    # Validate per-run metrics before aggregating
+    # Kiểm tra chỉ số của từng lần chạy trước khi tổng hợp
     for r in runs:
         if isinstance(r, dict) and "run_metrics" in r and hasattr(r["run_metrics"], "validate"):
             r["run_metrics"].validate()
@@ -62,7 +62,7 @@ def aggregate_run_results(method_name: str, runs: List[Dict[str, Any]], is_deter
     best_run = min(runs, key=lambda r: (r["hard_violations"], r["soft_penalty"]))
     worst_run = max(runs, key=lambda r: (r["hard_violations"], r["soft_penalty"]))
 
-    # TTFF collection: filter out None / "N/A"
+    # Thu thập TTFF: loại bỏ None / "N/A"
     ttff_vals = []
     for r in feasible_runs:
         t = r.get("time_to_first_feasible_seconds", r.get("time_to_first_feasible"))
@@ -109,7 +109,7 @@ def aggregate_run_results(method_name: str, runs: List[Dict[str, Any]], is_deter
 
 
     res_dict = agg.to_dict()
-    # Retain legacy key aliases
+    # Giữ lại các bí danh khóa cũ
     res_dict.update({
         "hard_mean": float(mean(hards)),
         "hard_median": float(median(hards)),

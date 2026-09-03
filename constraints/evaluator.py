@@ -27,8 +27,8 @@ from .soft_constraints import (
 class SoftBreakdownItem:
     """Per-constraint breakdown of soft penalty contributions."""
     constraint_id: str          # "S1", "S2", ...
-    constraint_name: str        # Vietnamese display name from config
-    constraint_key: str         # canonical key, e.g. "compact_student_schedule"
+    constraint_name: str        # Tên hiển thị tiếng Việt lấy từ cấu hình
+    constraint_key: str         # Khóa chuẩn, ví dụ: "compact_student_schedule"
     raw_count: float
     denominator: float
     normalized_penalty: float
@@ -36,7 +36,7 @@ class SoftBreakdownItem:
     weighted_penalty: float
     details: List[Dict[str, Any]] = field(default_factory=list)
 
-    # Legacy compat: expose constraint_name also as just `name`
+    # Tương thích ngược: cung cấp constraint_name thêm dưới tên `name`
     @property
     def name(self) -> str:
         return self.constraint_name
@@ -101,7 +101,7 @@ class ConstraintEvaluator:
             lecturer_map=self.lecturer_map,
         )
 
-        # Resolve soft config: explicit arg > dataset["constraints"] > default
+        # Xác định cấu hình mềm: đối số tường minh > dataset["constraints"] > mặc định
         if soft_config is None:
             constraint_defs = dataset.get("constraints", [])
             if constraint_defs:

@@ -51,7 +51,7 @@ class RepairOnlyScheduler:
         if run_seed is not None:
             random.seed(run_seed)
 
-        # Runtime import avoids an evaluation -> ga -> evaluation import cycle.
+        # Nhập tại thời điểm chạy để tránh vòng lặp nhập evaluation -> ga -> evaluation.
         from ga.engine import GeneticAlgorithmEngine
 
         engine = GeneticAlgorithmEngine(

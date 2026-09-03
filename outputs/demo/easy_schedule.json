@@ -1,6 +1,6 @@
 {
   "meta": {
-    "generated_at": "2026-08-27T00:43:16.465445",
+    "generated_at": "2026-09-01T16:29:10.505965",
     "total_assignments": 62,
     "hard_violations": 0,
     "soft_penalty": 6.3029432486210775,
@@ -10,7 +10,7 @@
     "seed": 0,
     "population_size": 60,
     "evaluation_budget": 1000,
-    "runtime_seconds": 20.602957299910486,
+    "runtime_seconds": 14.828526598999815,
     "effective_soft_constraints": {
       "S1": {
         "key": "compact_student_schedule",

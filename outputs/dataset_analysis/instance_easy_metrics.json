@@ -1,6 +1,6 @@
 {
   "instance_name": "easy",
-  "source_filename": "data/01_data_timetable.xlsx",
+  "source_filename": "data/instances/instance_easy.xlsx",
   "frozen_instance_filename": "data/instances/instance_easy.xlsx",
   "checksum_sha256": "dfbff415600ff0a1a2cba8b55c90ab52dbcd7b3db3b090f16f1b49cee2bc6e6d",
   "git_commit": "71bd7ab9a8ff1c12d44dfde8add893106445abf1",

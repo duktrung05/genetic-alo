@@ -34,13 +34,13 @@ def test_get_occupied_periods(start_p, duration, expected):
 @pytest.mark.parametrize("start_p, duration, avail, expected", [
     (1, 2, None, True),
     (5, 2, None, True),
-    (5, 3, None, False),   # Spans 5, 6, 7: morning->afternoon — INVALID (cross-session)
+    (5, 3, None, False),   # Trải từ tiết 5, 6, 7: sáng->chiều — KHÔNG HỢP LỆ (vắt ca)
     (7, 3, None, True),
-    (11, 3, None, False),  # Spans 11, 12, 13: afternoon->evening — INVALID (cross-session)
-    (8, 4, None, True),    # Duration 4 from 8 to 11 — all in afternoon, valid
-    (14, 4, None, False),  # 14..17 exceeds max period 16 -> Invalid!
-    (1, 2, {1}, False),    # Missing period 2 in available set
-    (1, 2, {1, 2}, True),  # Fully in available set
+    (11, 3, None, False),  # Trải từ tiết 11, 12, 13: chiều->tối — KHÔNG HỢP LỆ (vắt ca)
+    (8, 4, None, True),    # Thời lượng 4 từ tiết 8 đến 11 — đều trong ca chiều, hợp lệ
+    (14, 4, None, False),  # Tiết 14..17 vượt tiết tối đa 16 -> Không hợp lệ!
+    (1, 2, {1}, False),    # Thiếu tiết 2 trong tập thời gian rảnh
+    (1, 2, {1, 2}, True),  # Có đầy đủ trong tập thời gian rảnh
 ])
 def test_is_valid_period_block(start_p, duration, avail, expected):
     assert is_valid_period_block(start_p, duration, avail) == expected
@@ -79,7 +79,7 @@ def test_medium_dataset_seed_reproducibility():
     assert s1_ids != s3_ids
 
 
-# --- DatasetValidator Tests ---
+# --- Kiểm thử DatasetValidator ---
 
 def create_valid_validator_base_dataset():
     rooms = [
@@ -146,14 +146,14 @@ def test_dataset_validator_invalid_duration():
 
 @pytest.mark.unit
 def test_dataset_validator_lab_room_and_capacity_checks():
-    # Missing LAB room
+    # Thiếu phòng LAB
     ds = create_valid_validator_base_dataset()
     ds["rooms"] = [Room(id="P101", name="Phòng 101", capacity=100, room_type="NORMAL")]
     ds["course_sections"][0] = CourseSection("SEC_LAB", "C_LAB", "Lab Course", "GV1", "G1", 30, duration_periods=3, required_room_type="LAB")
     with pytest.raises(ValueError, match="requires LAB room"):
         DatasetValidator.validate(ds)
 
-    # Insufficient LAB capacity
+    # Sức chứa phòng LAB không đủ
     ds = create_valid_validator_base_dataset()
     ds["rooms"] = [Room(id="LAB101", name="Phòng LAB 101", capacity=20, room_type="LAB")]
     ds["course_sections"][0] = CourseSection("SEC_LAB", "C_LAB", "Lab Course", "GV1", "G1", 30, duration_periods=3, required_room_type="LAB")
@@ -162,14 +162,14 @@ def test_dataset_validator_lab_room_and_capacity_checks():
 
 @pytest.mark.unit
 def test_dataset_validator_timeslot_and_availability_blocks():
-    # No start timeslot for duration 3 (only 2 periods max)
+    # Không có khung giờ bắt đầu cho thời lượng 3 (tối đa chỉ 2 tiết)
     ds = create_valid_validator_base_dataset()
     ds["timeslots"] = create_theory_timeslots(days=["Thứ 2"], max_period=2)
     ds["course_sections"][0] = CourseSection("SEC_1", "C1", "Course 1", "GV1", "G1", 30, duration_periods=3)
     with pytest.raises(ValueError, match="has no valid timeslot block"):
         DatasetValidator.validate(ds)
 
-    # Restricted lecturer unavailable for duration 2 block
+    # Giảng viên bị giới hạn không rảnh trong đoạn thời lượng 2
     ds = create_valid_validator_base_dataset()
     ds["lecturers"] = [Lecturer(id="GV1", name="GV1", available_timeslot_ids=frozenset([0]))]
     ds["course_sections"][0] = CourseSection("SEC_1", "C1", "Course 1", "GV1", "G1", 30, duration_periods=2)
@@ -187,7 +187,7 @@ def test_baselines_reject_invalid_dataset():
         RandomSearchScheduler(ds)
 
 
-# --- Section 8 Mandatory Tests for Medium Dataset ---
+# --- Các kiểm thử bắt buộc ở Mục 8 cho bộ dữ liệu trung bình ---
 
 @pytest.mark.unit
 def test_medium_dataset_validator_report_no_errors(medium_dataset):
@@ -219,7 +219,7 @@ def test_medium_dataset_all_sections_have_valid_start_period(medium_dataset):
         day_avail[ts.day].add(ts.period)
 
     for sec in medium_dataset["course_sections"]:
-        # require_same_session=True is now the default
+        # require_same_session=True hiện là mặc định
         valid_starts = [
             t for t in medium_dataset["timeslots"]
             if is_valid_period_block(t.period, sec.duration_periods, day_avail.get(t.day))
@@ -327,7 +327,7 @@ def assert_no_cross_session_assignments(schedule, sections, timeslots):
     # Vượt cuối ngày
     (16, 2, False),
     (15, 3, False),
-    # Edge: invalid input
+    # Trường hợp biên: đầu vào không hợp lệ
     (0, 1, False),
     (1, 0, False),
 ])
@@ -344,7 +344,7 @@ def test_validator_rejects_section_with_duration_exceeding_session(medium_datase
     """Validator phải báo lỗi nếu section có duration > 6 (không thể nằm trong 1 ca)."""
     import copy
     ds = copy.deepcopy(medium_dataset)
-    # Patch một section với duration = 7 (không ca nào chứa được)
+    # Thay tạm một lớp học phần bằng duration = 7 (không ca nào chứa được)
     bad_sec = ds["course_sections"][0]
     object.__setattr__(bad_sec, "duration_periods", 7)
     report = DatasetValidator.validate_report(ds)

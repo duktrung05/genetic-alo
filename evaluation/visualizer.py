@@ -110,7 +110,7 @@ class ConvergenceVisualizer:
             "Random Search": "#C44E52",
         }
 
-        # 1. Plot Hard Violations Chart
+        # 1. Vẽ biểu đồ vi phạm cứng
         os.makedirs(os.path.dirname(hard_output_path), exist_ok=True)
         plt.figure(figsize=(10, 6))
 
@@ -135,7 +135,7 @@ class ConvergenceVisualizer:
         plt.close()
         print(f"\n--> Đã lưu biểu đồ hard convergence tại: {hard_output_path}")
 
-        # 2. Plot Soft Penalty Chart
+        # 2. Vẽ biểu đồ điểm phạt mềm
         os.makedirs(os.path.dirname(soft_output_path), exist_ok=True)
         plt.figure(figsize=(10, 6))
 
@@ -160,7 +160,7 @@ class ConvergenceVisualizer:
         plt.close()
         print(f"--> Đã lưu biểu đồ soft convergence tại: {soft_output_path}")
 
-        # 3. Create backward compatibility chart at evaluation/convergence_comparison.png
+        # 3. Tạo biểu đồ tương thích ngược tại evaluation/convergence_comparison.png
         compat_path = "evaluation/convergence_comparison.png"
         if hard_output_path != compat_path and soft_output_path != compat_path:
             os.makedirs(os.path.dirname(compat_path), exist_ok=True)

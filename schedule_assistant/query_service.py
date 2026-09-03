@@ -118,7 +118,7 @@ class ScheduleQueryService:
             matches = self._resolve_entity(requested, fields)
             label = attr.replace("_", " ")
             if not matches:
-                # Legacy callers historically received a successful empty result.
+                # Các bên gọi cũ trước đây nhận được kết quả rỗng nhưng thành công.
                 return query, QueryResult(query, True, f"Không tìm thấy lịch. No matching {label} was found in the current timetable.")
             if len(matches) > 1:
                 choices = [self._display_entity(item, fields) for item in matches]

@@ -77,13 +77,13 @@ def export_schedule_to_csv(
     if seen_section_ids != set(section_map.keys()):
         raise ValueError("Schedule is missing some course sections from dataset.")
 
-    # Re-evaluate with ConstraintEvaluator
+    # Đánh giá lại bằng ConstraintEvaluator
     evaluator = ConstraintEvaluator(dataset, soft_config=soft_config)
     _, hard_violations, _ = evaluator.calculate_fitness(schedule)
     if hard_violations > 0:
         raise ValueError(f"Cannot export schedule with hard violations (hard_violations={hard_violations}).")
 
-    # Map day ordering based on timeslots in dataset
+    # Ánh xạ thứ tự ngày dựa trên các khung giờ trong bộ dữ liệu
 
     day_order: Dict[str, int] = {}
     for ts in dataset["timeslots"]:
@@ -179,7 +179,7 @@ def export_schedule_to_excel(
     if not isinstance(dataset, dict) or "course_sections" not in dataset or "rooms" not in dataset or "timeslots" not in dataset:
         raise ValueError("Invalid dataset supplied to Excel exporter.")
 
-    # Re-evaluate violations using unified evaluator
+    # Đánh giá lại các vi phạm bằng bộ đánh giá hợp nhất
     evaluator = ConstraintEvaluator(dataset, soft_config=soft_config)
     unified = evaluator.evaluate_unified(schedule)
     hard_violations = unified.hard_violations
@@ -195,7 +195,7 @@ def export_schedule_to_excel(
                 out_path.unlink()
             raise ValueError(f"Cannot export Excel schedule with hard violations (hard_violations={hard_violations}).")
 
-        # Append _INFEASIBLE suffix if not present
+        # Thêm hậu tố _INFEASIBLE nếu chưa có
         if "_INFEASIBLE" not in out_path.stem:
             out_path = out_path.parent / f"{out_path.stem}_INFEASIBLE.xlsx"
 
@@ -218,7 +218,7 @@ def export_schedule_to_excel(
     }
 
     wb = openpyxl.Workbook()
-    # Remove default sheet
+    # Xóa trang tính mặc định
     wb.remove(wb.active)
 
     bold_font = Font(bold=True, size=11)
@@ -238,7 +238,7 @@ def export_schedule_to_excel(
             cell.font = bold_font
             cell.fill = header_fill
 
-    # --- 1. SHEET SUMMARY ---
+    # --- 1. TRANG TÍNH SUMMARY ---
     ws_sum = wb.create_sheet(title="SUMMARY")
     ws_sum.append(["Metric", "Value"])
     rep_enabled = meta.get("repair_enabled", meta.get("use_repair", True))
@@ -246,12 +246,12 @@ def export_schedule_to_excel(
 
     summary_rows = [
         ("dataset_source", meta.get("dataset_source", meta.get("dataset_preset", "Excel"))),
-        ("dataset_path", meta.get("dataset_path", meta.get("input_file", "data/01_data_timetable.xlsx"))),
-        ("dataset_name", meta.get("dataset_name", "01_data_timetable.xlsx")),
+        ("dataset_path", meta.get("dataset_path", meta.get("input_file", "data/instances/instance_easy.xlsx"))),
+        ("dataset_name", meta.get("dataset_name", "instance_easy.xlsx")),
         ("dataset_version", meta.get("dataset_version", "1.0")),
         ("dataset_hash", meta.get("dataset_hash", "N/A")),
-        ("input_file", meta.get("input_file", "data/01_data_timetable.xlsx")),
-        ("normalized_json_path", meta.get("normalized_json_path", "outputs/datasets/01_data_timetable.normalized.json")),
+        ("input_file", meta.get("input_file", "data/instances/instance_easy.xlsx")),
+        ("normalized_json_path", meta.get("normalized_json_path", "outputs/datasets/instance_easy.normalized.json")),
         ("algorithm", meta.get("method", "GA + Repair")),
         ("seed", meta.get("seed", 0)),
         ("population_size", meta.get("pop_size", 60)),
@@ -292,7 +292,7 @@ def export_schedule_to_excel(
         ws_sum.append([k, str(v)])
     format_sheet(ws_sum)
 
-    # Prepare gene rows
+    # Chuẩn bị các hàng gene
     assignments = []
     for gene in schedule.genes:
         sec = section_map[gene.section_id]
@@ -349,7 +349,7 @@ def export_schedule_to_excel(
             "room_display": getattr(room, "name", room.id),
         })
 
-    # --- 2. SHEET RAW_ASSIGNMENTS ---
+    # --- 2. TRANG TÍNH RAW_ASSIGNMENTS ---
     ws_raw = wb.create_sheet(title="RAW_ASSIGNMENTS")
     raw_cols = [
         "activity_id", "section_id", "meeting_index", "meeting_count", "meeting",
@@ -362,13 +362,13 @@ def export_schedule_to_excel(
     ]
     ws_raw.append(raw_cols)
 
-    # Sort raw assignments by section_id
+    # Sắp xếp các phân công thô theo section_id
     raw_sorted = sorted(assignments, key=lambda a: (a["section_id"], a["meeting_index"]))
     for a in raw_sorted:
         ws_raw.append([a[c] for c in raw_cols])
     format_sheet(ws_raw)
 
-    # --- 3. SHEET SCHEDULE_BY_GROUP ---
+    # --- 3. TRANG TÍNH SCHEDULE_BY_GROUP ---
     ws_grp = wb.create_sheet(title="SCHEDULE_BY_GROUP")
     grp_cols = ["group_id", "group_name", "day_name", "periods", "time_range", "class_code", "meeting", "course_code", "course_name", "lecturer_name", "room_display", "campus_id"]
     ws_grp.append(grp_cols)
@@ -377,7 +377,7 @@ def export_schedule_to_excel(
         ws_grp.append([a["student_group_id"], a["student_group_name"], a["day_name"], a["periods"], a["time_range"], a["class_code"], a["meeting"], a["course_code"], a["course_name"], a["lecturer_name"], a["room_display"], a["campus_id"]])
     format_sheet(ws_grp)
 
-    # --- 4. SHEET SCHEDULE_BY_LECTURER ---
+    # --- 4. TRANG TÍNH SCHEDULE_BY_LECTURER ---
     ws_lec = wb.create_sheet(title="SCHEDULE_BY_LECTURER")
     lec_cols = ["lecturer_id", "lecturer_name", "day_name", "periods", "time_range", "class_code", "meeting", "course_code", "course_name", "student_group_name", "room_display", "campus_id"]
     ws_lec.append(lec_cols)
@@ -386,7 +386,7 @@ def export_schedule_to_excel(
         ws_lec.append([a["lecturer_id"], a["lecturer_name"], a["day_name"], a["periods"], a["time_range"], a["class_code"], a["meeting"], a["course_code"], a["course_name"], a["student_group_name"], a["room_display"], a["campus_id"]])
     format_sheet(ws_lec)
 
-    # --- 5. SHEET SCHEDULE_BY_ROOM ---
+    # --- 5. TRANG TÍNH SCHEDULE_BY_ROOM ---
     ws_rm = wb.create_sheet(title="SCHEDULE_BY_ROOM")
     rm_cols = ["room_id", "room_display", "campus_id", "day_name", "periods", "time_range", "class_code", "meeting", "course_code", "course_name", "lecturer_name", "student_group_name"]
     ws_rm.append(rm_cols)
@@ -395,7 +395,7 @@ def export_schedule_to_excel(
         ws_rm.append([a["room_id"], a["room_display"], a["campus_id"], a["day_name"], a["periods"], a["time_range"], a["class_code"], a["meeting"], a["course_code"], a["course_name"], a["lecturer_name"], a["student_group_name"]])
     format_sheet(ws_rm)
 
-    # --- 6. SHEET VIOLATIONS ---
+    # --- 6. TRANG TÍNH VIOLATIONS ---
     ws_viol = wb.create_sheet(title="VIOLATIONS")
     viol_cols = [
         "violation_type",
@@ -416,7 +416,7 @@ def export_schedule_to_excel(
     ]
     ws_viol.append(viol_cols)
 
-    # 6a. Hard Violations
+    # 6a. Vi phạm cứng
     if hard_violations == 0:
         ws_viol.append(["INFO", "NONE", "hard_constraints", "-", "-", "-", "-", "-", "-", 0, 1000, 0, "-", "-", "No hard violations detected"])
     else:
@@ -424,7 +424,7 @@ def export_schedule_to_excel(
             if v > 0:
                 ws_viol.append(["HARD", "HIGH", k, "-", "-", "-", "-", "-", "-", v, 1000, v * 1000, "-", "-", f"Hard constraint violation: {k} (count={v})"])
 
-    # 6b. Soft Violations (Instance Breakdown)
+    # 6b. Vi phạm mềm (phân tích từng trường hợp)
     if len(instance_violations) == 0:
         ws_viol.append(["INFO", "NONE", "soft_constraints", "-", "-", "-", "-", "-", "-", 0, 0, 0, 0, 0, "No soft constraint violations detected"])
     else:
@@ -450,7 +450,7 @@ def export_schedule_to_excel(
                 item.get("description", "")
             ])
 
-    # 6c. Summary row for TOTAL SOFT PENALTY (Mandatory equal to SUMMARY.soft_penalty)
+    # 6c. Hàng tổng kết TOTAL SOFT PENALTY (bắt buộc bằng SUMMARY.soft_penalty)
     total_raw_soft_count = sum(item.raw_count for item in soft_breakdown)
     ws_viol.append([
         "SUMMARY",
@@ -472,7 +472,7 @@ def export_schedule_to_excel(
 
     format_sheet(ws_viol)
 
-    # --- 7. SHEET RUN_CONFIG ---
+    # --- 7. TRANG TÍNH RUN_CONFIG ---
     ws_cfg = wb.create_sheet(title="RUN_CONFIG")
     ws_cfg.append(["Parameter", "Value"])
     soft_cfg = evaluator.soft_checker.config
@@ -509,7 +509,7 @@ def export_schedule_to_excel(
     format_sheet(ws_cfg)
 
 
-    # --- 8. SHEET RUN_METRICS (If multi-run details provided) ---
+    # --- 8. TRANG TÍNH RUN_METRICS (nếu có chi tiết nhiều lần chạy) ---
     all_runs_flat = meta.get("all_runs_flat")
     if all_runs_flat:
         ws_m = wb.create_sheet(title="RUN_METRICS")
@@ -556,7 +556,7 @@ def export_schedule_to_excel(
             ws_m.append(row)
         format_sheet(ws_m)
 
-    # --- 9. SHEET BENCHMARK_SUMMARY (If summary provided) ---
+    # --- 9. TRANG TÍNH BENCHMARK_SUMMARY (nếu có phần tổng hợp) ---
     summary_list = meta.get("summary_list", meta.get("summary"))
     if summary_list:
         ws_s = wb.create_sheet(title="BENCHMARK_SUMMARY")

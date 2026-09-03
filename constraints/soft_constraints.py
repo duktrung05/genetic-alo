@@ -41,8 +41,8 @@ _KEY_TO_ID: Dict[str, str] = {
     value: key for key, value in SOFT_CONSTRAINT_KEY_BY_ID.items()
 }
 
-# Older integrations may still request the former S1 key. Configuration lookup
-# remains compatible, while all new breakdowns use the accurate compact name.
+# Các tích hợp cũ có thể vẫn yêu cầu khóa S1 trước đây. Việc tra cứu cấu hình vẫn
+# tương thích, còn mọi bảng phân tích mới đều dùng tên chính xác về độ tập trung.
 _LEGACY_KEY_ALIASES: Dict[str, str] = {
     "weekly_distribution": "compact_student_schedule",
 }
@@ -51,9 +51,9 @@ SOFT_CONSTRAINT_KEYS: List[str] = list(SOFT_CONSTRAINT_KEY_BY_ID.values())
 
 DEFAULT_SOFT_WEIGHT_PROFILE = "balanced"
 
-# All profiles use the same normalized S1-S7 metrics.  Only stakeholder
-# priorities differ, and every profile has the same total weight (28) so that
-# profile comparisons are easy to audit.
+# Mọi hồ sơ đều dùng cùng các chỉ số S1-S7 đã chuẩn hóa. Chỉ mức ưu tiên của các
+# bên liên quan là khác nhau, và mỗi hồ sơ có cùng tổng trọng số (28) để dễ kiểm
+# tra việc so sánh giữa các hồ sơ.
 SOFT_WEIGHT_PROFILES: Mapping[str, Mapping[str, int]] = MappingProxyType({
     "student-centric": MappingProxyType({
         "compact_student_schedule": 6,
@@ -194,8 +194,8 @@ class SoftConstraintConfig:
             definitions[key] = SoftConstraintDefinition(
                 constraint_id=constraint.constraint_id,
                 key=key,
-                # S1 changed semantics in Phase 1; do not expose the legacy
-                # "weekly distribution" label for the compactness metric.
+                # S1 đã đổi ngữ nghĩa trong Giai đoạn 1; không hiển thị nhãn cũ
+                # "phân bố hàng tuần" cho chỉ số về độ tập trung.
                 name=(
                     _DEFAULT_NAMES[key]
                     if constraint.constraint_id == "S1"
@@ -341,8 +341,8 @@ class SoftConstraintChecker:
 
         available_days = {timeslot.day for timeslot in self.timeslot_map.values()}
 
-        # S1: excess active group-days above the compact optimum (one day per
-        # scheduled group), normalized by the maximum possible excess.
+        # S1: số ngày hoạt động dư thừa của nhóm so với mức tập trung tối ưu (một
+        # ngày cho mỗi nhóm đã xếp lịch), được chuẩn hóa theo mức dư thừa tối đa.
         s1_key = "compact_student_schedule"
         if self.config.is_enabled(s1_key) and available_days and group_days:
             scheduled_group_count = len(group_days)
@@ -369,7 +369,7 @@ class SoftConstraintChecker:
                     ),
                 ))
 
-        # S2: fraction of scheduled occupied periods placed in the evening.
+        # S2: tỷ lệ các tiết đã xếp lịch rơi vào buổi tối.
         s2_key = "late_day_periods"
         if self.config.is_enabled(s2_key):
             denominators[s2_key] = float(sum(row[4] for row in valid_genes))
@@ -390,7 +390,7 @@ class SoftConstraintChecker:
                     ),
                 ))
 
-        # S3: mismatch rate among assignments declaring a preferred shift.
+        # S3: tỷ lệ không khớp trong các phân công có khai báo ca học ưu tiên.
         s3_key = "preferred_shift_mismatch"
         if self.config.is_enabled(s3_key):
             eligible = [row for row in valid_genes if row[1].preferred_shift is not None]
@@ -412,7 +412,7 @@ class SoftConstraintChecker:
                     ),
                 ))
 
-        # S4: mean room-waste ratio. Capacity failures are hard-only.
+        # S4: tỷ lệ lãng phí phòng trung bình. Vi phạm sức chứa chỉ thuộc ràng buộc cứng.
         s4_key = "room_seat_waste"
         if self.config.is_enabled(s4_key):
             eligible_count = 0
@@ -438,8 +438,8 @@ class SoftConstraintChecker:
                 ))
             denominators[s4_key] = float(eligible_count)
 
-        # S5: mismatched immediately-consecutive campus transitions divided by
-        # all adjacent lecturer transitions with known campuses.
+        # S5: số lần chuyển cơ sở liên tiếp tức thời không phù hợp chia cho toàn bộ
+        # các lần di chuyển liền kề của giảng viên có thông tin cơ sở.
         s5_key = "consecutive_cross_campus"
         if self.config.is_enabled(s5_key):
             for lecturer_id, day_map in lecturer_day_blocks.items():
@@ -469,7 +469,7 @@ class SoftConstraintChecker:
                             ),
                         ))
 
-        # S6: section preferred-campus mismatch rate.
+        # S6: tỷ lệ lớp học phần không khớp với cơ sở ưu tiên.
         s6_key = "preferred_campus_mismatch"
         if self.config.is_enabled(s6_key):
             eligible = [row for row in valid_genes if row[1].preferred_campus_id is not None]
@@ -492,8 +492,8 @@ class SoftConstraintChecker:
                     ),
                 ))
 
-        # S7: one contribution per assignment because the current domain has
-        # exactly one student group per CourseSection.
+        # S7: mỗi phân công đóng góp một lần vì miền hiện tại có đúng một nhóm
+        # sinh viên cho mỗi CourseSection.
         s7_key = "student_home_campus_mismatch"
         if self.config.is_enabled(s7_key):
             eligible_rows = []

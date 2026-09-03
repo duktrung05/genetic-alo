@@ -8,7 +8,7 @@ from domain import Gene, Schedule
 from constraints import ConstraintEvaluator
 from ga import GeneticAlgorithmEngine
 
-EXCEL_PATH = "data/01_data_timetable.xlsx"
+EXCEL_PATH = "data/instances/instance_easy.xlsx"
 _real_load_workbook = openpyxl.load_workbook
 
 @pytest.mark.unit
@@ -53,16 +53,16 @@ def test_json_snapshot_roundtrip_no_data_loss(tmp_path):
     ds_orig = ExcelDatasetLoader.load_and_validate(EXCEL_PATH)
     json_path = str(tmp_path / "normalized_test.json")
 
-    # Export to JSON snapshot
+    # Xuất thành bản chụp JSON
     ExcelDatasetLoader.export_normalized_json(ds_orig, json_path)
     assert os.path.exists(json_path)
 
-    # Load back from JSON snapshot
+    # Nạp lại từ bản chụp JSON
     ds_reconstructed = ExcelDatasetLoader.load_normalized_json(json_path)
     report = DatasetValidator.validate_report(ds_reconstructed)
     assert report["valid"] is True
 
-    # Every scheduling-relevant entity and field must survive the round trip.
+    # Mọi thực thể và trường liên quan đến xếp lịch phải được bảo toàn sau lượt xuất-nạp.
     entity_keys = (
         "campuses",
         "timeslots",
@@ -77,8 +77,8 @@ def test_json_snapshot_roundtrip_no_data_loss(tmp_path):
     for key in entity_keys:
         assert ds_reconstructed[key] == ds_orig[key], f"Round-trip data loss in '{key}'"
 
-    # The same chromosome must represent and score the exact same problem after
-    # loading the snapshot. It does not need to be feasible for this invariant.
+    # Cùng một nhiễm sắc thể phải biểu diễn và chấm điểm đúng cùng một bài toán sau
+    # khi nạp bản chụp. Tính bất biến này không yêu cầu nhiễm sắc thể phải khả thi.
     room_id = ds_orig["rooms"][0].id
     timeslot_id = ds_orig["timeslots"][0].id
     schedule = Schedule(
@@ -111,7 +111,7 @@ def test_output_sheets_ignored():
 @pytest.mark.unit
 def test_detailed_error_messages_missing_sheet():
     mock_wb = MagicMock()
-    mock_wb.sheetnames = ["CAMPUSES", "ROOMS"]  # Missing TIMESLOTS
+    mock_wb.sheetnames = ["CAMPUSES", "ROOMS"]  # Thiếu TIMESLOTS
     campus_ws = MagicMock()
     campus_ws.iter_rows.return_value = [
         ("campus_id", "campus_name"),
@@ -137,7 +137,7 @@ def test_detailed_error_messages_missing_column():
     timeslot_ws = MagicMock()
     timeslot_ws.iter_rows.return_value = [
         ("timeslot_id", "day_name")
-    ]  # Missing period_no, shift
+    ]  # Thiếu period_no, shift
     mock_wb.__getitem__.side_effect = lambda name: {
         "CAMPUSES": campus_ws,
         "TIMESLOTS": timeslot_ws,

@@ -300,7 +300,7 @@ def create_payload(instance_path: Path, *, seeds: Iterable[int], run_experiment:
     config["evaluation_budget"] = BASELINE_BUDGET
     return {
         "instance_name": "easy",
-        "source_filename": "data/01_data_timetable.xlsx",
+        "source_filename": "data/instances/instance_easy.xlsx",
         "frozen_instance_filename": str(instance_path.relative_to(ROOT)).replace("\\", "/"),
         "checksum_sha256": sha256_file(instance_path),
         "git_commit": _git_commit(),

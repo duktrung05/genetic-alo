@@ -127,7 +127,7 @@ class DatasetFactory:
             Room(id="LAB01", name="Phòng LAB", capacity=160, room_type="LAB", campus_id="CS2"),
         ]
 
-        # Helper to build contiguous available timeslots for restricted lecturers
+        # Hàm hỗ trợ tạo các khung giờ rảnh liên tiếp cho giảng viên bị giới hạn
         def get_avail_ids(active_days: List[str], periods: range) -> FrozenSet[int]:
             s = set()
             for d in active_days:
@@ -136,7 +136,7 @@ class DatasetFactory:
                         s.add(ts_map[(d, p)])
             return frozenset(s)
 
-        # 3. 15 Giảng viên: 5 người bị giới hạn availability (rảnh 48 slots với block liền tục), 10 người rảnh toàn bộ
+        # 3. 15 Giảng viên: 5 người bị giới hạn thời gian rảnh (rảnh 48 khung giờ theo các đoạn liên tục), 10 người rảnh toàn bộ
         raw_lecturers_info = [
             ("GV01", "ThS. Nguyễn Văn A", get_avail_ids(["Thứ 2", "Thứ 3", "Thứ 4", "Thứ 5"], range(1, 13))),
             ("GV02", "TS. Trần Thị B", None),
@@ -201,8 +201,8 @@ class DatasetFactory:
         ]
 
         # 6. 60 Lớp Học Phần (CourseSections)
-        # Distribution: 36 duration 2 (60%), 15 duration 3 (25%), 9 duration 4 (15%)
-        # 10 LAB sections (duration 3, required_room_type="LAB")
+        # Phân bố: 36 lớp thời lượng 2 (60%), 15 lớp thời lượng 3 (25%), 9 lớp thời lượng 4 (15%)
+        # 10 lớp LAB (thời lượng 3, required_room_type="LAB")
         lec_assignment = []
         for l in lec_ids:
             lec_assignment.extend([l] * 4)
@@ -213,7 +213,7 @@ class DatasetFactory:
 
         durations = [2] * 36 + [3] * 15 + [4] * 9
 
-        # Preference pools for distribution
+        # Các nhóm lựa chọn ưu tiên để phân bố
         _campus_pool = ["CS1"] * 40 + ["CS2"] * 20
         _shift_pool = ["morning"] * 30 + ["afternoon"] * 25 + ["evening"] * 5
         rng.shuffle(_campus_pool)
@@ -251,7 +251,7 @@ class DatasetFactory:
                 )
             )
 
-        # Shuffle sections deterministically
+        # Xáo trộn các lớp học phần theo cách xác định
         rng.shuffle(course_sections)
 
         ds = {
@@ -270,7 +270,7 @@ class DatasetFactory:
         return ds
 
     @staticmethod
-    def create_excel_dataset(excel_path: str = "data/01_data_timetable.xlsx") -> dict:
+    def create_excel_dataset(excel_path: str = "data/instances/instance_easy.xlsx") -> dict:
         """Load and validate dataset from specified Excel workbook path."""
         from .excel_loader import ExcelDatasetLoader
         return ExcelDatasetLoader.load_and_validate(excel_path)

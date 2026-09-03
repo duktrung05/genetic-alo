@@ -14,12 +14,12 @@ from evaluation.baselines import GreedyScheduler, RandomSearchScheduler
 
 
 # ============================================================
-# 1. Per-Run Repair Metrics Invariant Validation
+# 1. Kiểm tra tính bất biến của chỉ số Repair theo từng lần chạy
 # ============================================================
 
 @pytest.mark.unit
 def test_run_metrics_repair_invariant_validation():
-    # Valid metrics
+    # Chỉ số hợp lệ
     valid_m = RunMetrics(
         method="Hybrid GA + Repair", seed=0, runtime_seconds=1.0,
         time_to_first_feasible_seconds=0.5, search_fitness_evaluations=100,
@@ -33,14 +33,14 @@ def test_run_metrics_repair_invariant_validation():
     valid_m.validate()
     assert valid_m.repair_calls == valid_m.repair_improved + valid_m.repair_unchanged + valid_m.repair_failed
 
-    # Invalid metrics: repair_calls != sum of statuses
+    # Chỉ số không hợp lệ: repair_calls != tổng các trạng thái
     with pytest.raises(ValueError, match="Invalid repair metrics"):
         RunMetrics(
             method="Hybrid GA + Repair", seed=0, runtime_seconds=1.0,
             time_to_first_feasible_seconds=0.5, search_fitness_evaluations=100,
             hard_constraint_evaluations=100, soft_constraint_evaluations=100,
             total_constraint_evaluations=200, candidate_checks=50,
-            repair_calls=10, repair_improved=7, repair_unchanged=2, repair_failed=0,  # sum=9 != 10
+            repair_calls=10, repair_improved=7, repair_unchanged=2, repair_failed=0,  # tổng=9 != 10
             first_feasible_search_evaluation=10, first_feasible_total_constraint_evaluation=20,
             first_feasible_generation=1, final_hard_violations=0, final_soft_penalty=50,
             feasible=True, score=50.0
@@ -49,7 +49,7 @@ def test_run_metrics_repair_invariant_validation():
 
 @pytest.mark.unit
 def test_run_metrics_ttff_invariants():
-    # Feasible run with TTFF=None should fail
+    # Lần chạy khả thi với TTFF=None phải thất bại
     with pytest.raises(ValueError, match="Feasible run .* must have time_to_first_feasible_seconds"):
         RunMetrics(
             method="Hybrid GA + Repair", seed=0, runtime_seconds=1.0,
@@ -62,7 +62,7 @@ def test_run_metrics_ttff_invariants():
             feasible=True, score=50.0
         )
 
-    # Infeasible run with TTFF!=None should fail
+    # Lần chạy không khả thi với TTFF!=None phải thất bại
     with pytest.raises(ValueError, match="Infeasible run .* must have time_to_first_feasible_seconds=None"):
         RunMetrics(
             method="GA without Repair", seed=0, runtime_seconds=1.0,
@@ -77,7 +77,7 @@ def test_run_metrics_ttff_invariants():
 
 
 # ============================================================
-# 2. Aggregate Totals & Invariant Verification
+# 2. Kiểm tra tổng hợp và tính bất biến
 # ============================================================
 
 @pytest.mark.unit
@@ -121,7 +121,7 @@ def test_aggregate_raises_on_invalid_run_metrics():
         {
             "score": 100, "hard_violations": 0, "soft_penalty": 100, "runtime_seconds": 1.0,
             "search_fitness_evaluations": 100, "total_constraint_evaluations": 200, "candidate_checks": 50,
-            "repair_calls": 10, "repair_improved": 5, "repair_unchanged": 2, "repair_failed": 0,  # sum=7 != 10
+            "repair_calls": 10, "repair_improved": 5, "repair_unchanged": 2, "repair_failed": 0,  # tổng=7 != 10
             "time_to_first_feasible_seconds": 0.5, "is_hard_feasible": True, "is_perfect": False,
         }
     ]
@@ -130,7 +130,7 @@ def test_aggregate_raises_on_invalid_run_metrics():
 
 
 # ============================================================
-# 3. Constraint Evaluation Category Breakdown Test
+# 3. Kiểm thử phân tích loại đánh giá ràng buộc
 # ============================================================
 
 @pytest.mark.unit
@@ -141,49 +141,49 @@ def test_constraint_evaluation_category_breakdown(small_dataset):
     genes = [Gene(s.section_id, rooms[0].id, 0) for s in sections]
     sched = Schedule(genes=genes)
 
-    # 1. Search evaluation
+    # 1. Đánh giá tìm kiếm
     evaluator.evaluate_hard(sched, category="search")
     evaluator.evaluate_soft(sched, category="search")
     assert evaluator.counters.search_hard_constraint_evaluations == 1
     assert evaluator.counters.search_soft_constraint_evaluations == 1
     assert evaluator.counters.search_constraint_evaluations == 2
 
-    # 2. Internal evaluation (Repair)
+    # 2. Đánh giá nội bộ (Repair)
     evaluator.evaluate_hard(sched, category="internal")
     evaluator.evaluate_soft(sched, category="internal")
     assert evaluator.counters.internal_hard_constraint_evaluations == 1
     assert evaluator.counters.internal_soft_constraint_evaluations == 1
     assert evaluator.counters.internal_constraint_evaluations == 2
 
-    # 3. Reporting evaluation
+    # 3. Đánh giá báo cáo
     evaluator.evaluate_unified(sched, category="reporting")
     assert evaluator.counters.reporting_hard_constraint_evaluations == 1
     assert evaluator.counters.reporting_soft_constraint_evaluations == 1
     assert evaluator.counters.reporting_constraint_evaluations == 2
 
-    # Total constraint evaluations sum correctly
+    # Tổng số lần đánh giá ràng buộc được cộng chính xác
     assert evaluator.counters.total_constraint_evaluations == 6
 
 
 # ============================================================
-# 4. SoftConstraintConfig Immutability Test
+# 4. Kiểm thử tính bất biến của SoftConstraintConfig
 # ============================================================
 
 @pytest.mark.unit
 def test_soft_constraint_config_immutability():
     config = SoftConstraintConfig.default()
 
-    # Attempting to assign new items to definitions raises TypeError
+    # Việc thử gán mục mới vào definitions sẽ phát sinh TypeError
     with pytest.raises(TypeError):
         config.definitions["S1"] = None  # type: ignore
 
-    # Attempting to mutate inner dataclass attributes raises FrozenInstanceError
+    # Việc thử thay đổi thuộc tính dataclass bên trong sẽ phát sinh FrozenInstanceError
     with pytest.raises(FrozenInstanceError):
         config.definitions["compact_student_schedule"].weight = 99  # type: ignore
 
 
 # ============================================================
-# 5. Excel Summary & Metrics Sheet Export Round-Trip
+# 5. Lượt xuất-nạp trang tính tổng kết và chỉ số Excel
 # ============================================================
 
 @pytest.mark.unit
@@ -238,10 +238,10 @@ def test_excel_summary_and_metrics_sheet_export(tmp_path, small_dataset):
     assert "RUN_METRICS" in wb.sheetnames
     assert "BENCHMARK_SUMMARY" in wb.sheetnames
 
-    # Check BENCHMARK_SUMMARY sheet columns
+    # Kiểm tra các cột của trang tính BENCHMARK_SUMMARY
     ws_s = wb["BENCHMARK_SUMMARY"]
     rows = list(ws_s.iter_rows(values_only=True))
-    assert len(rows) == 2  # header + 1 data row
+    assert len(rows) == 2  # tiêu đề + 1 hàng dữ liệu
     header = rows[0]
     data = rows[1]
 

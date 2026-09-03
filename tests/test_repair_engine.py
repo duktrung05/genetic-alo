@@ -14,7 +14,7 @@ def repair_dataset():
     lecturers = [
         Lecturer(id="GV01", name="Giảng viên 1"),
         Lecturer(id="GV02", name="Giảng viên 2"),
-        Lecturer(id="GV_RESTRICTED", name="GV Hạn chế", available_timeslot_ids=frozenset([0, 1, 2, 3, 4, 5])), # Mon P1..P6 only
+        Lecturer(id="GV_RESTRICTED", name="GV Hạn chế", available_timeslot_ids=frozenset([0, 1, 2, 3, 4, 5])), # Chỉ Thứ Hai, tiết 1..6
     ]
     groups = [
         StudentGroup(id="SV_CNTT1", name="CNTT 1", student_count=60),
@@ -33,27 +33,27 @@ def repair_dataset():
         "course_sections": sections,
     }
 
-# 1. Room overlap fixed by changing room at same timeslot
+# 1. Sửa trùng phòng bằng cách đổi phòng trong cùng khung giờ
 @pytest.mark.unit
 def test_repair_fixes_room_overlap_same_timeslot(repair_dataset):
     repairer = ScheduleRepairEngine(repair_dataset)
     evaluator = ConstraintEvaluator(repair_dataset)
 
-    # SEC_1 and SEC_3 both in P101 at Mon P1 (ts_id 0) -> Room overlap!
+    # SEC_1 và SEC_3 đều ở P101 vào tiết 1 Thứ Hai (ts_id 0) -> Trùng phòng!
     bad_sched = Schedule(genes=[
         Gene(section_id="SEC_1", timeslot_id=0, room_id="P101"),
-        Gene(section_id="SEC_2", timeslot_id=16, room_id="LAB01"), # Tue P1
-        Gene(section_id="SEC_3", timeslot_id=0, room_id="P101"), # Overlap!
+        Gene(section_id="SEC_2", timeslot_id=16, room_id="LAB01"), # Thứ Ba, tiết 1
+        Gene(section_id="SEC_3", timeslot_id=0, room_id="P101"), # Bị trùng!
     ])
     res = repairer.repair(bad_sched)
     assert res.success
     assert evaluator.evaluate_hard(res.schedule)[0] == 0
 
-# 2. Lecturer overlap fixed by changing timeslot
+# 2. Sửa trùng giảng viên bằng cách đổi khung giờ
 @pytest.mark.unit
 def test_repair_fixes_lecturer_overlap_different_timeslot(repair_dataset):
     ds = dict(repair_dataset)
-    # Give SEC_1 and SEC_3 same lecturer GV01
+    # Gán cùng giảng viên GV01 cho SEC_1 và SEC_3
     sec1 = CourseSection("SEC_1", "C1", "Course 1", "GV01", "SV_CNTT1", 60, duration_periods=2)
     sec3 = CourseSection("SEC_3", "C3", "Course 3", "GV01", "SV_CNTT2", 40, duration_periods=2)
     ds["course_sections"] = [sec1, repair_dataset["course_sections"][1], sec3]
@@ -62,31 +62,31 @@ def test_repair_fixes_lecturer_overlap_different_timeslot(repair_dataset):
     evaluator = ConstraintEvaluator(ds)
 
     bad_sched = Schedule(genes=[
-        Gene(section_id="SEC_1", timeslot_id=0, room_id="P101"), # Mon P1-P2
+        Gene(section_id="SEC_1", timeslot_id=0, room_id="P101"), # Thứ Hai, tiết 1-2
         Gene(section_id="SEC_2", timeslot_id=16, room_id="LAB01"),
-        Gene(section_id="SEC_3", timeslot_id=0, room_id="P102"), # Mon P1-P2, GV01 conflict!
+        Gene(section_id="SEC_3", timeslot_id=0, room_id="P102"), # Thứ Hai, tiết 1-2, GV01 xung đột!
     ])
     res = repairer.repair(bad_sched)
     assert res.success
     assert evaluator.evaluate_hard(res.schedule)[0] == 0
 
-# 3. Group overlap fixed
+# 3. Sửa trùng nhóm sinh viên
 @pytest.mark.unit
 def test_repair_fixes_group_overlap(repair_dataset):
     repairer = ScheduleRepairEngine(repair_dataset)
     evaluator = ConstraintEvaluator(repair_dataset)
 
-    # SEC_1 and SEC_3 both SV_CNTT1 at Mon P1 (ts_id 0) -> Group overlap!
+    # SEC_1 và SEC_3 đều thuộc SV_CNTT1 vào tiết 1 Thứ Hai (ts_id 0) -> Trùng nhóm!
     bad_sched = Schedule(genes=[
         Gene(section_id="SEC_1", timeslot_id=0, room_id="P101"),
         Gene(section_id="SEC_2", timeslot_id=16, room_id="LAB01"),
-        Gene(section_id="SEC_3", timeslot_id=0, room_id="P102"), # Same group SV_CNTT1!
+        Gene(section_id="SEC_3", timeslot_id=0, room_id="P102"), # Cùng nhóm SV_CNTT1!
     ])
     res = repairer.repair(bad_sched)
     assert res.success
     assert evaluator.evaluate_hard(res.schedule)[0] == 0
 
-# 4. Room capacity violation fixed
+# 4. Sửa vi phạm sức chứa phòng
 @pytest.mark.unit
 def test_repair_fixes_room_capacity(repair_dataset):
     ds = dict(repair_dataset)
@@ -98,7 +98,7 @@ def test_repair_fixes_room_capacity(repair_dataset):
     repairer = ScheduleRepairEngine(ds)
     evaluator = ConstraintEvaluator(ds)
 
-    # SEC_1 student count 60 in P_SMALL (capacity 20) -> Capacity violation!
+    # SEC_1 có 60 sinh viên ở P_SMALL (sức chứa 20) -> Vi phạm sức chứa!
     bad_sched = Schedule(genes=[
         Gene(section_id="SEC_1", timeslot_id=0, room_id="P_SMALL"),
         Gene(section_id="SEC_2", timeslot_id=16, room_id="LAB01"),
@@ -108,16 +108,16 @@ def test_repair_fixes_room_capacity(repair_dataset):
     assert res.success
     assert evaluator.evaluate_hard(res.schedule)[0] == 0
 
-# 5. Room type NORMAL/LAB fixed
+# 5. Sửa loại phòng NORMAL/LAB
 @pytest.mark.unit
 def test_repair_fixes_room_type_mismatch(repair_dataset):
     repairer = ScheduleRepairEngine(repair_dataset)
     evaluator = ConstraintEvaluator(repair_dataset)
 
-    # SEC_2 requires LAB but assigned to P101 (NORMAL)
+    # SEC_2 yêu cầu LAB nhưng được gán vào P101 (NORMAL)
     bad_sched = Schedule(genes=[
         Gene(section_id="SEC_1", timeslot_id=0, room_id="P101"),
-        Gene(section_id="SEC_2", timeslot_id=0, room_id="P101"), # Room type mismatch!
+        Gene(section_id="SEC_2", timeslot_id=0, room_id="P101"), # Không khớp loại phòng!
         Gene(section_id="SEC_3", timeslot_id=2, room_id="P102"),
     ])
     res = repairer.repair(bad_sched)
@@ -125,23 +125,23 @@ def test_repair_fixes_room_type_mismatch(repair_dataset):
     lab_gene = [g for g in res.schedule.genes if g.section_id == "SEC_2"][0]
     assert lab_gene.room_id == "LAB01"
 
-# 6. Lecturer unavailable fixed
+# 6. Sửa trường hợp giảng viên không rảnh
 @pytest.mark.unit
 def test_repair_fixes_lecturer_unavailability(repair_dataset):
     repairer = ScheduleRepairEngine(repair_dataset)
     evaluator = ConstraintEvaluator(repair_dataset)
 
-    # SEC_3 (GV_RESTRICTED Mon P1..P6) assigned to Tuesday (ts_id 16) -> Unavailable!
+    # SEC_3 (GV_RESTRICTED rảnh Thứ Hai tiết 1..6) được gán vào Thứ Ba (ts_id 16) -> Không rảnh!
     bad_sched = Schedule(genes=[
         Gene(section_id="SEC_1", timeslot_id=0, room_id="P101"),
         Gene(section_id="SEC_2", timeslot_id=16, room_id="LAB01"),
-        Gene(section_id="SEC_3", timeslot_id=16, room_id="P102"), # Tuesday -> Lecturer unavailable!
+        Gene(section_id="SEC_3", timeslot_id=16, room_id="P102"), # Thứ Ba -> Giảng viên không rảnh!
     ])
     res = repairer.repair(bad_sched)
     assert res.success
     assert evaluator.evaluate_hard(res.schedule)[0] == 0
 
-# 7. Duration 4 starting period 8 supported
+# 7. Hỗ trợ thời lượng 4 bắt đầu từ tiết 8
 @pytest.mark.unit
 def test_repair_supports_duration_4_period_8(repair_dataset):
     ds = dict(repair_dataset)
@@ -150,24 +150,24 @@ def test_repair_supports_duration_4_period_8(repair_dataset):
     repairer = ScheduleRepairEngine(ds)
     evaluator = ConstraintEvaluator(ds)
 
-    # Place starting at ts_id 7 (Mon period 8)
+    # Xếp bắt đầu tại ts_id 7 (tiết 8 Thứ Hai)
     sched = Schedule(genes=[Gene(section_id="SEC_D4", timeslot_id=7, room_id="P101")])
     res = repairer.repair(sched)
     assert res.success
     assert evaluator.evaluate_hard(res.schedule)[0] == 0
 
-# 8. Partial period overlap (A occupies 8-11, B occupies 11-12) detected and fixed
+# 8. Phát hiện và sửa trùng một phần (A chiếm tiết 8-11, B chiếm tiết 11-12)
 @pytest.mark.unit
 def test_repair_handles_partial_period_overlap(repair_dataset):
     ds = dict(repair_dataset)
-    sec_a = CourseSection("SEC_A", "CA", "Course A", "GV01", "SV_CNTT1", 40, duration_periods=4) # Occupies 8,9,10,11
-    sec_b = CourseSection("SEC_B", "CB", "Course B", "GV02", "SV_CNTT2", 40, duration_periods=2) # Occupies 11,12
+    sec_a = CourseSection("SEC_A", "CA", "Course A", "GV01", "SV_CNTT1", 40, duration_periods=4) # Chiếm tiết 8, 9, 10, 11
+    sec_b = CourseSection("SEC_B", "CB", "Course B", "GV02", "SV_CNTT2", 40, duration_periods=2) # Chiếm tiết 11, 12
     ds["course_sections"] = [sec_a, sec_b]
 
     repairer = ScheduleRepairEngine(ds)
     evaluator = ConstraintEvaluator(ds)
 
-    # Both assigned to P101 on Mon: SEC_A at ts_id 7 (P8..P11), SEC_B at ts_id 10 (P11..P12) -> Overlap on P11!
+    # Cả hai được gán vào P101 Thứ Hai: SEC_A tại ts_id 7 (tiết 8..11), SEC_B tại ts_id 10 (tiết 11..12) -> Trùng tiết 11!
     bad_sched = Schedule(genes=[
         Gene(section_id="SEC_A", timeslot_id=7, room_id="P101"),
         Gene(section_id="SEC_B", timeslot_id=10, room_id="P101"),
@@ -178,7 +178,7 @@ def test_repair_handles_partial_period_overlap(repair_dataset):
     assert res.success
     assert evaluator.evaluate_hard(res.schedule)[0] == 0
 
-# 9. Failed section does not consume resources
+# 9. Lớp học phần bị lỗi không chiếm tài nguyên
 @pytest.mark.unit
 def test_failed_section_does_not_consume_resources():
     rooms = [
@@ -205,7 +205,7 @@ def test_failed_section_does_not_consume_resources():
 
     res = repairer.repair(bad_sched)
     assert "SEC_FAIL" in res.failed_section_ids
-    # SEC_OK preserves its valid initial assignment at P101 ts 0 because SEC_FAIL did not pollute resource sets
+    # SEC_OK giữ phân công ban đầu hợp lệ tại P101 ts 0 vì SEC_FAIL không làm bẩn các tập tài nguyên
     sec_ok_gene = [g for g in res.schedule.genes if g.section_id == "SEC_OK"][0]
     assert sec_ok_gene.room_id == "P101"
     assert sec_ok_gene.timeslot_id == 0
@@ -213,7 +213,7 @@ def test_failed_section_does_not_consume_resources():
 
 
 
-# 10. Input schedule is NOT mutated
+# 10. Lịch đầu vào KHÔNG bị thay đổi
 @pytest.mark.unit
 def test_input_schedule_not_mutated(repair_dataset):
     repairer = ScheduleRepairEngine(repair_dataset)
@@ -227,7 +227,7 @@ def test_input_schedule_not_mutated(repair_dataset):
     repairer.repair(bad_sched)
     assert bad_sched.genes == orig_genes_snapshot
 
-# 11. Hard violations do NOT increase
+# 11. Vi phạm cứng KHÔNG tăng
 @pytest.mark.unit
 def test_hard_violations_never_increase(repair_dataset):
     repairer = ScheduleRepairEngine(repair_dataset)
@@ -244,13 +244,13 @@ def test_hard_violations_never_increase(repair_dataset):
     repaired_hard, _ = evaluator.evaluate_hard(res.schedule)
     assert repaired_hard <= orig_hard
 
-# 12. When hard violations tie, pick lower soft penalty
+# 12. Khi vi phạm cứng bằng nhau, chọn điểm phạt mềm thấp hơn
 @pytest.mark.unit
 def test_lexicographic_soft_penalty_tie_breaking(repair_dataset):
     repairer = ScheduleRepairEngine(repair_dataset)
     evaluator = ConstraintEvaluator(repair_dataset)
 
-    # Valid schedule
+    # Lịch hợp lệ
     valid_sched = Schedule(genes=[
         Gene(section_id="SEC_1", timeslot_id=0, room_id="P101"),
         Gene(section_id="SEC_2", timeslot_id=16, room_id="LAB01"),
@@ -261,7 +261,7 @@ def test_lexicographic_soft_penalty_tie_breaking(repair_dataset):
     repaired_hard, _ = evaluator.evaluate_hard(res.schedule)
     assert orig_hard == 0 and repaired_hard == 0
 
-# 13. Returns best attempt
+# 13. Trả về lần thử tốt nhất
 @pytest.mark.unit
 def test_repair_returns_best_attempt(repair_dataset):
     repairer = ScheduleRepairEngine(repair_dataset)
@@ -276,7 +276,7 @@ def test_repair_returns_best_attempt(repair_dataset):
     best_hard, _ = evaluator.evaluate_hard(res.schedule)
     assert res.remaining_hard_violations == best_hard
 
-# 14. Early stopping when hard = 0
+# 14. Dừng sớm khi hard = 0
 @pytest.mark.unit
 def test_early_stopping_on_zero_hard_violations(repair_dataset):
     repairer = ScheduleRepairEngine(repair_dataset)
@@ -290,7 +290,7 @@ def test_early_stopping_on_zero_hard_violations(repair_dataset):
     assert res.success
     assert repairer.stats.repair_attempts <= 1
 
-# 15. Same seed produces same result (reproducibility)
+# 15. Cùng seed tạo ra cùng kết quả (khả năng tái lập)
 @pytest.mark.unit
 def test_repair_reproducibility_same_seed(repair_dataset):
     import random
@@ -316,12 +316,12 @@ def test_unrelated_valid_assignments_preserved(repair_dataset):
     ds["course_sections"] = [repair_dataset["course_sections"][0], repair_dataset["course_sections"][1], sec3_g2]
     repairer = ScheduleRepairEngine(ds)
 
-    # SEC_1 is valid at Mon P1 (ts 0, P101)
-    # SEC_2 (LAB, ts 16 P101) and SEC_3 (NORMAL, ts 16 P102) are invalid/conflicting
+    # SEC_1 hợp lệ ở tiết 1 Thứ Hai (ts 0, P101)
+    # SEC_2 (LAB, ts 16 P101) và SEC_3 (NORMAL, ts 16 P102) không hợp lệ/xung đột
     sched = Schedule(genes=[
-        Gene(section_id="SEC_1", timeslot_id=0, room_id="P101"), # Valid
-        Gene(section_id="SEC_2", timeslot_id=16, room_id="P101"), # Invalid (LAB req)
-        Gene(section_id="SEC_3", timeslot_id=16, room_id="P102"), # Invalid (Lecturer unavailable)
+        Gene(section_id="SEC_1", timeslot_id=0, room_id="P101"), # Hợp lệ
+        Gene(section_id="SEC_2", timeslot_id=16, room_id="P101"), # Không hợp lệ (yêu cầu LAB)
+        Gene(section_id="SEC_3", timeslot_id=16, room_id="P102"), # Không hợp lệ (giảng viên không rảnh)
     ])
     res = repairer.repair(sched)
     sec1_gene = [g for g in res.schedule.genes if g.section_id == "SEC_1"][0]
@@ -330,7 +330,7 @@ def test_unrelated_valid_assignments_preserved(repair_dataset):
 
 
 
-# 17. RepairStats updated correctly
+# 17. RepairStats được cập nhật chính xác
 @pytest.mark.unit
 def test_repair_stats_updated_correctly(repair_dataset):
     repairer = ScheduleRepairEngine(repair_dataset)
@@ -350,35 +350,35 @@ def test_repair_stats_updated_correctly(repair_dataset):
     assert stats["repair_runtime_seconds"] >= 0.0
 
 
-# --- Task 2 Refinement Mandatory Tests ---
+# --- Các kiểm thử bắt buộc để tinh chỉnh Tác vụ 2 ---
 
 @pytest.mark.unit
 def test_repair_sections_repaired_counts_only_changed_sections(repair_dataset):
     repairer = ScheduleRepairEngine(repair_dataset)
     repairer.stats.reset()
 
-    # SEC_1 is valid at Mon P1 (ts 0, P101).
-    # SEC_2 (ts 16, P101 - invalid LAB req) and SEC_3 (ts 16, P102 - invalid lecturer unavailable) will be changed.
+    # SEC_1 hợp lệ ở tiết 1 Thứ Hai (ts 0, P101).
+    # SEC_2 (ts 16, P101 - sai yêu cầu LAB) và SEC_3 (ts 16, P102 - giảng viên không rảnh) sẽ được đổi.
     ds = dict(repair_dataset)
     sec3_g2 = CourseSection("SEC_3", "C3", "Course 3", "GV_RESTRICTED", "SV_CNTT2", 40, duration_periods=2, required_room_type="NORMAL")
     ds["course_sections"] = [repair_dataset["course_sections"][0], repair_dataset["course_sections"][1], sec3_g2]
     repairer = ScheduleRepairEngine(ds)
 
     sched = Schedule(genes=[
-        Gene(section_id="SEC_1", timeslot_id=0, room_id="P101"),  # Unchanged
-        Gene(section_id="SEC_2", timeslot_id=16, room_id="P101"), # Changed to LAB01
-        Gene(section_id="SEC_3", timeslot_id=16, room_id="P102"), # Changed to Mon P1 P102
+        Gene(section_id="SEC_1", timeslot_id=0, room_id="P101"),  # Không đổi
+        Gene(section_id="SEC_2", timeslot_id=16, room_id="P101"), # Đổi sang LAB01
+        Gene(section_id="SEC_3", timeslot_id=16, room_id="P102"), # Đổi sang tiết 1 Thứ Hai, P102
     ])
     res = repairer.repair(sched)
     assert res.success
-    assert repairer.stats.sections_repaired == 2  # Exactly 2 sections changed, not 3!
+    assert repairer.stats.sections_repaired == 2  # Chính xác 2 lớp học phần thay đổi, không phải 3!
 
 @pytest.mark.unit
 def test_repair_output_equals_input_failure(repair_dataset):
     repairer = ScheduleRepairEngine(repair_dataset)
     repairer.stats.reset()
 
-    # Fully valid schedule: repair output is equal to input (no improvement)
+    # Lịch hoàn toàn hợp lệ: đầu ra sửa lỗi bằng đầu vào (không cải thiện)
     valid_sched = Schedule(genes=[
         Gene(section_id="SEC_1", timeslot_id=0, room_id="P101"),
         Gene(section_id="SEC_2", timeslot_id=16, room_id="LAB01"),
@@ -411,7 +411,7 @@ def test_repair_attempts_increments_per_attempt_pass(repair_dataset):
     repairer = ScheduleRepairEngine(repair_dataset)
     repairer.stats.reset()
 
-    # Impossible schedule to fit, max_attempts = 3
+    # Lịch không thể xếp vừa, max_attempts = 3
     ds = dict(repair_dataset)
     ds["rooms"] = [Room(id="P101", name="Room 101", capacity=10, room_type="NORMAL")]
     ds["timeslots"] = create_theory_timeslots(days=["Thứ 2"], max_period=2)
@@ -429,7 +429,7 @@ def test_rejected_attempt_changes_not_counted_in_sections_repaired(repair_datase
     repairer = ScheduleRepairEngine(repair_dataset)
     repairer.stats.reset()
 
-    # Output equal to input -> Call failed -> sections_repaired MUST be 0
+    # Đầu ra bằng đầu vào -> Lần gọi thất bại -> sections_repaired PHẢI bằng 0
     valid_sched = Schedule(genes=[
         Gene(section_id="SEC_1", timeslot_id=0, room_id="P101"),
         Gene(section_id="SEC_2", timeslot_id=16, room_id="LAB01"),
@@ -454,7 +454,7 @@ def test_ga_engine_run_resets_repair_stats():
 
     assert calls1 > 0
     assert calls2 > 0
-    # Calls in second run must NOT accumulate calls from first run
+    # Các lần gọi ở lượt chạy thứ hai KHÔNG được cộng dồn từ lượt chạy đầu
     assert calls2 == calls1
 
 @pytest.mark.unit
@@ -465,7 +465,7 @@ def test_ga_engine_shares_evaluator_object():
     ds = DatasetFactory.create_medium_dataset(seed=42)
     engine = GeneticAlgorithmEngine(ds, pop_size=10)
 
-    # Must be the EXACT same evaluator instance in memory
+    # PHẢI chính xác là cùng một thực thể bộ đánh giá trong bộ nhớ
     assert engine.repairer.evaluator is engine.evaluator
 
 

@@ -15,7 +15,7 @@ from evaluation.baselines import GreedyScheduler, RandomSearchScheduler
 
 
 # ============================================================
-# 15.1. EvaluationCounters Unit Tests
+# 15.1. Kiểm thử đơn vị EvaluationCounters
 # ============================================================
 
 @pytest.mark.unit
@@ -44,7 +44,7 @@ def test_evaluation_counters_initialization_and_reset():
     assert counters.search_fitness_evaluations == 0
     assert counters.hard_constraint_evaluations == 0
     assert counters.total_constraint_evaluations == 0
-    # snapshot remains unchanged
+    # Bản chụp không thay đổi
     assert snap.search_fitness_evaluations == 5
 
 
@@ -59,7 +59,7 @@ def test_two_counters_independent():
 
 
 # ============================================================
-# 15.2. ConstraintEvaluator Instrumentation (No Double-Count)
+# 15.2. Đo lường ConstraintEvaluator (không đếm hai lần)
 # ============================================================
 
 @pytest.mark.unit
@@ -77,7 +77,7 @@ def test_evaluator_no_double_count(small_dataset):
     assert evaluator.counters.total_constraint_evaluations == 2
     assert evaluator.counters.search_fitness_evaluations == 0
 
-    # 2. calculate_fitness(is_search_eval=True) -> +1 search, +1 hard, +1 soft
+    # 2. calculate_fitness(is_search_eval=True) -> +1 tìm kiếm, +1 hard, +1 soft
     evaluator.calculate_fitness(sched, is_search_eval=True)
     assert evaluator.counters.search_fitness_evaluations == 1
     assert evaluator.counters.hard_constraint_evaluations == 2
@@ -86,7 +86,7 @@ def test_evaluator_no_double_count(small_dataset):
 
 
 # ============================================================
-# 15.3. Time-to-first-feasible Tests
+# 15.3. Kiểm thử thời gian đến lời giải khả thi đầu tiên
 # ============================================================
 
 @pytest.mark.unit
@@ -108,7 +108,7 @@ def test_ga_engine_records_time_to_first_feasible(small_dataset):
 
 
 # ============================================================
-# 15.4. Repair Status & Statistics Tests
+# 15.4. Kiểm thử trạng thái và thống kê Repair
 # ============================================================
 
 @pytest.mark.unit
@@ -118,7 +118,7 @@ def test_repair_status_classification(small_dataset):
     rooms = small_dataset["rooms"]
     timeslots = small_dataset["timeslots"]
 
-    # Create schedule
+    # Tạo lịch
     genes = [Gene(s.section_id, rooms[0].id, timeslots[0].id) for s in sections]
     sched = Schedule(genes=genes)
 
@@ -131,7 +131,7 @@ def test_repair_status_classification(small_dataset):
 
 
 # ============================================================
-# 15.5. Candidate Checks Tests (Greedy & Repair)
+# 15.5. Kiểm thử số lần kiểm tra ứng viên (Greedy và Repair)
 # ============================================================
 
 @pytest.mark.unit
@@ -152,7 +152,7 @@ def test_repair_engine_candidate_checks(small_dataset):
     rooms = small_dataset["rooms"]
     timeslots = small_dataset["timeslots"]
 
-    # All sections assigned to same room/timeslot to force conflicts and repair searches
+    # Gán mọi lớp vào cùng phòng/khung giờ để buộc phát sinh xung đột và tìm kiếm sửa lỗi
     genes = [Gene(s.section_id, rooms[0].id, timeslots[0].id) for s in sections]
     sched = Schedule(genes=genes)
 
@@ -161,7 +161,7 @@ def test_repair_engine_candidate_checks(small_dataset):
 
 
 # ============================================================
-# 15.6. Seed Reproducibility Tests
+# 15.6. Kiểm thử khả năng tái lập theo seed
 # ============================================================
 
 @pytest.mark.unit
@@ -197,7 +197,7 @@ def test_random_search_reproducibility(small_dataset):
 
 
 # ============================================================
-# 15.7. Aggregator Tests (None TTFF Handling)
+# 15.7. Kiểm thử bộ tổng hợp (xử lý TTFF bằng None)
 # ============================================================
 
 @pytest.mark.unit
@@ -226,7 +226,7 @@ def test_aggregate_run_results_handles_none_ttff():
     agg = aggregate_run_results("Test Method", runs)
     assert agg["feasible_count"] == 1
     assert agg["feasible_rate"] == 0.5
-    # TTFF median must be 0.5 (from the single feasible run), NOT 0.0 or average with 0
+    # Trung vị TTFF phải là 0,5 (từ lần chạy khả thi duy nhất), KHÔNG phải 0,0 hay trung bình với 0
     assert agg["time_to_first_feasible_median"] == 0.5
     assert agg["repair_improved_total"] == 3
     assert agg["repair_unchanged_total"] == 3
@@ -234,7 +234,7 @@ def test_aggregate_run_results_handles_none_ttff():
 
 
 # ============================================================
-# 15.8. Excel Export Round-Trip Test (RUN_METRICS Sheet)
+# 15.8. Kiểm thử lượt xuất-nạp Excel (trang tính RUN_METRICS)
 # ============================================================
 
 @pytest.mark.unit
@@ -267,7 +267,7 @@ def test_excel_export_run_metrics_sheet(tmp_path, small_dataset):
 
     ws_m = wb["RUN_METRICS"]
     rows = list(ws_m.iter_rows(values_only=True))
-    assert len(rows) == 2  # header + 1 row
+    assert len(rows) == 2  # tiêu đề + 1 hàng
     header = rows[0]
     assert "method" in header
     assert "candidate_checks" in header

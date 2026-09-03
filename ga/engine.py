@@ -128,7 +128,7 @@ class GeneticAlgorithmEngine:
         start_time = time.perf_counter()
 
 
-        # Reset evaluator counters and repair stats per run
+        # Đặt lại bộ đếm đánh giá và thống kê sửa lỗi cho mỗi lần chạy
         self.evaluator.counters.reset()
         self.repairer.stats.reset()
         self.repairer.evaluator = self.evaluator
@@ -160,9 +160,9 @@ class GeneticAlgorithmEngine:
             "guided_mutation_fallbacks": 0,
         }
 
-        # When a search budget is supplied it is the authoritative stopping
-        # contract. Ensure the generation loop has enough iterations to spend
-        # it even when the caller configured fewer generations than required.
+        # Khi có ngân sách tìm kiếm, đây là điều kiện dừng chính thức. Bảo đảm vòng
+        # lặp thế hệ có đủ số lần lặp để dùng hết ngân sách ngay cả khi bên gọi cấu
+        # hình số thế hệ ít hơn mức cần thiết.
         generation_limit = generations
         if evaluation_budget is not None:
             generations_for_budget = (
@@ -197,7 +197,7 @@ class GeneticAlgorithmEngine:
             if not scores:
                 break
 
-            # Primary selection uses Lexicographic Tuple: (hard_violations, soft_penalty)
+            # Lựa chọn chính dùng bộ giá trị theo thứ tự từ điển: (hard_violations, soft_penalty)
             best_idx = min(
                 range(len(scores)),
                 key=lambda i: (hard_v[i], soft_v[i]),
@@ -213,7 +213,7 @@ class GeneticAlgorithmEngine:
             history.append({
                 "generation": gen,
                 "elapsed_seconds": round(elapsed_now, 4),
-                "runtime_seconds": round(elapsed_now, 4),  # legacy alias
+                "runtime_seconds": round(elapsed_now, 4),  # bí danh cũ
                 "fitness_evaluations": evaluation_count,
                 "best_score": best_score,
                 "best_hard": best_hard,
@@ -221,28 +221,28 @@ class GeneticAlgorithmEngine:
                 "avg_score": sum(scores) / len(scores)
             })
 
-            # An unbudgeted production run may stop at a perfect solution. A
-            # benchmark run must still consume its declared budget so methods
-            # remain comparable and validate_search_budget() cannot fail.
+            # Lần chạy production không có ngân sách có thể dừng khi đạt lời giải
+            # hoàn hảo. Lần chạy benchmark vẫn phải dùng hết ngân sách đã khai báo
+            # để các phương pháp còn so sánh được và validate_search_budget() không lỗi.
             if best_hard == 0 and best_soft == 0 and evaluation_budget is None:
                 break
 
             if evaluation_budget is not None and evaluation_count >= evaluation_budget:
                 break
 
-            # Lexicographic sorting for elitism and parent tournament selection
+            # Sắp xếp theo thứ tự từ điển cho elitism và lựa chọn cha mẹ kiểu tournament
             sorted_indices = sorted(
                 range(len(scores)),
                 key=lambda i: (hard_v[i], soft_v[i])
             )
 
-            # Preserve top self.elite_count schedules
+            # Giữ lại self.elite_count thời khóa biểu tốt nhất
             new_pop = [
                 Schedule(genes=[Gene(g.section_id, g.room_id, g.timeslot_id) for g in population[sorted_indices[i]].genes])
                 for i in range(self.elite_count)
             ]
 
-            # Lexicographic fitness keys for tournament selection: (hard_violations, soft_penalty)
+            # Khóa fitness theo thứ tự từ điển cho tournament selection: (hard_violations, soft_penalty)
             fitness_keys = [(hard_v[i], soft_v[i]) for i in range(len(scores))]
 
             sgm = None
@@ -297,11 +297,11 @@ class GeneticAlgorithmEngine:
 
             population = new_pop[:self.pop_size]
 
-        # Record soft penalty before SLS intervention
+        # Ghi nhận điểm phạt mềm trước khi SLS can thiệp
         soft_before_sls = best_soft
         soft_after_sls = best_soft
 
-        # Post-search Soft Local Search (only on feasible best schedule)
+        # Tìm kiếm cục bộ mềm sau tìm kiếm (chỉ trên lịch tốt nhất khả thi)
         soft_ls_stats = {
             "soft_ls_calls": 0,
             "soft_ls_initial_penalty": 0,
@@ -321,11 +321,11 @@ class GeneticAlgorithmEngine:
             )
             improved_schedule, soft_ls_stats = sls.optimize(best_schedule)
 
-            # Independent Re-evaluation
+            # Đánh giá lại độc lập
             imp_h, _ = self.evaluator.evaluate_hard(improved_schedule, category="internal")
             imp_s, _ = self.evaluator.evaluate_soft(improved_schedule, category="internal")
 
-            # Invariant assertion check: Hard must remain 0 and Soft must not increase
+            # Kiểm tra bất biến: Hard phải giữ bằng 0 và Soft không được tăng
             if imp_h == 0 and imp_s <= best_soft:
                 best_schedule = improved_schedule
                 best_soft = imp_s

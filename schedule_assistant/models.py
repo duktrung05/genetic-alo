@@ -16,7 +16,7 @@ class ScheduleQuery:
     course: Optional[str] = None         # Mã hoặc tên môn học
     class_code: Optional[str] = None     # Mã lớp học phần chính thức
     campus: Optional[str] = None         # Mã cơ sở (ví dụ: "CS1", "CS2")
-    shift: Optional[str] = None          # morning / afternoon / evening
+    shift: Optional[str] = None          # buổi sáng / buổi chiều / buổi tối
 
 
 @dataclass

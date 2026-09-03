@@ -54,7 +54,7 @@ class DatasetValidator:
                 "statistics": {}
             }
 
-        # 1. Duplicate IDs
+        # 1. Các mã định danh bị trùng
         sec_ids = set()
         for sec in sections:
             if sec.section_id in sec_ids:
@@ -130,7 +130,7 @@ class DatasetValidator:
                 errors.append(f"Duplicate campus ID found: '{campus.id}'.")
             campus_ids.add(campus.id)
 
-        # 2. Foreign keys
+        # 2. Các khóa ngoại
         lecturer_map = {l.id: l for l in lecturers} if "lecturers" in dataset and lecturers else {}
         if "lecturers" in dataset and lecturers:
             for sec in sections:
@@ -148,15 +148,15 @@ class DatasetValidator:
                 if sec.course_id not in course_ids:
                     errors.append(f"Section '{sec.section_id}' references non-existent course_id '{sec.course_id}'.")
 
-        # CAMPUSES is authoritative when present. Legacy programmatic datasets
-        # without a campus master remain supported, but Excel/normalized JSON
-        # always provide this key.
+        # CAMPUSES là nguồn chuẩn khi có mặt. Các bộ dữ liệu lập trình cũ không có
+        # danh mục cơ sở vẫn được hỗ trợ, nhưng Excel/JSON chuẩn hóa luôn cung cấp
+        # khóa này.
         if "campuses" in dataset:
             for room in rooms:
                 if room.campus_id is not None and room.campus_id not in campus_ids:
                     errors.append(f"Room '{room.id}' references unknown campus_id='{room.campus_id}'.")
 
-        # Maps for period validation
+        # Các ánh xạ dùng để kiểm tra tiết học
         day_available_periods: Dict[str, Set[int]] = defaultdict(set)
         day_period_to_ts_id: Dict[Tuple[str, int], int] = {}
         for ts in timeslots:
@@ -165,12 +165,12 @@ class DatasetValidator:
 
         total_timeslots = len(timeslots)
 
-        # Lecturer & Group required periods tracking
+        # Theo dõi số tiết yêu cầu của giảng viên và nhóm sinh viên
         lec_required_periods: Dict[str, int] = defaultdict(int)
         grp_required_periods: Dict[str, int] = defaultdict(int)
         lab_required_periods = 0
 
-        # Section validations
+        # Kiểm tra các lớp học phần
         for sec in sections:
             duration = getattr(sec, "duration_periods", 1)
             if not isinstance(duration, int) or isinstance(duration, bool) or duration < 1:
@@ -218,7 +218,7 @@ class DatasetValidator:
             if req_type == "LAB":
                 lab_required_periods += duration * meeting_multiplier
 
-            # Room availability check
+            # Kiểm tra tình trạng sẵn sàng của phòng
             matching_rooms = [
                 r for r in rooms
                 if getattr(r, "room_type", "NORMAL") == req_type and r.capacity >= sec.student_count
@@ -229,7 +229,7 @@ class DatasetValidator:
                 else:
                     errors.append(f"Section '{sec.section_id}' requires NORMAL room with capacity >= {sec.student_count}, but no suitable room exists.")
 
-            # Valid start timeslot block check (require_same_session=True enforced by default)
+            # Kiểm tra đoạn khung giờ bắt đầu hợp lệ (mặc định bắt buộc require_same_session=True)
             valid_start_ts = [
                 t for t in timeslots
                 if is_valid_period_block(t.period, duration, day_available_periods.get(t.day))
@@ -241,7 +241,7 @@ class DatasetValidator:
                     f"same session (morning=1-6, afternoon=7-12, evening=13-16)."
                 )
 
-            # Lecturer availability block check
+            # Kiểm tra đoạn thời gian rảnh của giảng viên
             if sec.lecturer_id:
                 lec = lecturer_map.get(sec.lecturer_id)
                 avail_ts = getattr(lec, "available_timeslot_ids", None) if lec else None
@@ -259,7 +259,7 @@ class DatasetValidator:
                             f"'{sec.section_id}', but meetings_per_week={meeting_multiplier}."
                         )
 
-        # Check total lecturer load vs available periods
+        # So sánh tổng tải giảng dạy với số tiết giảng viên có thể tham gia
         for lec in lecturers:
             if lec.available_timeslot_ids is not None:
                 unknown_ids = set(lec.available_timeslot_ids) - ts_ids
@@ -272,7 +272,7 @@ class DatasetValidator:
             elif req > 0.75 * avail_count:
                 warnings.append(f"Lecturer '{lec.id}' load is near capacity ({req}/{avail_count} periods).")
 
-        # Check total student group load vs total timeslots
+        # So sánh tổng tải học tập của nhóm sinh viên với tổng số khung giờ
         for grp in groups:
             if not isinstance(grp.student_count, int) or isinstance(grp.student_count, bool) or grp.student_count < 1:
                 errors.append(f"StudentGroup '{grp.id}' has invalid student_count {grp.student_count}.")
@@ -282,7 +282,7 @@ class DatasetValidator:
             elif req > 0.75 * total_timeslots:
                 warnings.append(f"StudentGroup '{grp.id}' load is high ({req}/{total_timeslots} periods).")
 
-            # Validate home_campus_id reference
+            # Kiểm tra tham chiếu home_campus_id
             home_campus = getattr(grp, "home_campus_id", None)
             if "campuses" in dataset and home_campus is not None and home_campus not in campus_ids:
                 errors.append(
@@ -296,7 +296,7 @@ class DatasetValidator:
             if room.room_type not in VALID_ROOM_TYPES:
                 errors.append(f"Room '{room.id}' has invalid room_type='{room.room_type}'.")
 
-        # Check total LAB demand vs LAB room supply
+        # So sánh tổng nhu cầu phòng LAB với nguồn cung phòng LAB
         lab_rooms = [r for r in rooms if getattr(r, "room_type", "NORMAL") == "LAB"]
         total_lab_capacity_periods = len(lab_rooms) * total_timeslots
         if lab_required_periods > total_lab_capacity_periods:

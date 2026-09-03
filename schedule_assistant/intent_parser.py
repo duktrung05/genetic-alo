@@ -62,8 +62,8 @@ class RuleBasedParser(NaturalLanguageParser):
         class_code = self._entity_from_index(raw, "class_code", "section_id")
         group = self._entity_from_index(raw, "student_group_id", "student_group_name")
 
-        # Unknown explicit entities still reach the resolver, which can then
-        # return a precise "not found" message instead of an unsupported one.
+        # Các thực thể tường minh chưa xác định vẫn được chuyển đến bộ phân giải để
+        # trả về thông báo "không tìm thấy" chính xác thay vì báo không được hỗ trợ.
         lecturer = lecturer or self._match(r"\bgv[-_]?\d+\b", raw)
         if not room and not self._is_free_room(norm):
             room = self._after_keyword(raw, ("phòng", "phong", "room"))
@@ -180,8 +180,8 @@ class RuleBasedParser(NaturalLanguageParser):
     @staticmethod
     def _extract_shift(raw: str) -> Optional[str]:
         q, raw_lower = normalized(raw), raw.lower()
-        # Keep accented "tối" distinct from the pronoun "tôi"; accent
-        # stripping would otherwise misread "Cho tôi xem lịch" as evening.
+        # Giữ "tối" có dấu khác với đại từ "tôi"; nếu bỏ dấu, câu "Cho tôi xem lịch"
+        # sẽ bị hiểu nhầm là yêu cầu xem lịch buổi tối.
         if re.search(r"(?<!\w)tối(?!\w)", raw_lower) or re.search(r"(?<!\w)evening(?!\w)", raw_lower):
             return "evening"
         for alias, canonical in sorted(SHIFT_ALIASES.items(), key=lambda item: -len(item[0])):

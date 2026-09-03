@@ -18,7 +18,7 @@ from schedule_assistant import (
 
 @pytest.fixture
 def sample_dataset():
-    return ExcelDatasetLoader.load_and_validate("data/01_data_timetable.xlsx")
+    return ExcelDatasetLoader.load_and_validate("data/instances/instance_easy.xlsx")
 
 
 @pytest.fixture
@@ -85,11 +85,11 @@ def test_query_service_day_filter_and_ordering(sample_query_json):
     assert res.success is True
     assert len(res.assignments) > 0
 
-    # Check all returned assignments are on Thứ 2
+    # Kiểm tra mọi phân công trả về đều vào Thứ 2
     for a in res.assignments:
         assert a["day"] == "Thứ 2"
 
-    # Check ordering by start_period ascending
+    # Kiểm tra thứ tự tăng dần theo start_period
     start_periods = [a["start_period"] for a in res.assignments]
     assert start_periods == sorted(start_periods), "Assignments must be sorted ascending by start_period"
 
@@ -206,7 +206,7 @@ def test_algorithm_isolation(sample_query_json):
     service = ScheduleQueryService(sample_query_json)
     res = service.query("Lịch thứ 2 của lớp CNTT1")
 
-    # Assert counters were untouched
+    # Xác nhận các bộ đếm không bị thay đổi
     assert counters.search_fitness_evaluations == initial_search
     assert counters.hard_constraint_evaluations == initial_hard
     assert res.success is True

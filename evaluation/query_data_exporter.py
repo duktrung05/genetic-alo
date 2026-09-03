@@ -54,7 +54,7 @@ def export_schedule_query_data(
     group_map = {g.id: g for g in dataset.get("student_groups", [])}
     course_map = {c.course_id: c for c in dataset.get("courses", [])}
 
-    # Map (day, period) -> Timeslot for fast end_time lookup
+    # Ánh xạ (ngày, tiết) -> Timeslot để tra cứu end_time nhanh
     day_period_map = {(ts.day, ts.period): ts for ts in timeslot_map.values()}
 
     assignments: List[dict] = []
@@ -72,7 +72,7 @@ def export_schedule_query_data(
         end_period = start_period + duration - 1
         occupied_p = get_occupied_periods(start_period, duration)
 
-        # End time calculation
+        # Tính thời gian kết thúc
         end_ts = day_period_map.get((ts.day, end_period), ts)
         end_time_str = end_ts.end_time if end_ts else ts.end_time
 
@@ -118,7 +118,7 @@ def export_schedule_query_data(
         }
         assignments.append(record)
 
-    # Sort assignments deterministically by day, start_period, room_name, section_id
+    # Sắp xếp phân công ổn định theo ngày, start_period, room_name, section_id
     assignments.sort(
         key=lambda a: (
             DAY_ORDER.get(a["day"], 99),

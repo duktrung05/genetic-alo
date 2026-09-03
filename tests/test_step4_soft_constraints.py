@@ -33,7 +33,7 @@ from constraints import (
 
 
 # ============================================================
-# Helper: Build minimal in-memory Excel workbook with CONSTRAINTS
+# Hàm hỗ trợ: tạo sổ làm việc Excel tối thiểu trong bộ nhớ với CONSTRAINTS
 # ============================================================
 
 def _build_test_xlsx_with_constraints(
@@ -50,19 +50,19 @@ def _build_test_xlsx_with_constraints(
     for campus_id in sorted({"CS1", room_campus, sec_preferred_campus}):
         ws_campus.append([campus_id, campus_id])
 
-    # TIMESLOTS
+    # KHUNG GIỜ
     ws_ts = wb.create_sheet("TIMESLOTS")
     ws_ts.append(["timeslot_id", "day_name", "period_no", "shift", "start_time", "end_time"])
     ws_ts.append(["TS-M1", "Thứ 2", 1, "Sáng", "07:00", "07:50"])
     ws_ts.append(["TS-M2", "Thứ 2", 2, "Sáng", "07:50", "08:40"])
     ws_ts.append(["TS-E1", "Thứ 2", 13, "Tối", "18:00", "18:50"])
 
-    # ROOMS
+    # PHÒNG
     ws_rm = wb.create_sheet("ROOMS")
     ws_rm.append(["room_id", "campus_id", "building", "room_number", "capacity", "room_type"])
     ws_rm.append(["R1", room_campus, "A", "101", 50, "NORMAL"])
 
-    # LECTURERS
+    # GIẢNG VIÊN
     ws_lec = wb.create_sheet("LECTURERS")
     ws_lec.append(["lecturer_id", "lecturer_name"])
     ws_lec.append(["GV01", "Giảng viên 1"])
@@ -71,17 +71,17 @@ def _build_test_xlsx_with_constraints(
     ws_avail.append(["lecturer_id", "lecturer_name", "TS-M1", "TS-M2", "TS-E1"])
     ws_avail.append(["GV01", "Giảng viên 1", True, True, True])
 
-    # STUDENT_GROUPS
+    # NHÓM SINH VIÊN
     ws_grp = wb.create_sheet("STUDENT_GROUPS")
     ws_grp.append(["group_id", "group_name", "size", "home_campus_id"])
     ws_grp.append(["G1", "Group 1", 30, room_campus])
 
-    # COURSES
+    # HỌC PHẦN
     ws_crs = wb.create_sheet("COURSES")
     ws_crs.append(["course_id", "course_code", "course_name", "difficulty"])
     ws_crs.append(["C01", "IT001", "Course 1", "MEDIUM"])
 
-    # COURSE_SECTIONS
+    # LỚP HỌC PHẦN
     ws_sec = wb.create_sheet("COURSE_SECTIONS")
     ws_sec.append([
         "section_id", "class_code", "course_id", "course_code", "course_name", "lecturer_id",
@@ -95,7 +95,7 @@ def _build_test_xlsx_with_constraints(
         sec_preferred_campus, sec_preferred_shift, 1,
     ])
 
-    # CONSTRAINTS
+    # RÀNG BUỘC
     ws_c = wb.create_sheet("CONSTRAINTS")
     ws_c.append(["constraint_id", "constraint_type", "constraint_name", "weight", "enabled"])
     if constraints_rows is None:
@@ -116,7 +116,7 @@ def _build_test_xlsx_with_constraints(
 
 
 # ============================================================
-# 14.1. Loader tests cho CONSTRAINTS sheet
+# 14.1. Kiểm thử bộ nạp cho trang tính CONSTRAINTS
 # ============================================================
 
 @pytest.mark.unit
@@ -208,7 +208,7 @@ def test_loader_rejects_missing_header_in_constraints(tmp_path):
     wb = openpyxl.Workbook()
     ws = wb.active
     ws.title = "CONSTRAINTS"
-    ws.append(["constraint_id", "weight"])  # missing required columns
+    ws.append(["constraint_id", "weight"])  # thiếu các cột bắt buộc
     p = tmp_path / "bad_header.xlsx"
     wb.save(p)
     with pytest.raises(ExcelValidationError, match="Required header column is missing"):
@@ -240,7 +240,7 @@ def test_loader_rejects_unsupported_soft_id(tmp_path):
 
 
 # ============================================================
-# 14.2. S1 — compact_student_schedule tests
+# 14.2. Kiểm thử S1 — compact_student_schedule
 # ============================================================
 
 @pytest.mark.unit
@@ -249,13 +249,13 @@ def test_s1_more_active_days_has_maximum_compactness_penalty():
     timeslots = create_theory_timeslots(days=["Thứ 2", "Thứ 3", "Thứ 4", "Thứ 5", "Thứ 6"], max_period=5)
     rooms = [Room(id="R1", name="R1", capacity=50)]
     group = StudentGroup(id="G1", name="G1", student_count=30)
-    # 5 sections duration=2 scheduled on 5 different days
+    # 5 lớp học phần thời lượng=2 được xếp vào 5 ngày khác nhau
     sections = [
         CourseSection(f"SEC{i}", f"C{i}", f"Course {i}", "GV1", "G1", 30, duration_periods=2)
         for i in range(5)
     ]
-    # TS ids for period 1 on each day
-    # timeslots contains 5 days * 5 periods = 25 timeslots
+    # Các mã TS cho tiết 1 của mỗi ngày
+    # timeslots chứa 5 ngày * 5 tiết = 25 khung giờ
     ts_by_day = {t.day: t for t in timeslots if t.period == 1}
     genes = [
         Gene(section_id=sections[i].section_id, room_id="R1", timeslot_id=ts_by_day[f"Thứ {i+2}"].id)
@@ -282,7 +282,7 @@ def test_s1_compact_two_day_schedule_has_lower_penalty():
     timeslots = create_theory_timeslots(days=days, max_period=10)
     rooms = [Room(id="R1", name="R1", capacity=50)]
     group = StudentGroup(id="G1", name="G1", student_count=30)
-    # 5 sections duration=2: 3 on Mon (periods 1, 3, 5 = 6 periods), 2 on Tue (periods 1, 3 = 4 periods)
+    # 5 lớp thời lượng=2: 3 lớp Thứ Hai (tiết 1, 3, 5 = 6 tiết), 2 lớp Thứ Ba (tiết 1, 3 = 4 tiết)
     sections = [
         CourseSection(f"SEC{i}", "C1", "Course", "GV1", "G1", 30, duration_periods=2)
         for i in range(5)
@@ -308,7 +308,7 @@ def test_s1_compact_two_day_schedule_has_lower_penalty():
 
 
 # ============================================================
-# 14.3. S2 — late_day_periods tests
+# 14.3. Kiểm thử S2 — late_day_periods
 # ============================================================
 
 @pytest.mark.unit
@@ -316,7 +316,7 @@ def test_s2_morning_afternoon_no_penalty():
     timeslots = create_theory_timeslots(days=["Thứ 2"], max_period=12)
     rooms = [Room(id="R1", name="R1", capacity=50)]
     sec = CourseSection("SEC1", "C1", "Course", "GV1", "G1", 30, duration_periods=3)
-    # Morning slot period 1
+    # Khung giờ buổi sáng, tiết 1
     ts_morning = next(t for t in timeslots if t.session == "morning")
     sched = Schedule(genes=[Gene("SEC1", "R1", ts_morning.id)])
     checker = SoftConstraintChecker({"SEC1": sec}, {"R1": rooms[0]}, {t.id: t for t in timeslots})
@@ -328,7 +328,7 @@ def test_s2_evening_periods_penalty():
     timeslots = create_theory_timeslots(days=["Thứ 2"], max_period=16)
     rooms = [Room(id="R1", name="R1", capacity=50)]
     sec = CourseSection("SEC1", "C1", "Course", "GV1", "G1", 30, duration_periods=3)
-    # Evening slot (period >= 13)
+    # Khung giờ buổi tối (tiết >= 13)
     ts_evening = next(t for t in timeslots if t.session == "evening" and t.period == 13)
     sched = Schedule(genes=[Gene("SEC1", "R1", ts_evening.id)])
     checker = SoftConstraintChecker({"SEC1": sec}, {"R1": rooms[0]}, {t.id: t for t in timeslots})
@@ -337,7 +337,7 @@ def test_s2_evening_periods_penalty():
 
 
 # ============================================================
-# 14.4. S3 — preferred_shift_mismatch tests
+# 14.4. Kiểm thử S3 — preferred_shift_mismatch
 # ============================================================
 
 @pytest.mark.unit
@@ -375,7 +375,7 @@ def test_s3_none_preferred_shift():
 
 
 # ============================================================
-# 14.5. S4 — room_seat_waste tests
+# 14.5. Kiểm thử S4 — room_seat_waste
 # ============================================================
 
 @pytest.mark.unit
@@ -383,7 +383,7 @@ def test_s3_none_preferred_shift():
     (100, 100, 0.0),
     (100, 50, 0.5),
     (200, 50, 0.75),
-    (30, 40, 0.0),  # insufficient capacity is hard-only; S4 ignores it
+    (30, 40, 0.0),  # sức chứa không đủ chỉ là ràng buộc cứng; S4 bỏ qua
 ])
 def test_s4_room_seat_waste(capacity, student_count, expected_waste):
     timeslots = create_theory_timeslots(days=["Thứ 2"], max_period=5)
@@ -396,7 +396,7 @@ def test_s4_room_seat_waste(capacity, student_count, expected_waste):
 
 
 # ============================================================
-# 14.6. S5 — consecutive_cross_campus tests
+# 14.6. Kiểm thử S5 — consecutive_cross_campus
 # ============================================================
 
 @pytest.mark.unit
@@ -411,7 +411,7 @@ def test_s5_consecutive_cross_campus_penalty():
     sec2 = CourseSection("SEC2", "C2", "Course 2", "GV1", "G2", 30, duration_periods=3)
 
     ts1 = next(t for t in timeslots if t.period == 1)
-    ts4 = next(t for t in timeslots if t.period == 4)  # consecutive block start
+    ts4 = next(t for t in timeslots if t.period == 4)  # bắt đầu đoạn liên tiếp
 
     sched = Schedule(genes=[
         Gene("SEC1", "R_CS1", ts1.id),
@@ -463,7 +463,7 @@ def test_s5_gap_between_cross_campus_no_penalty():
     sec2 = CourseSection("SEC2", "C2", "Course 2", "GV1", "G2", 30, duration_periods=2)
 
     ts1 = next(t for t in timeslots if t.period == 1)
-    ts5 = next(t for t in timeslots if t.period == 5)  # gap of period 4
+    ts5 = next(t for t in timeslots if t.period == 5)  # cách một tiết 4
 
     sched = Schedule(genes=[
         Gene("SEC1", "R_CS1", ts1.id),
@@ -479,7 +479,7 @@ def test_s5_gap_between_cross_campus_no_penalty():
 
 
 # ============================================================
-# 14.7. Weight test (normalized metrics × stakeholder weights)
+# 14.7. Kiểm thử trọng số (chỉ số chuẩn hóa × trọng số bên liên quan)
 # ============================================================
 
 @pytest.mark.unit
@@ -502,7 +502,7 @@ def test_weight_calculation_formula():
 
 
 # ============================================================
-# 14.8. Enabled test
+# 14.8. Kiểm thử trạng thái bật
 # ============================================================
 
 @pytest.mark.unit
@@ -512,35 +512,35 @@ def test_disabled_constraint_contributes_zero():
         ConstraintDefinition("S1", "SOFT", "Weekly", 10, True),
         ConstraintDefinition("S2", "SOFT", "Late", 5, True),
         ConstraintDefinition("S3", "SOFT", "Shift", 4, True),
-        ConstraintDefinition("S4", "SOFT", "Waste", 2, False),  # DISABLED
+        ConstraintDefinition("S4", "SOFT", "Waste", 2, False),  # ĐÃ TẮT
         ConstraintDefinition("S5", "SOFT", "Campus", 8, True),
     ]
     config = SoftConstraintConfig.from_constraint_definitions(c_defs)
     assert not config.is_enabled("room_seat_waste")
 
     timeslots = create_theory_timeslots(days=["Thứ 2"], max_period=5)
-    room = Room(id="R1", name="R1", capacity=100)  # 60 unused seats
+    room = Room(id="R1", name="R1", capacity=100)  # 60 ghế không dùng
     sec = CourseSection("SEC1", "C1", "Course", "GV1", "G1", 40)
     sched = Schedule(genes=[Gene("SEC1", "R1", timeslots[0].id)])
 
     checker = SoftConstraintChecker({"SEC1": sec}, {"R1": room}, {t.id: t for t in timeslots}, config=config)
     raw, details, items = checker.evaluate_detailed(sched)
-    # S4 is in details but item weighted_penalty is 0
+    # S4 có trong chi tiết nhưng weighted_penalty của mục bằng 0
     s4_items = [i for i in items if i.get("constraint_key") == "room_seat_waste"]
-    assert len(s4_items) == 0  # disabled constraint creates no violation items
+    assert len(s4_items) == 0  # ràng buộc bị tắt không tạo mục vi phạm
     _, _, metrics, _, _ = checker.evaluate_metrics(sched)
     assert metrics["room_seat_waste"].raw == 0
     assert metrics["room_seat_waste"].weighted == 0
 
 
 # ============================================================
-# 14.9. Unified evaluator test
+# 14.9. Kiểm thử bộ đánh giá hợp nhất
 # ============================================================
 
 @pytest.mark.unit
 def test_unified_evaluator_consistency(small_dataset):
     evaluator = ConstraintEvaluator(small_dataset)
-    # Build a valid dummy schedule
+    # Tạo một lịch giả lập hợp lệ
     sections = small_dataset["course_sections"]
     rooms = small_dataset["rooms"]
     genes = [Gene(s.section_id, rooms[0].id, 0) for s in sections]
@@ -551,13 +551,13 @@ def test_unified_evaluator_consistency(small_dataset):
     assert res.soft_penalty == calculated_soft
     assert len(res.soft_breakdown) == 7
 
-    # Check key names in breakdown
+    # Kiểm tra tên khóa trong bảng phân tích
     keys_in_breakdown = [item.constraint_key for item in res.soft_breakdown]
     assert keys_in_breakdown == SOFT_CONSTRAINT_KEYS
 
 
 # ============================================================
-# 14.10. Exporter test — RUN_CONFIG & VIOLATIONS sheets
+# 14.10. Kiểm thử bộ xuất — các trang tính RUN_CONFIG và VIOLATIONS
 # ============================================================
 
 @pytest.mark.unit
@@ -591,7 +591,7 @@ def test_exporter_uses_s1_s5_not_legacy(tmp_path):
 
     wb = openpyxl.load_workbook(out)
 
-    # Check RUN_CONFIG
+    # Kiểm tra RUN_CONFIG
     ws_cfg = wb["RUN_CONFIG"]
     cfg_params = {row[0]: row[1] for row in ws_cfg.iter_rows(min_row=2, values_only=True)}
     assert "S1_compact_student_schedule_weight" in cfg_params
@@ -602,7 +602,7 @@ def test_exporter_uses_s1_s5_not_legacy(tmp_path):
     assert "S6_preferred_campus_mismatch_weight" in cfg_params
     assert "S7_student_home_campus_mismatch_weight" in cfg_params
 
-    # Legacy weights MUST NOT exist
+    # Trọng số cũ KHÔNG ĐƯỢC tồn tại
     assert "student_gaps_weight" not in cfg_params
     assert "consecutive_teaching_weight" not in cfg_params
     assert "difficult_afternoon_weight" not in cfg_params
@@ -610,7 +610,7 @@ def test_exporter_uses_s1_s5_not_legacy(tmp_path):
 
 
 # ============================================================
-# 14.11. Pipeline integration test
+# 14.11. Kiểm thử tích hợp quy trình
 # ============================================================
 
 @pytest.mark.unit

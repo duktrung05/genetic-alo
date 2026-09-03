@@ -12,7 +12,7 @@ from evaluation.schedule_exporter import export_schedule_to_excel
 
 
 # ============================================================
-# 1. Counter Category Increment Unit Tests
+# 1. Kiểm thử đơn vị việc tăng từng loại bộ đếm
 # ============================================================
 
 @pytest.mark.unit
@@ -70,7 +70,7 @@ def test_reporting_evaluation_increment(small_dataset):
 
 
 # ============================================================
-# 2. GA Search Budget Enforcement Tests
+# 2. Kiểm thử thực thi ngân sách tìm kiếm GA
 # ============================================================
 
 @pytest.mark.unit
@@ -126,7 +126,7 @@ def test_ga_budget_is_not_shortened_by_perfect_solution(small_dataset, monkeypat
 
 
 # ============================================================
-# 3. Random Search Budget Enforcement Tests
+# 3. Kiểm thử thực thi ngân sách tìm kiếm ngẫu nhiên
 # ============================================================
 
 @pytest.mark.unit
@@ -140,7 +140,7 @@ def test_random_search_budget_enforcement(small_dataset):
 
 
 # ============================================================
-# 4. Reporting Isolation & Budget Validation
+# 4. Kiểm tra tính cô lập của báo cáo và ngân sách
 # ============================================================
 
 @pytest.mark.unit
@@ -148,14 +148,14 @@ def test_reporting_isolation_after_search(small_dataset):
     engine = GeneticAlgorithmEngine(small_dataset, pop_size=6, elite_count=1, seed=42)
     res = engine.run(generations=100, use_repair=False, evaluation_budget=20)
 
-    # Post-search evaluator call should not affect search_fitness_evaluations
+    # Lần gọi bộ đánh giá sau tìm kiếm không được ảnh hưởng search_fitness_evaluations
     evaluator = engine.evaluator
     evaluator.evaluate_hard(res["best_schedule"], category="reporting")
     evaluator.evaluate_soft(res["best_schedule"], category="reporting")
 
     assert res["run_metrics"].search_fitness_evaluations == 20
     assert evaluator.counters.search_fitness_evaluations == 20
-    assert evaluator.counters.reporting_hard_constraint_evaluations == 2  # 1 from run() end + 1 manual
+    assert evaluator.counters.reporting_hard_constraint_evaluations == 2  # 1 từ cuối run() + 1 thủ công
     assert evaluator.counters.reporting_soft_constraint_evaluations == 2
 
 
@@ -163,7 +163,7 @@ def test_reporting_isolation_after_search(small_dataset):
 def test_search_budget_validation_failure():
     metrics = RunMetrics(
         method="Random Search", seed=0, runtime_seconds=1.0,
-        time_to_first_feasible_seconds=0.5, search_fitness_evaluations=1001,  # actual = 1001
+        time_to_first_feasible_seconds=0.5, search_fitness_evaluations=1001,  # thực tế = 1001
         hard_constraint_evaluations=1001, soft_constraint_evaluations=1001,
         total_constraint_evaluations=2002, candidate_checks=0,
         repair_calls=0, repair_improved=0, repair_unchanged=0, repair_failed=0,
@@ -177,7 +177,7 @@ def test_search_budget_validation_failure():
 
 
 # ============================================================
-# 5. Export Round-Trip Verification
+# 5. Xác minh lượt xuất-nạp
 # ============================================================
 
 @pytest.mark.unit

@@ -10,9 +10,9 @@ from enum import Enum
 
 class RepairStatus(str, Enum):
     """Execution status of a single Repair Engine transformation call."""
-    IMPROVED = "improved"    # (after_hard, after_soft) < (before_hard, before_soft)
-    UNCHANGED = "unchanged"  # (after_hard, after_soft) == (before_hard, before_soft)
-    FAILED = "failed"        # (after_hard, after_soft) > (before_hard, before_soft) or invalid
+    IMPROVED = "improved"    # (hard_sau, soft_sau) < (hard_trước, soft_trước)
+    UNCHANGED = "unchanged"  # (hard_sau, soft_sau) == (hard_trước, soft_trước)
+    FAILED = "failed"        # (hard_sau, soft_sau) > (hard_trước, soft_trước) hoặc không hợp lệ
 
 
 @dataclass

@@ -50,7 +50,7 @@ class SoftLocalSearch:
         for ts in self.timeslots:
             self.day_available_periods[ts.day].add(ts.period)
 
-        # Pre-cache candidate rooms per section sorted deterministically by (capacity, id)
+        # Lưu đệm trước các phòng ứng viên theo lớp, sắp xếp ổn định theo (capacity, id)
         self._valid_rooms_cache: Dict[str, List[Room]] = {}
         for sec in self.sections:
             req_type = getattr(sec, "required_room_type", "NORMAL")
@@ -62,7 +62,7 @@ class SoftLocalSearch:
                 key=lambda r: (r.capacity, r.id),
             )
 
-        # Pre-cache valid start timeslots per duration sorted by id
+        # Lưu đệm trước các khung giờ bắt đầu hợp lệ theo thời lượng, sắp theo id
         self._valid_ts_by_duration: Dict[int, List[Timeslot]] = {}
         unique_durations = {getattr(s, "duration_periods", 1) for s in self.sections}
         for dur in unique_durations:
@@ -95,7 +95,7 @@ class SoftLocalSearch:
             "soft_ls_runtime_seconds": 0.0,
         }
 
-        # Safety Check: If input schedule is not hard-feasible, reject immediately
+        # Kiểm tra an toàn: nếu lịch đầu vào không khả thi về ràng buộc cứng thì từ chối ngay
         if initial_hard > 0:
             stats["soft_ls_runtime_seconds"] = round(time.perf_counter() - start_time, 4)
             return schedule, stats
@@ -132,7 +132,7 @@ class SoftLocalSearch:
 
                 section_move_accepted = False
 
-                # MOVE A — Change room only (keep timeslot)
+                # BƯỚC DI CHUYỂN A — Chỉ đổi phòng (giữ khung giờ)
                 cur_ts_id = cur_gene.timeslot_id
                 for r in candidate_rooms:
                     if candidate_checks >= self.max_candidate_checks:
@@ -161,7 +161,7 @@ class SoftLocalSearch:
                 if section_move_accepted:
                     continue
 
-                # MOVE B — Change timeslot only (keep room)
+                # BƯỚC DI CHUYỂN B — Chỉ đổi khung giờ (giữ phòng)
                 cur_room_id = current_genes_map[sec_id].room_id
                 for ts in valid_ts_list:
                     if candidate_checks >= self.max_candidate_checks:
@@ -190,7 +190,7 @@ class SoftLocalSearch:
                 if section_move_accepted:
                     continue
 
-                # MOVE C — Change room + timeslot
+                # BƯỚC DI CHUYỂN C — Đổi phòng và khung giờ
                 for ts in valid_ts_list:
                     if candidate_checks >= self.max_candidate_checks or section_move_accepted:
                         break

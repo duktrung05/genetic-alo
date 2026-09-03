@@ -44,7 +44,7 @@ def test_schedule_gene_count_integrity(small_dataset):
     rooms = small_dataset["rooms"]
     evaluator = ConstraintEvaluator(small_dataset)
 
-    # Valid schedule
+    # Lịch hợp lệ
     genes = [Gene(section_id=s.section_id, timeslot_id=0, room_id=rooms[0].id) for s in sections]
     sched = Schedule(genes=genes)
 
@@ -53,7 +53,7 @@ def test_schedule_gene_count_integrity(small_dataset):
     assert details["missing_sections"] == 0
     assert details["duplicate_sections"] == 0
 
-    # Incorrect gene count
+    # Số lượng gene không đúng
     short_sched = Schedule(genes=genes[:-1])
     _, details_short = evaluator.evaluate_hard(short_sched)
     assert details_short["missing_sections"] > 0
@@ -64,7 +64,7 @@ def test_schedule_missing_or_duplicate_section_ids(small_dataset):
     rooms = small_dataset["rooms"]
     evaluator = ConstraintEvaluator(small_dataset)
 
-    # Missing & duplicate section
+    # Lớp học phần bị thiếu và trùng
     genes_missing = [Gene(section_id=s.section_id, timeslot_id=0, room_id=rooms[0].id) for s in sections[1:]]
     genes_missing.append(Gene(section_id=sections[1].section_id, timeslot_id=1, room_id=rooms[0].id))
     sched_missing = Schedule(genes=genes_missing)
@@ -79,7 +79,7 @@ def test_schedule_invalid_room_or_timeslot_ids(small_dataset):
     rooms = small_dataset["rooms"]
     evaluator = ConstraintEvaluator(small_dataset)
 
-    # Invalid room ID
+    # Mã phòng không hợp lệ
     genes_bad_room = [Gene(section_id=sections[0].section_id, timeslot_id=0, room_id="ROOM_999")]
     for s in sections[1:]:
         genes_bad_room.append(Gene(section_id=s.section_id, timeslot_id=0, room_id=rooms[0].id))
@@ -87,7 +87,7 @@ def test_schedule_invalid_room_or_timeslot_ids(small_dataset):
     _, details_room = evaluator.evaluate_hard(sched_bad_room)
     assert details_room["invalid_room_ids"] == 1
 
-    # Invalid timeslot ID
+    # Mã khung giờ không hợp lệ
     genes_bad_ts = [Gene(section_id=sections[0].section_id, timeslot_id=9999, room_id=rooms[0].id)]
     for s in sections[1:]:
         genes_bad_ts.append(Gene(section_id=s.section_id, timeslot_id=0, room_id=rooms[0].id))

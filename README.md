@@ -36,9 +36,9 @@ Hệ thống tối ưu hóa và xếp lịch thời khóa biểu trường đạ
 
 ---
 
-## 📊 Dữ Liệu Đầu Vào (`data/01_data_timetable.xlsx`)
+## 📊 Dữ Liệu Đầu Vào (`data/instances/instance_easy.xlsx`)
 
-Bộ dữ liệu chuẩn quy mô đại học được nạp từ `data/01_data_timetable.xlsx`:
+Bộ dữ liệu EASY chuẩn quy mô đại học được nạp từ `data/instances/instance_easy.xlsx`:
 - **62** lớp học phần (`CourseSection`)
 - **15** giảng viên (`Lecturer`)
 - **12** nhóm sinh viên (`StudentGroup`)
@@ -159,7 +159,7 @@ python main.py
 python main.py --soft-local-search
 
 # Chỉ định input, output, seed và evaluation budget
-python main.py --input data/01_data_timetable.xlsx --output outputs/production/best_timetable.xlsx --seed 42
+python main.py --input data/instances/instance_easy.xlsx --output outputs/production/best_timetable.xlsx --seed 42
 ```
 
 ### 2. Chạy Benchmark So Sánh Thử Nghiệm (`main_benchmark.py`)
@@ -229,7 +229,7 @@ outputs/
 │   ├── schedule_query_data.json        # Dữ liệu JSON tra cứu cho Trợ lý tra cứu thời khóa biểu
 │   └── convergence_<method>.png        # Ví dụ: convergence_ga_repair_sls.png
 ├── datasets/
-│   └── 01_data_timetable.normalized.json # Snapshot dữ liệu đã chuẩn hóa (fast loader)
+│   └── instance_easy.normalized.json     # Snapshot dữ liệu EASY đã chuẩn hóa (fast loader)
 └── benchmark/
     └── <experiment_name>/              # Kết quả benchmark thử nghiệm theo tên thí nghiệm
         ├── best_timetable.xlsx         # Workbook thời khóa biểu của phương pháp tốt nhất
@@ -266,7 +266,8 @@ GA/
 ├── ga/                            # GeneticAlgorithmEngine & GAOperators (selection, crossover, mutation)
 ├── evaluation/                    # Baselines (Greedy, Random), metrics, query_data_exporter, visualizer
 ├── scripts/                       # Script demo chạy GA
-├── data/                          # Dữ liệu Excel đầu vào (01_data_timetable.xlsx)
+├── data/                          # Dữ liệu Excel đầu vào
+│   └── instances/                # Các bộ dữ liệu EASY và MEDIUM
 ├── outputs/                       # Thư mục chứa kết quả sản phẩm & benchmark
 └── tests/                         # Bộ kiểm thử tự động Pytest
 ```

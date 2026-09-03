@@ -258,7 +258,7 @@ def test_ga_repair_schedules_all_multi_meeting_activities():
 
 @pytest.mark.integration
 def test_canonical_single_meeting_activity_ids_remain_unchanged():
-    dataset = ExcelDatasetLoader.load_and_validate("data/01_data_timetable.xlsx")
+    dataset = ExcelDatasetLoader.load_and_validate("data/instances/instance_easy.xlsx")
     activities = expand_scheduling_activities(dataset["course_sections"])
     assert len(activities) == len(dataset["course_sections"]) == 62
     assert [activity.activity_id for activity in activities] == [
