@@ -661,6 +661,7 @@ print("✅ Dữ liệu demo đã sẵn sàng.")
 MO_GIAO_DIEN_STREAMLIT = True #@param {type:"boolean"}
 
 import re
+import platform
 import time
 import urllib.request
 from IPython.display import HTML, display
@@ -712,13 +713,35 @@ else:
         log_streamlit.flush()
         raise RuntimeError(tep_log_streamlit.read_text(errors="replace"))
 
+    # Dùng cloudflared binary trực tiếp để không phụ thuộc Node.js/Wrangler.
+    kien_truc = platform.machine().lower()
+    ten_kien_truc = {
+        "x86_64": "amd64",
+        "amd64": "amd64",
+        "aarch64": "arm64",
+        "arm64": "arm64",
+    }.get(kien_truc)
+    if ten_kien_truc is None:
+        raise RuntimeError(f"Kiến trúc Colab chưa được hỗ trợ: {kien_truc}")
+
+    tep_cloudflared = Path("/content/cloudflared")
+    url_cloudflared = (
+        "https://github.com/cloudflare/cloudflared/releases/latest/download/"
+        f"cloudflared-linux-{ten_kien_truc}"
+    )
+    if not tep_cloudflared.is_file():
+        print("Đang tải cloudflared chính thức...")
+        urllib.request.urlretrieve(url_cloudflared, tep_cloudflared)
+        tep_cloudflared.chmod(0o755)
+    subprocess.run([str(tep_cloudflared), "--version"], check=True)
+
     url_cong_khai = None
     for lan_thu in range(1, 3):
         log_tunnel = open(tep_log_tunnel, "w", encoding="utf-8")
         tien_trinh_tunnel = subprocess.Popen(
             [
-                "npx", "--yes", "wrangler@latest", "tunnel", "quick-start",
-                "http://127.0.0.1:8501",
+                str(tep_cloudflared), "tunnel", "--no-autoupdate",
+                "--url", "http://127.0.0.1:8501",
             ],
             stdout=log_tunnel,
             stderr=subprocess.STDOUT,
