@@ -135,6 +135,7 @@ from pathlib import Path
 import shutil
 import subprocess
 import sys
+import time
 
 THU_MUC_COLAB_DRIVE = Path("/content/drive/MyDrive/Genetic_ALO_Colab")
 THU_MUC_COLAB_DRIVE.mkdir(parents=True, exist_ok=True)
@@ -142,14 +143,34 @@ THU_MUC_DU_AN = Path("/content/genetic-alo")
 THU_MUC_KET_QUA_DRIVE = THU_MUC_COLAB_DRIVE / "latest_outputs"
 REPOSITORY_URL = "https://github.com/duktrung05/genetic-alo.git"
 
-shutil.rmtree(THU_MUC_DU_AN, ignore_errors=True)
-subprocess.run(
-    [
-        "git", "clone", "--depth", "1", "--branch", "main",
-        REPOSITORY_URL, str(THU_MUC_DU_AN),
-    ],
-    check=True,
-)
+# Khi chạy lại notebook, cwd có thể vẫn nằm trong thư mục clone cũ.
+# Phải rời khỏi thư mục đó trước khi xóa và clone lại.
+os.chdir("/content")
+ket_qua_clone = None
+for lan_thu in range(1, 4):
+    shutil.rmtree(THU_MUC_DU_AN, ignore_errors=True)
+    ket_qua_clone = subprocess.run(
+        [
+            "git", "clone", "--depth", "1", "--branch", "main",
+            REPOSITORY_URL, str(THU_MUC_DU_AN),
+        ],
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+    )
+    if ket_qua_clone.returncode == 0:
+        print(ket_qua_clone.stdout.strip())
+        break
+    print(f"Clone lần {lan_thu}/3 chưa thành công:")
+    print(ket_qua_clone.stdout.strip())
+    if lan_thu < 3:
+        time.sleep(3)
+else:
+    raise RuntimeError(
+        "Không clone được repository sau 3 lần thử. "
+        "Hãy kiểm tra kết nối Internet của runtime Colab.\\n"
+        + (ket_qua_clone.stdout if ket_qua_clone else "")
+    )
 
 # Khôi phục output mới nhất từ Drive nếu notebook trước đã tạo kết quả.
 if THU_MUC_KET_QUA_DRIVE.is_dir():
@@ -320,8 +341,8 @@ def build_test_notebook(checksum: str) -> None:
                 """
 # 01 — Kiểm thử source code và dữ liệu
 
-Notebook này khôi phục dự án từ Google Drive, xác minh hai dataset Excel, import
-các module chính và chạy toàn bộ pytest. Chạy **Runtime → Run all**.
+Notebook sử dụng source vừa clone, xác minh hai dataset Excel, import các module
+chính và có thể chạy toàn bộ pytest.
 """
             ),
             code(bootstrap_source(checksum)),
