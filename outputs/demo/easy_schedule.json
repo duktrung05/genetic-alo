@@ -1,6 +1,6 @@
 {
   "meta": {
-    "generated_at": "2026-09-01T16:29:10.505965",
+    "generated_at": "2026-09-03T15:07:37.704708",
     "total_assignments": 62,
     "hard_violations": 0,
     "soft_penalty": 6.3029432486210775,
@@ -10,7 +10,7 @@
     "seed": 0,
     "population_size": 60,
     "evaluation_budget": 1000,
-    "runtime_seconds": 14.828526598999815,
+    "runtime_seconds": 14.055336500000067,
     "effective_soft_constraints": {
       "S1": {
         "key": "compact_student_schedule",
@@ -32,13 +32,13 @@
       },
       "S4": {
         "key": "room_seat_waste",
-        "name": "Giảm số ghế trống trong phòng",
+        "name": "Giảm tỷ lệ ghế trống trong phòng",
         "weight": 2,
         "enabled": true
       },
       "S5": {
         "key": "consecutive_cross_campus",
-        "name": "Hạn chế giảng viên di chuyển liên tiếp giữa hai cơ sở",
+        "name": "Hạn chế giảng viên chuyển cơ sở liên tiếp",
         "weight": 8,
         "enabled": true
       },
